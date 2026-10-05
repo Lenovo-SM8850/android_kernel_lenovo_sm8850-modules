@@ -2,6 +2,7 @@
 #ifndef _HAPTIC_HV_H_
 #define _HAPTIC_HV_H_
 
+#include <linux/wait.h>
 #include <linux/i2c.h>
 #include <linux/delay.h>
 #include <linux/vmalloc.h>
@@ -9,6 +10,7 @@
 #include <linux/hrtimer.h>
 #include <linux/mutex.h>
 #include <linux/input.h>
+#include <linux/notifier.h>
 #include <linux/version.h>
 #include <sound/soc.h>
 #include <sound/pcm_params.h>
@@ -695,7 +697,14 @@ struct aw_haptic_dts_info {
 	bool is_enabled_one_wire;
 };
 
+bool aw_haptic_request_begin(void);
+void aw_haptic_request_end(void);
+
 struct aw_haptic {
+	bool removing;
+	atomic_t users;
+	atomic_t fw_pending;
+	wait_queue_head_t users_wait;
 	/* AW869X */
 	uint32_t interval_us;
 
@@ -893,5 +902,14 @@ extern struct aw_haptic_func aw8693x_func_list;
 extern int haptic_hv_i2c_reads(struct aw_haptic *aw_haptic, uint8_t reg_addr, uint8_t *buf, uint32_t len);
 extern int haptic_hv_i2c_writes(struct aw_haptic *aw_haptic, uint8_t reg_addr, uint8_t *buf, uint32_t len);
 extern int haptic_hv_i2c_write_bits(struct aw_haptic *aw_haptic, uint8_t reg_addr, uint32_t mask, uint8_t reg_data);
+
+/*
+ * Vibration notifier (TB323FU, from the stock module): the camera driver registers a notifier block and
+ * is told when a vibration starts/stops (val 1 = start, 2 = stop) with this payload. The layout is the
+ * stock one (12 bytes: duration in ms or -1 on stop, 1 = left / 2 = right motor, play mode).
+ */
+/* the motor name ("left"/"right", from the DT compatible) is a fixed size buffer */
+#define AW_NAME_IS(h, s)	(!memcmp((h)->name, (s), sizeof(s)))
+
 
 #endif

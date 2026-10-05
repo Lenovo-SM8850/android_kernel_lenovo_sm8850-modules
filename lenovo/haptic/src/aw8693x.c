@@ -622,6 +622,8 @@ static void aw8693x_stop(struct aw_haptic *aw_haptic)
 		aw_err("force to enter standby mode!");
 		aw8693x_play_mode(aw_haptic, AW_STANDBY_MODE);
 	}
+
+
 }
 
 static void aw8693x_ram_init(struct aw_haptic *aw_haptic, bool flag)
@@ -1780,6 +1782,8 @@ static ssize_t rtp_dual_test_store(struct device *dev, struct device_attribute *
 		aw_err("kstrtouint fail");
 		return rc;
 	}
+	if (!aw_haptic_request_begin())
+		return -ENODEV;
 	mutex_lock(&right->lock);
 	right->dual_flag = false;
 	if ((val > 0) && (val < right->rtp_num)) {
@@ -1849,6 +1853,7 @@ static ssize_t rtp_dual_test_store(struct device *dev, struct device_attribute *
 	}
 	mutex_unlock(&right->lock);
 	queue_work(right->work_queue, &right->rtp_work);
+	aw_haptic_request_end();
 
 	return count;
 }
