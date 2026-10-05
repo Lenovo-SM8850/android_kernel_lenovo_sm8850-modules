@@ -37,7 +37,7 @@
 #define FW_PEN_STATE "fw_pen_state"
 #endif
 
-#ifdef BUILD_LAPIS_TOUCH
+#ifdef BUILD_BALDUR_TOUCH
 #define HAPTICS "haptics"
 #define HAPTICS_CMD 0x7C
 #define HAPTICS_STEP1 0x00
@@ -64,7 +64,7 @@
 #endif
 
 #if WAKEUP_GESTURE
-#define GESTURE_CONTROL "gesture_control"
+#define GESTURE_MODE "gesture_mode"
 #endif
 #define NORMAL_MODE 0x00
 #define TEST_MODE_2 0x22
@@ -93,12 +93,12 @@ static struct proc_dir_entry *NVT_proc_support_pen_entry;
 #if NVT_DPR_SWITCH
 static struct proc_dir_entry *NVT_proc_get_fw_pen_state;
 #endif
-#ifdef BUILD_LAPIS_TOUCH
+#ifdef BUILD_BALDUR_TOUCH
 static struct proc_dir_entry *NVT_proc_haptics;
 #endif
 #endif
 #if WAKEUP_GESTURE
-static struct proc_dir_entry *NVT_gesture_entry;
+static struct proc_dir_entry *NVT_proc_gesture_mode_entry;
 #endif
 #if NVT_REPORT_PEN_ID
 static struct proc_dir_entry *NVT_proc_get_pen_id;
@@ -336,23 +336,24 @@ void nvt_get_mdata(int32_t *buf, uint8_t *m_x_num, uint8_t *m_y_num)
 }
 
 #if WAKEUP_GESTURE
-static ssize_t gesture_control_write(struct file *file, const char __user *buffer,
+static ssize_t nvt_gesture_mode_store(struct file *file, const char __user *buffer,
 		size_t count, loff_t *pos)
 {
-	char input;
-	if (count > 0) {
-		if (get_user(input, buffer))
-			return -EFAULT;
-		if (input != '1')
-			nvt_gesture_flag = false;
-		else
-			nvt_gesture_flag = true;
-	}
+	char dbg[10] = {0};
+	uint8_t state = 0;
+
+	if (copy_from_user(dbg, buffer, 1))
+		return -EINVAL;
+	if (kstrtou8(dbg, 16, &state))
+		state = 0;
+	ts->gesture_mode = state;
+	nvt_gesture_flag = !!state;
+	NVT_LOG("Gesture mode %d!\n", state);
 	return count;
 }
-static int gesture_control_show(struct seq_file *m, void *v)
+static int nvt_gesture_mode_show(struct seq_file *m, void *v)
 {
-	seq_printf(m, "%d\n", nvt_gesture_flag);
+	seq_printf(m, "%d\n", ts->gesture_mode);
 	return 0;
 }
 #endif
@@ -829,22 +830,24 @@ static const struct file_operations nvt_diff_fops = {
 };
 #endif
 #if WAKEUP_GESTURE
-static int32_t gesture_control_open(struct inode *inode, struct file *file)
+static int32_t nvt_gesture_mode_open(struct inode *inode, struct file *file)
 {
-	return single_open(file, gesture_control_show, NULL);
+	return single_open(file, nvt_gesture_mode_show, NULL);
 }
 #ifdef HAVE_PROC_OPS
-static const struct proc_ops gesture_control_fops = {
-	.proc_open = gesture_control_open,
+static const struct proc_ops nvt_gesture_mode_fops = {
+	.proc_open = nvt_gesture_mode_open,
 	.proc_read = seq_read,
-	.proc_write = gesture_control_write,
+	.proc_write = nvt_gesture_mode_store,
+	.proc_lseek = seq_lseek,
+	.proc_release = seq_release,
 };
 #else
-static const struct file_operations gesture_control_fops = {
+static const struct file_operations nvt_gesture_mode_fops = {
 	.owner = THIS_MODULE,
-	.open = gesture_control_open,
+	.open = nvt_gesture_mode_open,
 	.read = seq_read,
-	.write = gesture_control_write,
+	.write = nvt_gesture_mode_store,
 };
 #endif
 #endif
@@ -931,103 +934,52 @@ static const struct file_operations nvt_pen_diff_fops = {
 #endif
 
 #if NVT_CUST_PROC_CMD
-int32_t nvt_cmd_store(uint8_t u8Cmd){
-	int i, retry = 5;
-	uint8_t buf[3] = {0};
-	int32_t ret = 0;
+/* Caller holds ts->lock, including firmware download callers. */
+static int32_t nvt_cmd_store_locked(uint8_t *command, uint8_t len)
+{
+	uint8_t buf[16] = {0};
+	int i, ret = 0;
 
-	if (mutex_lock_interruptible(&ts->lock)) {
-		return -ERESTARTSYS;
-	}
-	//---set xdata index to EVENT BUF ADDR---
+	lockdep_assert_held(&ts->lock);
+	if (len >= sizeof(buf))
+		return -EINVAL;
 	ret = nvt_set_page(ts->mmap->EVENT_BUF_ADDR | EVENT_MAP_HOST_CMD);
-	if (ret < 0) {
-		NVT_ERR("Set event buffer index fail!\n");
-		mutex_unlock(&ts->lock);
+	if (ret < 0)
 		return ret;
-	}
-
-	for (i = 0; i < retry; i++) {
-		//---set cmd status---
+	for (i = 0; i < 20; i++) {
+		/* The status read overwrites buf[1]; resend the original command. */
+		memcpy(buf + 1, command, len);
 		buf[0] = EVENT_MAP_HOST_CMD;
-		buf[1] = u8Cmd;
-		CTP_SPI_WRITE(ts->client, buf, 2);
-#if NVT_DPR_SWITCH
-		if(ts->finger_event_flag  || ts->stylus_event_flag) {
-			NVT_LOG("touch event flag %d %d,  send Cmd 0x%02X", ts->finger_event_flag,  ts->stylus_event_flag, u8Cmd);
-			goto exit;
-		}
-#endif
-		msleep(20);
-		//---read cmd status---
+		ret = CTP_SPI_WRITE(ts->client, buf, len + 1);
+		if (ret < 0)
+			return ret;
+		msleep(1);
 		buf[0] = EVENT_MAP_HOST_CMD;
-		buf[1] = 0xFF;
-		CTP_SPI_READ(ts->client, buf, 2);
-		if (buf[1] == 0x00)
+		buf[1] = 0xff;
+		ret = CTP_SPI_READ(ts->client, buf, 2);
+		if (ret < 0)
+			return ret;
+		if (buf[1] == 0)
 			break;
 	}
-
-	if (unlikely(i == retry)) {
-		NVT_LOG("send Cmd 0x%02X failed, buf[1]=0x%02X\n", u8Cmd, buf[1]);
+	if (i == 20) {
+		NVT_ERR("customizeCmd 0x%02X failed, buf[1]=0x%02X\n", command[0], buf[1]);
 		ret = -1;
-	} else {
-		NVT_LOG("send Cmd 0x%02X success, tried %d times\n", u8Cmd, i);
 	}
-exit:
-	mutex_unlock(&ts->lock);
-
 	return ret;
 }
-int32_t nvt_ext_cmd_store(uint8_t u8Cmd, uint8_t u8subCmd){
-	int i, retry = 5;
-	uint8_t buf[4] = {0};
-	int32_t ret = 0;
 
-	if (mutex_lock_interruptible(&ts->lock)) {
+int32_t nvt_cmd_store(uint8_t *command, uint8_t len)
+{
+	int32_t ret;
+
+	if (mutex_lock_interruptible(&ts->lock))
 		return -ERESTARTSYS;
-	}
-
-	//---set xdata index to EVENT BUF ADDR---
-	ret = nvt_set_page(ts->mmap->EVENT_BUF_ADDR | EVENT_MAP_HOST_CMD);
-	if (ret < 0) {
-		NVT_ERR("Set event buffer index fail!\n");
-		mutex_unlock(&ts->lock);
-		return ret;
-	}
-
-	for (i = 0; i < retry; i++) {
-		//---set cmd status---
-		buf[0] = EVENT_MAP_HOST_CMD;
-		buf[1] = u8Cmd;
-		buf[2] = u8subCmd;
-		CTP_SPI_WRITE(ts->client, buf, 3);
-#if NVT_DPR_SWITCH
-		if(ts->finger_event_flag  || ts->stylus_event_flag) {
-			NVT_LOG("touch event flag %d  %d,  send Cmd 0x%02X", ts->finger_event_flag,  ts->stylus_event_flag, u8Cmd);
-			goto exit;
-		}
-#endif
-		msleep(20);
-
-		//---read cmd status---
-		buf[0] = EVENT_MAP_HOST_CMD;
-		buf[1] = 0xFF;
-		CTP_SPI_READ(ts->client, buf, 2);
-		if (buf[1] == 0x00)
-			break;
-	}
-
-	if (unlikely(i == retry)) {
-		NVT_LOG("send Cmd 0x%02X 0x%02X failed, buf[1]=0x%02X\n", u8Cmd, u8subCmd, buf[1]);
-		ret = -1;
-	} else {
-		NVT_LOG("send Cmd 0x%02X 0x%02X success, tried %d times\n", u8Cmd, u8subCmd, i);
-	}
-exit:
+	ret = nvt_cmd_store_locked(command, len);
 	mutex_unlock(&ts->lock);
-
 	return ret;
 }
+
 
 /*
  *	/proc/panel_angle cmd_param
@@ -1037,19 +989,17 @@ exit:
  *			 3 : panel rotate 270 degree
  *
  */
-int32_t nvt_edge_reject_set(int32_t status) {
-	int ret = 0;
+int32_t nvt_edge_reject_set(int32_t status)
+{
+	uint8_t command = EDGE_REJECT_VERTICLE_CMD;
 
-	if(status == 0)//rotate 0 degree
-		ret = nvt_cmd_store(EDGE_REJECT_VERTICLE_CMD);
-	else if(status == 3) //rotate 90 degree
-		ret = nvt_cmd_store(EDGE_REJECT_RIGHT_UP);
-	else if(status == 2) //rotate 180 degree
-		ret = nvt_cmd_store(EDGE_REJECT_VERTICLE_REVERSE_CMD);
-	else if(status == 1) //rotate 270 degree
-		ret = nvt_cmd_store(EDGE_REJECT_LEFT_UP);
-
-	return ret;
+	if (status == 1)
+		command = EDGE_REJECT_RIGHT_UP;
+	else if (status == 2)
+		command = EDGE_REJECT_VERTICLE_REVERSE_CMD;
+	else if (status == 3)
+		command = EDGE_REJECT_LEFT_UP;
+	return nvt_cmd_store(&command, 1);
 }
 
 static ssize_t nvt_edge_reject_store(struct file *file, const char *buffer, size_t count, loff_t *pos) {
@@ -1129,67 +1079,17 @@ static const struct file_operations nvt_edge_reject_fops = {
  */
 int32_t nvt_edge_grid_zone_set(uint8_t deg, uint8_t dir, uint16_t y1, uint16_t y2)
 {
-    int i, retry = 5;
-    uint8_t buf[12] = {0};
+	uint8_t command[] = {0x7f, 0x01, deg, dir, y1, y1 >> 8, y2, y2 >> 8};
 
-    if (mutex_lock_interruptible(&ts->lock)) {
-		return -ERESTARTSYS;
-    }
-    //---set xdata index to EVENT BUF ADDR---(set page)
-    nvt_set_page(ts->mmap->EVENT_BUF_ADDR);
-
-    for (i = 0; i < retry; i++) {
-        /*---set cmd status---*/
-        buf[0] = EVENT_MAP_HOST_CMD;
-        buf[1] = NVT_EXT_CMD;
-        buf[2] = NVT_EXT_CMD_EDGE_GRID_ZONE;
-        buf[3] = deg;
-        buf[4] = dir;
-        buf[5] = (uint8_t) (y1 & 0xFF);
-        buf[6] = (uint8_t) ((y1 >> 8) & 0xFF);
-        buf[7] = (uint8_t) (y2 & 0xFF);
-        buf[8] = (uint8_t) ((y2 >> 8) & 0xFF);
-        CTP_SPI_WRITE(ts->client, buf, 9);
-#if NVT_DPR_SWITCH
-	if(ts->finger_event_flag  || ts->stylus_event_flag) {
-			NVT_LOG("touch event flag %d  %d,  send edge grid zone cmd", ts->finger_event_flag,  ts->stylus_event_flag);
-			goto exit;
-	}
-#endif
-        msleep(20);
-
-        //---read cmd status---
-        buf[0] = EVENT_MAP_HOST_CMD;
-        buf[1] = 0xFF;
-        buf[2] = 0xFF;
-        buf[3] = 0xFF;
-        buf[4] = 0xFF;
-        buf[5] = 0xFF;
-        buf[6] = 0xFF;
-        buf[7] = 0xFF;
-        buf[8] = 0xFF;
-        CTP_SPI_READ(ts->client, buf, 9);
-        if (buf[1] == 0x00)
-            break;
-    }
-
-    if (unlikely(i == retry)) {
-        NVT_ERR("send Cmd 0x%02X 0x%02X failed, buf[1]=0x%02X\n",
-            NVT_EXT_CMD, NVT_EXT_CMD_EDGE_GRID_ZONE, buf[1]);
-        mutex_unlock(&ts->lock);
-        return -1;
-    } else {
-        NVT_LOG("send Cmd 0x%02X 0x%02X success, tried %d times\n",
-            NVT_EXT_CMD, NVT_EXT_CMD_EDGE_GRID_ZONE, i);
-    }
-exit:
-    mutex_unlock(&ts->lock);
-    return 0;
+	return nvt_cmd_store(command, sizeof(command));
 }
 static ssize_t nvt_edge_grid_zone_store(struct file *file, const char *buffer, size_t count, loff_t *pos) {
     int32_t tmp[4];
     uint8_t ret;
     char buf[16] = { 0 };
+
+    if (count >= sizeof(buf))
+        return -EINVAL;
 
     ret = copy_from_user(buf, (uint8_t *) buffer, count);
     if (ret)
@@ -1199,6 +1099,8 @@ static ssize_t nvt_edge_grid_zone_store(struct file *file, const char *buffer, s
 
     ret = sscanf(buf, "%d,%d,%d,%d",
         tmp, tmp+1, tmp+2, tmp+3);
+    if (ret != 4)
+        return -EINVAL;
 
     ts->edge_grid_zone_info.degree = (uint8_t) tmp[0];
     ts->edge_grid_zone_info.direction = (uint8_t) tmp[1];
@@ -1257,18 +1159,15 @@ static const struct file_operations nvt_edge_grid_zone_fops = {
  *			 2 : game mode(remove palm reject)
  *
  */
-int32_t nvt_game_mode_set(uint8_t status) {
-	int ret = 0;
+int32_t nvt_game_mode_set(uint8_t status)
+{
+	static const uint8_t modes[] = {0, 2, 3, 1, 6, 4, 5};
+	uint8_t command[] = {GAME_MODE_PALM_CMD, status};
 
-	if(status == 0)
-		ret = nvt_ext_cmd_store(GAME_MODE_PALM_CMD, GAME_MODE_NORMAL);
-	else if(status == 2)
-		ret = nvt_ext_cmd_store(GAME_MODE_PALM_CMD, GAME_MODE_REMOVE);
-	else if(status == 1)
-		ret = nvt_ext_cmd_store(GAME_MODE_PALM_CMD, GAME_MODE_ENHANCE);
-
-
-	return ret;
+	if (status < ARRAY_SIZE(modes))
+		command[1] = modes[status];
+	nvt_cmd_store(command, sizeof(command));
+	return 0;
 }
 static ssize_t nvt_game_mode_store(struct file *file, const char *buffer, size_t count, loff_t *pos) {
 	char dbg[10] = { 0 };
@@ -1326,19 +1225,14 @@ static const struct file_operations nvt_game_mode_fops = {
  *		3 : stop BLE pairing mode
  *
  */
-int32_t nvt_support_pen_set(uint8_t status) {
-	int ret = 0;
+int32_t nvt_support_pen_set(uint8_t status)
+{
+	uint8_t command[] = {SUPPORT_PEN_CMD, 0};
 
-	if(status == 0)
-		ret = nvt_ext_cmd_store(SUPPORT_PEN_CMD, 0x00);
-	else if(status == 1)
-		ret = nvt_ext_cmd_store(SUPPORT_PEN_CMD, 0x01);
-	else if(status == 2)
-		ret = nvt_ext_cmd_store(SUPPORT_PEN_CMD, 0x02);
-	else if(status == 3)
-		ret = nvt_ext_cmd_store(SUPPORT_PEN_CMD, 0x03);
-
-	return ret;
+	if (status <= 3)
+		command[1] = status;
+	nvt_cmd_store(command, sizeof(command));
+	return 0;
 }
 static ssize_t nvt_support_pen_store(struct file *file, const char *buffer, size_t count, loff_t *pos) {
 	char dbg[10] = { 0 };
@@ -1407,6 +1301,9 @@ static int32_t nvt_get_fw_pen_state_open(struct inode *inode, struct file *file)
 #ifdef HAVE_PROC_OPS
 static const struct proc_ops nvt_get_fw_pen_state_fops = {
 	.proc_open = nvt_get_fw_pen_state_open,
+	.proc_read = seq_read,
+	.proc_lseek = seq_lseek,
+	.proc_release = single_release,
 };
 #else
 static const struct file_operations nvt_get_fw_pen_state_fops = {
@@ -1419,22 +1316,21 @@ static const struct file_operations nvt_get_fw_pen_state_fops = {
 #endif
 #endif
 
-#ifdef BUILD_LAPIS_TOUCH
+#ifdef BUILD_BALDUR_TOUCH
 /*
  *	/proc/haptics cmd_param
  *      [0], 0 : pen uplink = 372us
  *             1 : pen uplink = 483us
  *
  */
-int32_t nvt_haptics_set(uint8_t status) {
-	int ret = 0;
+int32_t nvt_haptics_set(uint8_t status)
+{
+	uint8_t command[] = {HAPTICS_CMD, 0};
 
-	if(status == 0)
-		ret = nvt_ext_cmd_store(HAPTICS_CMD, HAPTICS_STEP1);
-	else if(status == 1)
-		ret = nvt_ext_cmd_store(HAPTICS_CMD, HAPTICS_STEP2 );
-
-	return ret;
+	if (status <= 1)
+		command[1] = status;
+	nvt_cmd_store(command, sizeof(command));
+	return 0;
 }
 static ssize_t nvt_haptics_store(struct file *file, const char *buffer, size_t count, loff_t *pos) {
 	char dbg[10] = { 0 };
@@ -1451,13 +1347,13 @@ static ssize_t nvt_haptics_store(struct file *file, const char *buffer, size_t c
 
 	NVT_LOG("%d\n", state);
 	ts->haptics_state = state;
-	nvt_pen_max_pressure_reconfig(state);
+
 	nvt_haptics_set(ts->haptics_state);
 
 	return count;
 }
 static int nvt_haptics_show(struct seq_file *sfile, void *v) {
-	seq_printf(sfile, "%d\n", ts->haptics_state);
+	seq_printf(sfile, "Haptics Mode state %d!\n", ts->haptics_state);
 	return 0;
 }
 static int32_t nvt_haptics_open(struct inode *inode, struct file *file) {
@@ -1520,7 +1416,7 @@ static ssize_t nvt_get_pen_id_write(struct file *filp, const char __user *buffer
 
 	NVT_LOG("++\n");
 
-	if(copy_from_user(cmd, buffer, count)) {
+	if (count >= sizeof(cmd) || copy_from_user(cmd, buffer, count)) {
 		NVT_ERR("input value error\n");
 		return -EINVAL;
 	}
@@ -1535,11 +1431,11 @@ static ssize_t nvt_get_pen_id_write(struct file *filp, const char __user *buffer
 	NVT_LOG("data_type is %d\n", data_type);
 	switch (data_type) {
 		case 0: /* FW CMD Read PEN ID (Disable) */
-			nvt_ext_cmd_store(0x7A, 0x00);
+			nvt_cmd_store((uint8_t[]){0x7a, 0x00}, 2);
 			break;
 		case 1: /* FW CMD Read PEN ID (Enable) */
 			memset(&ts->penid, 0, sizeof(struct penid_info));
-			ret = nvt_ext_cmd_store(0x7A, 0x01);
+			ret = nvt_cmd_store((uint8_t[]){0x7a, 0x01}, 2);
 			if (ret == 0) {
 				ts->penid.results[0] = 0xFF;
 				ts->penid.results[1] = 0xFF;
@@ -1640,6 +1536,229 @@ Description:
 return:
 	Executive outcomes. 0---succeed. -12---failed.
 *******************************************************/
+
+/* TB323FU proc ABI recovered from the stock module. */
+static struct proc_dir_entry *NVT_proc_pen_wakeup;
+int32_t nvt_pen_wakeup_set(uint8_t status)
+{
+	uint8_t command[] = {0x7d, 0x00};
+	if (status <= 1)
+		command[1] = status;
+	nvt_cmd_store(command, sizeof(command));
+	return 0;
+}
+static ssize_t nvt_pen_wakeup_store(struct file *file, const char __user *buffer,
+		size_t count, loff_t *pos)
+{
+	char dbg[10] = {0};
+	uint8_t state = 0;
+
+	if (copy_from_user(dbg, buffer, 1))
+		return -EINVAL;
+	if (kstrtou8(dbg, 16, &state))
+		state = 0;
+	NVT_LOG("Pen wakeup state  %d!\n", state);
+	
+	ts->pen_wakeup_state = state;
+	nvt_pen_wakeup_set(state);
+	return count;
+}
+static int nvt_pen_wakeup_show(struct seq_file *m, void *v)
+{
+	seq_printf(m, "Pen wakeup state %d!\n", ts->pen_wakeup_state);
+	return 0;
+}
+static int nvt_pen_wakeup_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, nvt_pen_wakeup_show, NULL);
+}
+static const struct proc_ops nvt_pen_wakeup_fops = {
+	.proc_open = nvt_pen_wakeup_open,
+	.proc_read = seq_read,
+	.proc_write = nvt_pen_wakeup_store,
+	.proc_lseek = seq_lseek,
+	.proc_release = seq_release,
+};
+static struct proc_dir_entry *NVT_proc_pen_type;
+int32_t nvt_pen_type_set(uint8_t status)
+{
+	uint8_t command[] = {0x7b, 0x04, 0x00};
+	command[2] = status;
+	return nvt_cmd_store(command, sizeof(command));
+	
+}
+/* Firmware downloads reset controller settings, but not the saved host values. */
+void nvt_restore_pen_settings_locked(void)
+{
+	uint8_t type[] = {0x7b, 0x04, ts->pen_type};
+	uint8_t support[] = {SUPPORT_PEN_CMD,
+			ts->pen_state <= 3 ? ts->pen_state & 1 : 0};
+	uint8_t wake[] = {0x7d, ts->pen_wakeup_state};
+
+	/* Stock resumes pairing states 2/3 as the stable pen states 0/1. */
+	if (nvt_cmd_store_locked(support, sizeof(support)))
+		NVT_ERR("Failed to restore pen support\n");
+	if (nvt_cmd_store_locked(type, sizeof(type)))
+		NVT_ERR("Failed to restore pen type\n");
+	if (nvt_cmd_store_locked(wake, sizeof(wake)))
+		NVT_ERR("Failed to restore pen wakeup mode\n");
+}
+
+static ssize_t nvt_pen_type_store(struct file *file, const char __user *buffer,
+		size_t count, loff_t *pos)
+{
+	char dbg[10] = {0};
+	uint8_t state = 0;
+
+	if (copy_from_user(dbg, buffer, 1))
+		return -EINVAL;
+	if (kstrtou8(dbg, 16, &state))
+		state = 0;
+	NVT_LOG("Pen type state  %d!\n", state);
+	
+	ts->pen_type = state;
+	nvt_pen_type_set(state);
+	return count;
+}
+static int nvt_pen_type_show(struct seq_file *m, void *v)
+{
+	seq_printf(m, "Pen type state %d!\n", ts->pen_type);
+	return 0;
+}
+static int nvt_pen_type_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, nvt_pen_type_show, NULL);
+}
+static const struct proc_ops nvt_pen_type_fops = {
+	.proc_open = nvt_pen_type_open,
+	.proc_read = seq_read,
+	.proc_write = nvt_pen_type_store,
+	.proc_lseek = seq_lseek,
+	.proc_release = seq_release,
+};
+static struct proc_dir_entry *NVT_proc_high_report_rate;
+int32_t nvt_high_report_rate_set(uint8_t status)
+{
+	uint8_t command[] = {0x76, 0x00};
+	command[1] = status;
+	return nvt_cmd_store(command, sizeof(command));
+	
+}
+static ssize_t nvt_high_report_rate_store(struct file *file, const char __user *buffer,
+		size_t count, loff_t *pos)
+{
+	char dbg[10] = {0};
+	uint8_t state = 0;
+
+	if (copy_from_user(dbg, buffer, 1))
+		return -EINVAL;
+	if (kstrtou8(dbg, 16, &state))
+		state = 0;
+	NVT_LOG("high report rate state  %d!\n", state);
+	if (state == ts->high_report_rate)
+		return count;
+	ts->high_report_rate = state;
+	nvt_high_report_rate_set(state);
+	return count;
+}
+static int nvt_high_report_rate_show(struct seq_file *m, void *v)
+{
+	seq_printf(m, "High Report Rate state %d!\n", ts->high_report_rate);
+	return 0;
+}
+static int nvt_high_report_rate_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, nvt_high_report_rate_show, NULL);
+}
+static const struct proc_ops nvt_high_report_rate_fops = {
+	.proc_open = nvt_high_report_rate_open,
+	.proc_read = seq_read,
+	.proc_write = nvt_high_report_rate_store,
+	.proc_lseek = seq_lseek,
+	.proc_release = seq_release,
+};
+static struct proc_dir_entry *NVT_proc_report_threshold;
+int32_t nvt_report_threshold_set(uint8_t status)
+{
+	uint8_t command[] = {0x75, 0x00};
+	command[1] = status;
+	return nvt_cmd_store(command, sizeof(command));
+	
+}
+static ssize_t nvt_report_threshold_store(struct file *file, const char __user *buffer,
+		size_t count, loff_t *pos)
+{
+	char dbg[10] = {0};
+	uint8_t state = 0;
+
+	if (count >= sizeof(dbg) || copy_from_user(dbg, buffer, count))
+		return -EINVAL;
+	if (kstrtou8(dbg, 10, &state))
+		state = 0;
+	NVT_LOG("report threshold state  %d!\n", state);
+	if (state == ts->report_threshold)
+		return count;
+	ts->report_threshold = state;
+	nvt_report_threshold_set(state);
+	return count;
+}
+static int nvt_report_threshold_show(struct seq_file *m, void *v)
+{
+	seq_printf(m, "Report Threshold state %d!\n", ts->report_threshold);
+	return 0;
+}
+static int nvt_report_threshold_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, nvt_report_threshold_show, NULL);
+}
+static const struct proc_ops nvt_report_threshold_fops = {
+	.proc_open = nvt_report_threshold_open,
+	.proc_read = seq_read,
+	.proc_write = nvt_report_threshold_store,
+	.proc_lseek = seq_lseek,
+	.proc_release = seq_release,
+};
+static struct proc_dir_entry *NVT_proc_game_edge;
+int32_t nvt_game_edge_set(uint8_t status)
+{
+	uint8_t command[] = {0x7f, 0x02, 0x00};
+	command[2] = status;
+	return nvt_cmd_store(command, sizeof(command));
+	
+}
+static ssize_t nvt_game_edge_store(struct file *file, const char __user *buffer,
+		size_t count, loff_t *pos)
+{
+	char dbg[10] = {0};
+	uint8_t state = 0;
+
+	if (copy_from_user(dbg, buffer, 1))
+		return -EINVAL;
+	if (kstrtou8(dbg, 16, &state))
+		state = 0;
+	NVT_LOG("game edge state  %d!\n", state);
+	if (state == ts->game_edge)
+		return count;
+	ts->game_edge = state;
+	nvt_game_edge_set(state);
+	return count;
+}
+static int nvt_game_edge_show(struct seq_file *m, void *v)
+{
+	seq_printf(m, "Game edge state %d!\n", ts->game_edge);
+	return 0;
+}
+static int nvt_game_edge_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, nvt_game_edge_show, NULL);
+}
+static const struct proc_ops nvt_game_edge_fops = {
+	.proc_open = nvt_game_edge_open,
+	.proc_read = seq_read,
+	.proc_write = nvt_game_edge_store,
+	.proc_lseek = seq_lseek,
+	.proc_release = seq_release,
+};
 int32_t nvt_extra_proc_init(void)
 {
 	NVT_proc_fw_version_entry = proc_create(NVT_FW_VERSION, 0444, NULL,&nvt_fw_version_fops);
@@ -1674,12 +1793,12 @@ int32_t nvt_extra_proc_init(void)
 		NVT_LOG("create proc/%s Succeeded!\n", NVT_DIFF);
 	}
 #if WAKEUP_GESTURE
-	NVT_gesture_entry = proc_create(GESTURE_CONTROL, 0644, NULL, &gesture_control_fops);
-	if (NVT_gesture_entry == NULL) {
-		NVT_ERR("create proc/%s Failed!\n", GESTURE_CONTROL);
+	NVT_proc_gesture_mode_entry = proc_create(GESTURE_MODE, 0666, NULL, &nvt_gesture_mode_fops);
+	if (NVT_proc_gesture_mode_entry == NULL) {
+		NVT_ERR("create proc/%s Failed!\n", GESTURE_MODE);
 		return -ENOMEM;
 	} else {
-		NVT_LOG("create proc/%s Succeeded!\n", GESTURE_CONTROL);
+		NVT_LOG("create proc/%s Succeeded!\n", GESTURE_MODE);
 	}
 #endif
 	if (ts->pen_support) {
@@ -1725,7 +1844,7 @@ int32_t nvt_extra_proc_init(void)
 		NVT_LOG("create proc/%s Succeeded!\n", SUPPORT_PEN);
 	}
 #if NVT_DPR_SWITCH
-	NVT_proc_get_fw_pen_state = proc_create(FW_PEN_STATE, 0664, NULL, &nvt_get_fw_pen_state_fops);
+	NVT_proc_get_fw_pen_state = proc_create(FW_PEN_STATE, 0444, NULL, &nvt_get_fw_pen_state_fops);
 	if (NVT_proc_get_fw_pen_state == NULL) {
 		NVT_ERR("create proc/%s Failed!\n", FW_PEN_STATE);
 		return -ENOMEM;
@@ -1734,7 +1853,7 @@ int32_t nvt_extra_proc_init(void)
 	}
 #endif
 
-#ifdef BUILD_LAPIS_TOUCH
+#ifdef BUILD_BALDUR_TOUCH
 	NVT_proc_haptics = proc_create(HAPTICS, 0644, NULL, &nvt_haptics_mode_fops);
 	if (NVT_proc_haptics == NULL) {
 		NVT_ERR("create proc/%s Failed!\n", HAPTICS);
@@ -1744,6 +1863,21 @@ int32_t nvt_extra_proc_init(void)
 	}
 #endif
 #endif
+	NVT_proc_pen_wakeup = proc_create("pen_wakeup_mode", 0644, NULL, &nvt_pen_wakeup_fops);
+	if (!NVT_proc_pen_wakeup)
+		return -ENOMEM;
+	NVT_proc_pen_type = proc_create("pen_type", 0644, NULL, &nvt_pen_type_fops);
+	if (!NVT_proc_pen_type)
+		return -ENOMEM;
+	NVT_proc_high_report_rate = proc_create("HighReportRate", 0644, NULL, &nvt_high_report_rate_fops);
+	if (!NVT_proc_high_report_rate)
+		return -ENOMEM;
+	NVT_proc_report_threshold = proc_create("report_threshold", 0644, NULL, &nvt_report_threshold_fops);
+	if (!NVT_proc_report_threshold)
+		return -ENOMEM;
+	NVT_proc_game_edge = proc_create("game_edge", 0644, NULL, &nvt_game_edge_fops);
+	if (!NVT_proc_game_edge)
+		return -ENOMEM;
 #if NVT_REPORT_PEN_ID
 	NVT_proc_get_pen_id = proc_create(NVT_GET_PEN_ID, 0444, NULL, &nvt_get_pen_id_fops);
 	if (NVT_proc_get_pen_id == NULL) {
@@ -1764,6 +1898,27 @@ return:
 *******************************************************/
 void nvt_extra_proc_deinit(void)
 {
+	if (NVT_proc_pen_wakeup) {
+		remove_proc_entry("pen_wakeup_mode", NULL);
+		NVT_proc_pen_wakeup = NULL;
+	}
+	if (NVT_proc_pen_type) {
+		remove_proc_entry("pen_type", NULL);
+		NVT_proc_pen_type = NULL;
+	}
+	if (NVT_proc_high_report_rate) {
+		remove_proc_entry("HighReportRate", NULL);
+		NVT_proc_high_report_rate = NULL;
+	}
+	if (NVT_proc_report_threshold) {
+		remove_proc_entry("report_threshold", NULL);
+		NVT_proc_report_threshold = NULL;
+	}
+	if (NVT_proc_game_edge) {
+		remove_proc_entry("game_edge", NULL);
+		NVT_proc_game_edge = NULL;
+	}
+
 	if (NVT_proc_fw_version_entry != NULL) {
 		remove_proc_entry(NVT_FW_VERSION, NULL);
 		NVT_proc_fw_version_entry = NULL;
@@ -1788,10 +1943,10 @@ void nvt_extra_proc_deinit(void)
 		NVT_LOG("Removed /proc/%s\n", NVT_DIFF);
 	}
 #if WAKEUP_GESTURE
-	if (NVT_gesture_entry != NULL) {
-		remove_proc_entry(GESTURE_CONTROL, NULL);
-		NVT_gesture_entry = NULL;
-		NVT_LOG("Removed /proc/%s\n", GESTURE_CONTROL);
+	if (NVT_proc_gesture_mode_entry != NULL) {
+		remove_proc_entry(GESTURE_MODE, NULL);
+		NVT_proc_gesture_mode_entry = NULL;
+		NVT_LOG("Removed /proc/%s\n", GESTURE_MODE);
 	}
 #endif
 	if (ts->pen_support) {
@@ -1835,7 +1990,7 @@ void nvt_extra_proc_deinit(void)
 	}
 #endif
 
-#ifdef BUILD_LAPIS_TOUCH
+#ifdef BUILD_BALDUR_TOUCH
 	if (NVT_proc_haptics != NULL) {
 		remove_proc_entry(HAPTICS, NULL);
 		NVT_proc_haptics = NULL;

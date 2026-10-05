@@ -8,5 +8,6 @@ kernel_module_group(
         "//vendor/lenovo/sm8850-modules/lenovo/haptic:canoe_perf_haptic",
         "//vendor/lenovo/sm8850-modules/lenovo/hq_ptn3222_repeater:canoe_perf_hq_ptn3222_repeater",
         "//vendor/lenovo/sm8850-modules/lenovo/fsa4480_sub:canoe_perf_fsa4480_sub",
+        "//vendor/lenovo/sm8850-modules/lenovo/nvt_36xxx:canoe_perf_nvt_36xxx",
     ],
 )

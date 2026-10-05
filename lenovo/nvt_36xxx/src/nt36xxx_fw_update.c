@@ -42,7 +42,6 @@ struct nvt_ts_bin_map {
 
 static struct nvt_ts_bin_map *bin_map;
 /* Kirby code for KIRBYU-960 by liaoxg1 at 2024/4/26 start */
-extern void get_tp_info(void);
 /* Kirby code for KIRBYU-960 by liaoxg1 at 2024/4/26 end */
 
 static int32_t nvt_get_fw_need_write_size(const struct firmware *fw_entry)
@@ -148,27 +147,32 @@ static int32_t nvt_bin_header_parser(const u8 *fwdata, size_t fwsize)
 
 	/* Find the header size */
 	end = fwdata[0] + (fwdata[1] << 8) + (fwdata[2] << 16) + (fwdata[3] << 24);
+	/* The ILM BIN offset may include padding after the actual header.
+	 * The nonempty partition at BIN address zero marks its end.
+	 */
+	for (pos = 0x30; pos < end; pos += 0x10) {
+		if (byte_to_word(&fwdata[pos + 4]) &&
+		    !byte_to_word(&fwdata[pos + 8])) {
+			end = pos + 0x10;
+			break;
+		}
+	}
+
+	pos = 0x30;	/* info section starts at 0x30 */
+	while (pos < end) {
+		info_sec_num++;
+		pos += 0x10;
+	}
 
 	/* check cascade next header */
 	cascade_2nd_header_info = (fwdata[0x20] & 0x02) >> 1;
 	NVT_LOG("cascade_2nd_header_info = %d\n", cascade_2nd_header_info);
 
 	if (cascade_2nd_header_info) {
-		pos = 0x30;	// info section start at 0x30 offset
-		while (pos < (end / 2)) {
-			info_sec_num ++;
-			pos += 0x10;	/* each header info is 16 bytes */
-		}
-
+		end *= 2;	/* include the cascade second header */
 		info_sec_num = info_sec_num + 1; //next header section
 
 		spi_dma_div_cnt_val = fwdata[0x29] & 0x01;
-	} else {
-		pos = 0x30;	// info section start at 0x30 offset
-		while (pos < end) {
-			info_sec_num ++;
-			pos += 0x10;	/* each header info is 16 bytes */
-		}
 	}
 
 	/*
@@ -443,7 +447,6 @@ return:
 static int32_t nvt_write_firmware(const u8 *fwdata, size_t fwsize)
 {
 	uint32_t list = 0;
-	char *name;
 	uint32_t BIN_addr, SRAM_addr, size;
 	int32_t ret = 0;
 
@@ -454,7 +457,6 @@ static int32_t nvt_write_firmware(const u8 *fwdata, size_t fwsize)
 		SRAM_addr = bin_map[list].SRAM_addr;
 		size = bin_map[list].size;
 		BIN_addr = bin_map[list].BIN_addr;
-		name = bin_map[list].name;
 
 //		NVT_LOG("[%d][%s] SRAM (0x%08X), SIZE (0x%08X), BIN (0x%08X)\n",
 //				list, name, SRAM_addr, size, BIN_addr);
@@ -619,9 +621,16 @@ static void nvt_read_bld_hw_crc(void)
 	nvt_set_page(ts->mmap->BLD_ILM_DLM_CRC_ADDR);
 	buf[0] = ts->mmap->BLD_ILM_DLM_CRC_ADDR & 0x7F;
 	buf[1] = 0x00;
-	CTP_SPI_READ(ts->client, buf, 2);
-	NVT_ERR("crc_done = %d, ilm_crc_flag = %d, dlm_crc_flag = %d\n",
-			(buf[1] >> 2) & 0x01, (buf[1] >> 0) & 0x01, (buf[1] >> 1) & 0x01);
+	if (ts->use_gcm) {
+		CTP_SPI_READ(ts->client, buf, 3);
+		NVT_ERR("0x%02x 0x%02x, crc_done = %d, ilm_crc_flag = %d, dlm_crc_flag = %d\n",
+			buf[1], buf[2], (buf[2] >> 3) & 1,
+			(buf[1] >> 4) & 1, (buf[1] >> 5) & 1);
+	} else {
+		CTP_SPI_READ(ts->client, buf, 2);
+		NVT_ERR("0x%02x, crc_done = %d, ilm_crc_flag = %d, dlm_crc_flag = %d\n",
+			buf[1], (buf[1] >> 2) & 1, buf[1] & 1, (buf[1] >> 1) & 1);
+	}
 
 	/* ILM CRC */
 	nvt_set_page(ts->mmap->G_ILM_CHECKSUM_ADDR);
@@ -888,6 +897,11 @@ int32_t nvt_update_firmware(char *firmware_name)
 	if (ret) {
 		NVT_ERR("nvt_get_fw_info failed. (%d)\n", ret);
 	}
+#if NVT_CUST_PROC_CMD && defined(BUILD_BALDUR_TOUCH)
+	/* All download callers hold ts->lock. Do not replay into MP firmware. */
+	if (!strcmp(firmware_name, BOOT_UPDATE_FIRMWARE_NAME))
+		nvt_restore_pen_settings_locked();
+#endif
 #if NVT_SET_CHARGER
 	if (ts->nvt_charger_notify_wq != NULL)
 		queue_work(ts->nvt_charger_notify_wq, &ts->charger_notify_work);
@@ -917,12 +931,21 @@ void Boot_Update_Firmware(struct work_struct *work)
 	mutex_lock(&ts->lock);
 	nvt_update_firmware(BOOT_UPDATE_FIRMWARE_NAME);
 /* Kirby code for KIRBYU-960 by liaoxg1 at 2024/4/26 start */
-	get_tp_info();
+	/* msm_drm waits for this completion before finishing panel enable. */
 /* Kirby code for KIRBYU-960 by liaoxg1 at 2024/4/26 end */
 	mutex_unlock(&ts->lock);
+	if (ts->load_fw_completion)
+		complete(ts->load_fw_completion);
+	else
+		NVT_LOG("load_fw_completion is NULL\n");
 #if NVT_SUPPORT_PEN
 	if(ts->probe_state == 1){
+#ifdef BUILD_BALDUR_TOUCH
+		/* Boot init may select pen support before this delayed download. */
+		nvt_support_pen_set(ts->pen_state <= 3 ? ts->pen_state & 1 : 0);
+#else
 		nvt_support_pen_set(0);
+#endif
 		ts->probe_state = 0;
 	}
 #endif
