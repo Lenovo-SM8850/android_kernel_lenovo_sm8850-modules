@@ -61,7 +61,7 @@ struct dp_debug_private {
 };
 
 #if IS_ENABLED(CONFIG_DRM_MSM_LENOVO_BALDUR)
-static struct dp_debug_private *debug_priv_ptr = NULL;
+static struct dp_debug_private *debug_priv_ptr;
 #endif
 
 static int dp_debug_sim_hpd_cb(void *arg, bool hpd, bool hpd_irq)
@@ -2068,6 +2068,7 @@ static const struct file_operations mmrm_clk_cb_fops = {
 };
 
 #if IS_ENABLED(CONFIG_DRM_MSM_LENOVO_BALDUR)
+/* Lenovo mode-selection sysfs, retained from TB321FU GPL sources. */
 static ssize_t store_hpd_sim(struct device *dev,
                                 struct device_attribute *attr,
                                 const char *buf, size_t n)
@@ -2140,7 +2141,7 @@ static ssize_t store_prefer_mode(struct device *dev,
                                 struct device_attribute *attr,
                                 const char *buf, size_t n)
 {
-	int hdisplay = 0, vdisplay = 0, vrefresh = 0, aspect_ratio;
+	int hdisplay = 0, vdisplay = 0, vrefresh = 0, aspect_ratio = 0;
 	struct dp_debug_private *debug = debug_priv_ptr;
 	struct dp_panel *panel;
 
@@ -2225,15 +2226,15 @@ static DEVICE_ATTR(mode_index, S_IRUSR, show_mode_index, store_mode_index);
 
 void dp_debug_reset_override(void)
 {
- 	struct dp_debug_private *debug = debug_priv_ptr;
- 	struct dp_panel *panel;
+	struct dp_debug_private *debug = debug_priv_ptr;
+	struct dp_panel *panel;
 
 	if (!debug)
- 		return;
+		return;
 
- 	panel = debug->panel;
+	panel = debug->panel;
 
- 	panel->mode_override = false;
+	panel->mode_override = false;
 	mode_index = 0;
 }
 
