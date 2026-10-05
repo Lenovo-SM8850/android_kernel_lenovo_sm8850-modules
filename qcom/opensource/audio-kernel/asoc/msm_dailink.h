@@ -315,14 +315,17 @@ SND_SOC_DAILINK_DEFS(proxy_rx2,
 	DAILINK_COMP_ARRAY(COMP_DUMMY()),
 	DAILINK_COMP_ARRAY(COMP_PLATFORM("snd-soc-dummy")));
 
+/* Lenovo: the two AW882xx speaker amplifiers sit on the primary MI2S (stock machine_dlkm). */
 SND_SOC_DAILINK_DEFS(pri_mi2s_rx,
 	DAILINK_COMP_ARRAY(COMP_CPU("snd-soc-dummy-dai")),
-	DAILINK_COMP_ARRAY(COMP_CODEC("msm-stub-codec.1", "msm-stub-rx")),
+	DAILINK_COMP_ARRAY(COMP_CODEC("aw882xx_smartpa_0", "aw882xx-aif-0"),
+			   COMP_CODEC("aw882xx_smartpa_1", "aw882xx-aif-1")),
 	DAILINK_COMP_ARRAY(COMP_PLATFORM("snd-soc-dummy")));
 
 SND_SOC_DAILINK_DEFS(pri_mi2s_tx,
 	DAILINK_COMP_ARRAY(COMP_CPU("snd-soc-dummy-dai")),
-	DAILINK_COMP_ARRAY(COMP_CODEC("msm-stub-codec.1", "msm-stub-tx")),
+	DAILINK_COMP_ARRAY(COMP_CODEC("aw882xx_smartpa_0", "aw882xx-aif-0"),
+			   COMP_CODEC("aw882xx_smartpa_1", "aw882xx-aif-1")),
 	DAILINK_COMP_ARRAY(COMP_PLATFORM("snd-soc-dummy")));
 
 SND_SOC_DAILINK_DEFS(sec_mi2s_rx,
