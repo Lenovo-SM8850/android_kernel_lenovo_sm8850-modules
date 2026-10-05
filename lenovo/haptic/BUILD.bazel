@@ -1,7 +1,13 @@
 # SPDX-License-Identifier: GPL-2.0-only
-load("//build/kernel/kleaf:kernel.bzl", "ddk_module")
+load("//build/kernel/kleaf:kernel.bzl", "ddk_module", "ddk_headers")
 
 package(default_visibility = ["//visibility:public"])
+
+ddk_headers(
+    name = "haptic_headers",
+    hdrs = ["include/linux/lenovo_haptic.h"],
+    includes = ["include"],
+)
 
 ddk_module(
     name = "canoe_perf_haptic",
@@ -11,5 +17,5 @@ ddk_module(
     config = "//vendor/lenovo/sm8850:canoe_perf_config",
     includes = ['src'],
     local_defines = [],
-    deps = ["//vendor/lenovo/sm8850:all_headers"],
+    deps = [":haptic_headers", "//vendor/lenovo/sm8850:all_headers"],
 )
