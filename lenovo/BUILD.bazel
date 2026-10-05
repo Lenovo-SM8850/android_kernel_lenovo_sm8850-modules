@@ -6,5 +6,6 @@ kernel_module_group(
     srcs = [
         "//vendor/lenovo/sm8850-modules/lenovo/aw882xx:canoe_perf_aw882xx",
         "//vendor/lenovo/sm8850-modules/lenovo/haptic:canoe_perf_haptic",
+        "//vendor/lenovo/sm8850-modules/lenovo/hq_ptn3222_repeater:canoe_perf_hq_ptn3222_repeater",
     ],
 )
