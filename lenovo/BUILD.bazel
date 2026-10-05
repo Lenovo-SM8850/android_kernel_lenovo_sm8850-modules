@@ -12,5 +12,6 @@ kernel_module_group(
         "//vendor/lenovo/sm8850-modules/lenovo/nvt_36xxx:canoe_perf_nvt_36xxx",
         "//vendor/lenovo/sm8850-modules/lenovo/leds_aw22xxx:canoe_perf_leds_aw22xxx",
         "//vendor/lenovo/sm8850-modules/lenovo/sys_temp:canoe_perf_lenovo_sys_temp",
+        "//vendor/lenovo/sm8850-modules/lenovo/thermal_control:canoe_perf_lenovo_thermal_control",
     ],
 )
