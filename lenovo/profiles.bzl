@@ -5,6 +5,7 @@ COMMON_MODULES = [
     "//vendor/lenovo/sm8850-modules/lenovo/aw882xx:canoe_perf_aw882xx",
     "//vendor/lenovo/sm8850-modules/lenovo/haptic:canoe_perf_haptic",
     "//vendor/lenovo/sm8850-modules/lenovo/leds_aw22xxx:canoe_perf_leds_aw22xxx",
+    "//vendor/lenovo/sm8850-modules/lenovo/thermal_control:canoe_perf_lenovo_thermal_control",
 ]
 
 LCD_MODULES = [
