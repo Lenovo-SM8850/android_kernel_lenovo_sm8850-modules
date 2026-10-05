@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: GPL-2.0-only
+load("//build/kernel/kleaf:kernel.bzl", "kernel_module_group")
+package(default_visibility = ["//visibility:public"])
+kernel_module_group(
+    name = "canoe_perf_modules",
+    srcs = [
+        "//vendor/lenovo/sm8850-modules/lenovo/aw882xx:canoe_perf_aw882xx",
+    ],
+)
