@@ -11,5 +11,5 @@ def define_target_modules():
             modules = [
                 "msm_video",
                 "video",
-            ],
+            ] if target != "canoe" else ["msm_video"],
         )
