@@ -19,6 +19,7 @@
 #include <sound/pcm.h>
 #include <sound/pcm_params.h>
 #include <sound/soc.h>
+#include <linux/gpio.h>
 #include <linux/of_gpio.h>
 #include <linux/delay.h>
 #include <linux/device.h>
@@ -2340,6 +2341,37 @@ static int aw882xx_parse_dt(struct device *dev, struct aw882xx *aw882xx,
 	return 0;
 }
 
+/*
+ * TB323FU port: the stock TB323FU module claims the reset (and irq) line of
+ * every PA before it toggles it. The nodes in the board DT (reset-gpio only, no
+ * pinctrl) rely on this request to put the reset pin in output mode, so it
+ * must not be left out. Labels are the stock ones.
+ */
+static int aw882xx_gpio_request(struct aw882xx *aw882xx)
+{
+	int ret;
+
+	if (gpio_is_valid(aw882xx->reset_gpio)) {
+		ret = devm_gpio_request_one(aw882xx->dev, aw882xx->reset_gpio,
+					GPIOF_OUT_INIT_LOW, "aw882xx_rst");
+		if (ret) {
+			aw_dev_err(aw882xx->dev, "rst request failed");
+			return ret;
+		}
+	}
+
+	if (gpio_is_valid(aw882xx->irq_gpio)) {
+		ret = devm_gpio_request_one(aw882xx->dev, aw882xx->irq_gpio,
+					GPIOF_IN, "aw882xx_int");
+		if (ret) {
+			aw_dev_err(aw882xx->dev, "int request failed");
+			return ret;
+		}
+	}
+
+	return 0;
+}
+
 int aw882xx_hw_reset(struct aw882xx *aw882xx)
 {
 	aw_dev_info(aw882xx->dev, "enter");
@@ -2962,6 +2994,11 @@ static int aw882xx_i2c_probe(struct i2c_client *i2c, const struct i2c_device_id 
 		return ret;
 	}
 
+	/*get gpio resource*/
+	ret = aw882xx_gpio_request(aw882xx);
+	if (ret)
+		return ret;
+
 	/* hardware reset */
 	aw882xx_hw_reset(aw882xx);
 
@@ -2984,7 +3021,7 @@ static int aw882xx_i2c_probe(struct i2c_client *i2c, const struct i2c_device_id 
 	ret = aw_componet_codec_register(aw882xx);
 	if (ret) {
 		aw_dev_err(&i2c->dev, "codec register failde");
-		goto EXIT;
+		goto err_dev_remove;
 	}
 
 	/*create attr*/
@@ -2992,7 +3029,7 @@ static int aw882xx_i2c_probe(struct i2c_client *i2c, const struct i2c_device_id 
 	if (ret < 0) {
 		aw_dev_err(aw882xx->dev, "error creating sysfs attr files");
 		aw_componet_codec_ops.unregister_codec(&i2c->dev);
-		goto EXIT;
+		goto err_dev_remove;
 	}
 
 	/*set aw882xx to dev private*/
@@ -3010,6 +3047,10 @@ static int aw882xx_i2c_probe(struct i2c_client *i2c, const struct i2c_device_id 
 	mutex_unlock(&g_aw882xx_lock);
 	aw_dev_info(&i2c->dev, "dev_cnt %d", g_aw882xx_dev_cnt);
 
+	return 0;
+
+err_dev_remove:
+	aw882xx_dev_remove(aw882xx->aw_pa);
 EXIT:
 	return ret;
 }
