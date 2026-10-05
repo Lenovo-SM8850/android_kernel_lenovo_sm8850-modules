@@ -4,6 +4,8 @@
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
  */
 
+#include <linux/of.h>
+
 #include <linux/debugfs.h>
 #include <linux/slab.h>
 #include <linux/version.h>
@@ -28,7 +30,11 @@
 
 #define DEBUG_NAME "drm_dp"
 
+struct dp_mode_attribute;
+
 struct dp_debug_private {
+	struct dp_mode_attribute *mode_attrs;
+	unsigned int mode_count;
 	struct dentry *root;
 
 	u32 dpcd_offset;
@@ -59,6 +65,23 @@ struct dp_debug_private {
 	struct mutex lock;
 	struct dp_aux_bridge *sim_bridge;
 };
+
+#if IS_ENABLED(CONFIG_DRM_MSM_LENOVO_DISPLAY)
+struct dp_mode_attribute {
+	struct device_attribute attr;
+	struct dp_debug_private *debug;
+};
+
+/* Preserve the no-context reset API while serializing its lifetime. */
+static DEFINE_MUTEX(dp_debug_compat_lock);
+static struct dp_debug_private *dp_debug_compat;
+
+static struct dp_debug_private *dp_debug_from_attribute(
+		struct device_attribute *attr)
+{
+	return container_of(attr, struct dp_mode_attribute, attr)->debug;
+}
+#endif
 
 static int dp_debug_sim_hpd_cb(void *arg, bool hpd, bool hpd_irq)
 {
@@ -2063,6 +2086,190 @@ static const struct file_operations mmrm_clk_cb_fops = {
 	.write = dp_debug_mmrm_clk_cb_write,
 };
 
+#if IS_ENABLED(CONFIG_DRM_MSM_LENOVO_DISPLAY)
+/* Lenovo mode-selection sysfs, retained from TB321FU GPL sources. */
+static ssize_t store_hpd_sim(struct device *dev,
+                                struct device_attribute *attr,
+                                const char *buf, size_t n)
+{
+	int const hpd_data_mask = 0x7;
+	int hpd = 0;
+	struct dp_debug_private *debug = dp_debug_from_attribute(attr);
+
+	if (!debug)
+		return -ENODEV;
+
+	if (kstrtoint(buf, 10, &hpd) != 0)
+		goto end;
+
+	hpd &= hpd_data_mask;
+	debug->hotplug = !!(hpd & BIT(0));
+
+	debug->dp_debug.psm_enabled = !!(hpd & BIT(1));
+
+	/*
+	 * print hotplug value as this code is executed
+	 * only while running in debug mode which is manually
+	 * triggered by a tester or a script.
+	 */
+	DP_INFO("%s\n", debug->hotplug ? "[CONNECT]" : "[DISCONNECT]");
+
+	debug->hpd->simulate_connect(debug->hpd, debug->hotplug);
+end:
+	return n;
+}
+static DEVICE_ATTR(hpd_sim, S_IWUSR, NULL, store_hpd_sim);
+
+static int mode_index = 0; //0 default, mode_index > 1 user setting value
+static int prefer_mode_index(struct dp_debug_private *debug, int hdisplay, int vdisplay, int vrefresh)
+{
+	struct drm_connector *connector;
+	struct drm_display_mode *mode;
+	int i = 1; //user select mode strat form 1
+
+	if (!debug) {
+		DP_ERR("invalid data\n");
+		goto error;
+	}
+
+	connector = *debug->connector;
+
+	if (!connector) {
+		DP_ERR("connector is NULL\n");
+		goto error;
+	}
+
+	mutex_lock(&connector->dev->mode_config.mutex);
+	list_for_each_entry(mode, &connector->modes, head) {
+		if (mode->hdisplay == hdisplay && mode->vdisplay == vdisplay &&
+			drm_mode_vrefresh(mode) == vrefresh) {
+			DP_INFO("match index = %d\n", i);
+			mutex_unlock(&connector->dev->mode_config.mutex);
+			return i;
+		}
+		i++;
+	}
+	mutex_unlock(&connector->dev->mode_config.mutex);
+error:
+	DP_INFO("default index = %d\n", i);
+	return 0;
+}
+
+static ssize_t store_prefer_mode(struct device *dev,
+                                struct device_attribute *attr,
+                                const char *buf, size_t n)
+{
+	int hdisplay = 0, vdisplay = 0, vrefresh = 0, aspect_ratio = 0;
+	struct dp_debug_private *debug = dp_debug_from_attribute(attr);
+	struct dp_panel *panel;
+
+	if (!debug)
+		return -ENODEV;
+
+	if (sscanf(buf, "%d %d %d %d", &hdisplay, &vdisplay, &vrefresh,
+				&aspect_ratio) != 4)
+		goto end;
+
+	panel = debug->panel;
+
+	if (!hdisplay || !vdisplay || !vrefresh)
+		goto clear;
+
+	DP_INFO("hdisplay = %d, vdisplay = %d, vrefresh = %d, aspect_ratio = %d\n",
+		hdisplay, vdisplay, vrefresh, aspect_ratio);
+
+	//panel->mode_override = true;
+	panel->hdisplay = hdisplay;
+	panel->vdisplay = vdisplay;
+	panel->vrefresh = vrefresh;
+	panel->aspect_ratio = aspect_ratio;
+	mode_index = prefer_mode_index(debug, hdisplay, vdisplay, vrefresh);
+	goto end;
+clear:
+	DP_DEBUG("clearing debug modes\n");
+	panel->mode_override = false;
+end:
+	return n;
+}
+static DEVICE_ATTR(prefer_mode, S_IWUSR, NULL, store_prefer_mode);
+
+static ssize_t show_lanes_count(struct device *dev,
+				struct device_attribute *attr, char *buf)
+{
+	struct dp_debug_private *debug;
+	if (!dp_debug_from_attribute(attr)) {
+		DP_ERR("prefer_edid intface error, debug_priv_ptr is NULL\n");
+		return -ENODEV;
+	}
+	debug = dp_debug_from_attribute(attr);
+
+	return sprintf(buf, "%d\n", debug->link->link_params.lane_count);
+}
+static DEVICE_ATTR(lanes_count, S_IRUSR, show_lanes_count, NULL);
+
+static ssize_t show_mode_index(struct device *dev,
+				struct device_attribute *attr, char *buf)
+{
+	struct dp_debug_private *debug;
+	if (!dp_debug_from_attribute(attr)) {
+		DP_ERR("prefer_edid intface error, debug_priv_ptr is NULL\n");
+		return -ENODEV;
+	}
+	debug = dp_debug_from_attribute(attr);
+
+	return sprintf(buf, "%d\n", mode_index);
+}
+
+static ssize_t store_mode_index(struct device *dev,
+                                struct device_attribute *attr,
+                                const char *buf, size_t n)
+{
+	int temp_index = 0;
+	struct dp_debug_private *debug = dp_debug_from_attribute(attr);
+
+	if (!debug)
+		return -ENODEV;
+
+	sscanf(buf, "%d", &temp_index);
+	if (temp_index > 255)
+		temp_index = 0;
+
+	mode_index = temp_index;
+	DP_INFO("debug mode index = %d\n", mode_index);
+
+	return n;
+}
+
+static DEVICE_ATTR(mode_index, S_IRUSR, show_mode_index, store_mode_index);
+
+void dp_debug_reset_override(void)
+{
+	struct dp_debug_private *debug;
+	struct dp_panel *panel;
+
+	mutex_lock(&dp_debug_compat_lock);
+	debug = dp_debug_compat;
+	if (!debug)
+		goto out;
+
+	panel = debug->panel;
+
+	panel->mode_override = false;
+	mode_index = 0;
+out:
+	mutex_unlock(&dp_debug_compat_lock);
+}
+
+static struct device_attribute *mode_switch_op_list[] = {
+	&dev_attr_prefer_mode,
+	&dev_attr_hpd_sim,
+	&dev_attr_lanes_count,
+	&dev_attr_mode_index,
+	NULL
+};
+
+#endif
+
 static int dp_debug_init_mst(struct dp_debug_private *debug, struct dentry *dir)
 {
 	int rc = 0;
@@ -2417,12 +2624,54 @@ static int dp_debug_init_fifo_error(struct dp_debug_private *debug,
 	return rc;
 }
 
+#if IS_ENABLED(CONFIG_DRM_MSM_LENOVO_DISPLAY)
+static void dp_debug_remove_mode_attributes(struct dp_debug_private *debug)
+{
+	mutex_lock(&dp_debug_compat_lock);
+	if (dp_debug_compat == debug)
+		dp_debug_compat = NULL;
+	mutex_unlock(&dp_debug_compat_lock);
+	while (debug->mode_count) {
+		debug->mode_count--;
+		device_remove_file(debug->dev,
+				   &debug->mode_attrs[debug->mode_count].attr);
+	}
+	devm_kfree(debug->dev, debug->mode_attrs);
+	debug->mode_attrs = NULL;
+}
+#endif
+
 static int dp_debug_init(struct dp_debug *dp_debug)
 {
 	int rc = 0;
 	struct dp_debug_private *debug = container_of(dp_debug,
 		struct dp_debug_private, dp_debug);
 	struct dentry *dir;
+
+#if IS_ENABLED(CONFIG_DRM_MSM_LENOVO_DISPLAY)
+	if (of_property_read_bool(of_root, "lenovo,lcd-display") && debug->dev) {
+		int i;
+
+		debug->mode_attrs = devm_kcalloc(debug->dev,
+			ARRAY_SIZE(mode_switch_op_list) - 1,
+			sizeof(*debug->mode_attrs), GFP_KERNEL);
+		if (!debug->mode_attrs)
+			return -ENOMEM;
+		for (i = 0; mode_switch_op_list[i]; i++) {
+			debug->mode_attrs[i].attr = *mode_switch_op_list[i];
+			sysfs_attr_init(&debug->mode_attrs[i].attr.attr);
+			debug->mode_attrs[i].debug = debug;
+			rc = device_create_file(debug->dev, &debug->mode_attrs[i].attr);
+			if (rc)
+				goto error;
+			debug->mode_count++;
+		}
+		mutex_lock(&dp_debug_compat_lock);
+		dp_debug_compat = debug;
+		mutex_unlock(&dp_debug_compat_lock);
+	}
+
+#endif
 
 	if (!IS_ENABLED(CONFIG_DEBUG_FS)) {
 		DP_WARN("Not creating debug root dir.");
@@ -2500,6 +2749,9 @@ static int dp_debug_init(struct dp_debug *dp_debug)
 error_remove_dir:
 	debugfs_remove_recursive(dir);
 error:
+#if IS_ENABLED(CONFIG_DRM_MSM_LENOVO_DISPLAY)
+	dp_debug_remove_mode_attributes(debug);
+#endif
 	return rc;
 }
 
@@ -2594,6 +2846,9 @@ static int dp_debug_deinit(struct dp_debug *dp_debug)
 
 	debug = container_of(dp_debug, struct dp_debug_private, dp_debug);
 
+#if IS_ENABLED(CONFIG_DRM_MSM_LENOVO_DISPLAY)
+	dp_debug_remove_mode_attributes(debug);
+#endif
 	debugfs_remove_recursive(debug->root);
 
 	if (debug->sim_bridge)
