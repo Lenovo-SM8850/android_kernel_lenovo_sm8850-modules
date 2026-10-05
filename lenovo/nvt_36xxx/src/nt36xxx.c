@@ -26,7 +26,7 @@
 #include <linux/of_irq.h>
 #include "nt36xxx.h"
 /* Kirby code for KIRBYU-960 by liaoxg1 at 2024/4/26 start */
-#include <linux/hqsysfs.h>
+/* Stock TB323FU does not import hqsysfs. */
 /* Kirby code for KIRBYU-960 by liaoxg1 at 2024/4/26 end */
 
 #if IS_ENABLED(NVT_DRM_PANEL_NOTIFY)
@@ -119,6 +119,8 @@ bool nvt_gesture_flag = false;
 EXPORT_SYMBOL(nvt_gesture_flag);
 #endif
 struct nvt_ts_data *ts;
+static DEFINE_MUTEX(nvt_fw_lock);
+static bool nvt_fw_ready;
 /* Kirby code for KIRBYU-235 by liaoxg1 at 2024/4/26 start */
 #define DISP_ID_DET (301+125)
 
@@ -129,12 +131,12 @@ static struct platform_device *nvt_ts_pdev;
 #if BOOT_UPDATE_FIRMWARE
 static struct workqueue_struct *nvt_fwu_wq;
 extern void Boot_Update_Firmware(struct work_struct *work);
-char *BOOT_UPDATE_FIRMWARE_NAME;
-char *MP_UPDATE_FIRMWARE_NAME;
+char *BOOT_UPDATE_FIRMWARE_NAME = "novatek_ts_fw.bin";
+char *MP_UPDATE_FIRMWARE_NAME = "novatek_ts_mp.bin";
 #endif
 /* Kirby code for KIRBYU-235 by liaoxg1 at 2024/4/26 end */
 /* Kirby code for KIRBYU-960 by liaoxg1 at 2024/4/26 start */
-static char tp_version_info[128] = "";
+
 /* Kirby code for KIRBYU-960 by liaoxg1 at 2024/4/26 end */
 #if IS_ENABLED(NVT_DRM_PANEL_NOTIFY)
 static struct drm_panel *active_panel;
@@ -163,7 +165,6 @@ static int nvt_mtk_drm_notifier_callback(struct notifier_block *nb,
 uint32_t ENG_RST_ADDR = 0x7FFF80;
 uint32_t SPI_RD_FAST_ADDR = 0; //read from dtsi
 /* Kirby code for KIRBYU-235 by liaoxg1 at 2024/4/26 start */
-int gpio_125;
 /* Kirby code for KIRBYU-235 by liaoxg1 at 2024/4/26 end */
 #if TOUCH_KEY_NUM > 0
 const uint16_t touch_key_array[TOUCH_KEY_NUM] = { KEY_BACK, KEY_HOME,
@@ -263,6 +264,10 @@ static inline int32_t spi_read_write(struct spi_device *client, uint8_t *buf,
 		.len = len,
 	};
 
+	if (!buf || !len || len > NVT_XBUF_LEN - DUMMY_BYTES ||
+	    (rw == NVTREAD && len > NVT_READ_LEN - DUMMY_BYTES))
+		return -EINVAL;
+
 	memset(ts->xbuf, 0, len + DUMMY_BYTES);
 	memcpy(ts->xbuf, buf, len);
 
@@ -294,6 +299,9 @@ int32_t CTP_SPI_READ(struct spi_device *client, uint8_t *buf, uint16_t len)
 {
 	int32_t ret = -1;
 	int32_t retries = 0;
+
+	if (!buf || !len || len > NVT_READ_LEN - DUMMY_BYTES)
+		return -EINVAL;
 
 	mutex_lock(&ts->xbuf_lock);
 
@@ -329,6 +337,9 @@ int32_t CTP_SPI_WRITE(struct spi_device *client, uint8_t *buf, uint16_t len)
 {
 	int32_t ret = -1;
 	int32_t retries = 0;
+
+	if (!buf || !len || len > NVT_XBUF_LEN - DUMMY_BYTES)
+		return -EINVAL;
 
 	mutex_lock(&ts->xbuf_lock);
 
@@ -873,34 +884,7 @@ out:
 
 	return ret;
 }
-/* Kirby code for KIRBYU-960 by liaoxg1 at 2024/4/26 start */
-void get_tp_info(void)
-{
-    nvt_get_fw_info();
-#ifdef BUILD_KIRBY_TOUCH
-    if (gpio_125 == 0) {
-        sprintf(tp_version_info, "[Vendor]:HUAXING, [TP-IC]:NT36523N, [fw]:%d\n", ts->fw_ver);
-        printk("[%s]: tp_version %s\n", __func__, tp_version_info);
-    } else if (gpio_125 == 1) {
-        sprintf(tp_version_info, "[Vendor]:BOE, [TP-IC]:NT36523N, [fw]:%d\n", ts->fw_ver);
-        printk("[%s]: tp_version %s\n", __func__, tp_version_info);
-    } else {
-        NVT_ERR("failed to add nt36523n tp_info\n");
-    }
-#else
-    if (gpio_125 == 1) {
-        sprintf(tp_version_info, "[Vendor]:TIANMA, [TP-IC]:NT36532, [fw]:%d\n", ts->fw_ver);
-        printk("[%s]: tp_version %s\n", __func__, tp_version_info);
-    } else if (gpio_125 == 0) {
-        sprintf(tp_version_info, "[Vendor]:BOE, [TP-IC]:NT36532, [fw]:%d\n", ts->fw_ver);
-        printk("[%s]: tp_version %s\n", __func__, tp_version_info);
-    } else {
-        NVT_ERR("failed to add nt36532 tp_info\n");
-    }
-#endif
-    hq_register_hw_info(HWID_CTP, tp_version_info);
-}
-/* Kirby code for KIRBYU-960 by liaoxg1 at 2024/4/26 end */
+
 /*******************************************************
   Create Device Node (Proc Entry)
 *******************************************************/
@@ -923,6 +907,7 @@ static ssize_t nvt_flash_read(struct file *file, char __user *buff,
 	int32_t retries = 0;
 	int8_t spi_wr = 0;
 	uint8_t *buf;
+	size_t len;
 
 	if ((count > NVT_TRANSFER_LEN + 3) || (count < 3)) {
 		NVT_ERR("invalid transfer len!\n");
@@ -952,6 +937,12 @@ static ssize_t nvt_flash_read(struct file *file, char __user *buff,
 		goto out;
 	}
 
+	len = ((str[0] & 0x7F) << 8) | str[1];
+	if (len > count - 2) {
+		ret = -EINVAL;
+		goto out;
+	}
+
 #if NVT_TOUCH_ESD_PROTECT
 	/*
 	 * stop esd check work to avoid case that 0x77 report righ after here to enable esd check again
@@ -962,12 +953,11 @@ static ssize_t nvt_flash_read(struct file *file, char __user *buff,
 #endif /* #if NVT_TOUCH_ESD_PROTECT */
 
 	spi_wr = str[0] >> 7;
-	memcpy(buf, str + 2, ((str[0] & 0x7F) << 8) | str[1]);
+	memcpy(buf, str + 2, len);
 
 	if (spi_wr == NVTWRITE) { //SPI write
 		while (retries < 20) {
-			ret = CTP_SPI_WRITE(ts->client, buf,
-					    ((str[0] & 0x7F) << 8) | str[1]);
+			ret = CTP_SPI_WRITE(ts->client, buf, len);
 			if (!ret)
 				break;
 			else
@@ -984,8 +974,7 @@ static ssize_t nvt_flash_read(struct file *file, char __user *buff,
 		}
 	} else if (spi_wr == NVTREAD) { //SPI read
 		while (retries < 20) {
-			ret = CTP_SPI_READ(ts->client, buf,
-					   ((str[0] & 0x7F) << 8) | str[1]);
+			ret = CTP_SPI_READ(ts->client, buf, len);
 			if (!ret)
 				break;
 			else
@@ -995,7 +984,7 @@ static ssize_t nvt_flash_read(struct file *file, char __user *buff,
 			retries++;
 		}
 
-		memcpy(str + 2, buf, ((str[0] & 0x7F) << 8) | str[1]);
+		memcpy(str + 2, buf, len);
 		// copy buff to user if spi transfer
 		if (retries < 20) {
 			if (copy_to_user(buff, str, count)) {
@@ -1307,12 +1296,10 @@ static int32_t nvt_parse_dt(struct device *dev)
 	int32_t ret = 0;
 
 #if NVT_TOUCH_SUPPORT_HW_RST
-	ts->reset_gpio = of_get_named_gpio_flags(np, "novatek,reset-gpio", 0,
-						 &ts->reset_flags);
+	ts->reset_gpio = of_get_named_gpio(np, "novatek,reset-gpio", 0);
 	NVT_LOG("novatek,reset-gpio=%d\n", ts->reset_gpio);
 #endif
-	ts->irq_gpio = of_get_named_gpio_flags(np, "novatek,irq-gpio", 0,
-					       &ts->irq_flags);
+	ts->irq_gpio = of_get_named_gpio(np, "novatek,irq-gpio", 0);
 	NVT_LOG("novatek,irq-gpio=%d\n", ts->irq_gpio);
 
 	ts->pen_support = of_property_read_bool(np, "novatek,pen-support");
@@ -1779,7 +1766,9 @@ static irqreturn_t nvt_ts_work_func(int irq, void *data)
 			nvt_clear_aci_error_flag();
 		}
 		nvt_read_fw_history_all();
+		ts->nvt_ts_load_state_check = 1;
 		nvt_update_firmware(BOOT_UPDATE_FIRMWARE_NAME);
+		ts->nvt_ts_load_state_check = 2;
 		nvt_read_fw_history_all();
 #if NVT_CUST_PROC_CMD
 		wdt_recovery = true;
@@ -2242,6 +2231,7 @@ nvt_ts_check_chip_ver_trim(struct nvt_ts_hw_reg_addr_info hw_regs)
 					ts->mmap = trim_id_table[list].mmap;
 				}
 				ts->hw_crc = trim_id_table[list].hwinfo->hw_crc;
+				ts->use_gcm = trim_id_table[list].hwinfo->use_gcm;
 				ts->auto_copy =
 					trim_id_table[list].hwinfo->auto_copy;
 
@@ -2443,42 +2433,7 @@ static int32_t nvt_ts_platform_device_init(void)
 #endif
 
 /* Kirby code for KIRBYU-235 by liaoxg1 at 2024/4/26 start */
-int tp_compare_ic(void)
-{
-	NVT_LOG("tp_compare_ic in!!");
-#ifdef BUILD_KIRBY_TOUCH
-	if (gpio_125 == 0) {
-		BOOT_UPDATE_FIRMWARE_NAME = "novatek_ts_csot_fw.bin";
-		MP_UPDATE_FIRMWARE_NAME = "novatek_ts_csot_mp.bin";
-		NVT_LOG("match nt36523n_dsi_vdo_csot_drv");
-		return 0;
-	} else if (gpio_125 == 1) {
-		BOOT_UPDATE_FIRMWARE_NAME = "novatek_ts_boe_fw.bin";
-		MP_UPDATE_FIRMWARE_NAME = "novatek_ts_boe_mp.bin";
-		NVT_LOG("match nt36523n_dsi_vdo_boe_drv");
-		return 0;
-	}  else {
-		NVT_ERR("failed to compare kirby firmware\n");
-		return -1;
-	}
-#else
-	if (gpio_125 == 1) {
-		BOOT_UPDATE_FIRMWARE_NAME = "novatek_ts_tianma_fw.bin";
-		MP_UPDATE_FIRMWARE_NAME = "novatek_ts_tianma_mp.bin";
-		NVT_LOG("match nt36532_dsi_vdo_tianma_drv");
-		return 0;
-	} else if (gpio_125 == 0) {
-		BOOT_UPDATE_FIRMWARE_NAME = "novatek_ts_boe_fw.bin";
-		MP_UPDATE_FIRMWARE_NAME = "novatek_ts_boe_mp.bin";
-		NVT_LOG("match nt36532_dsi_vdo_boe_drv");
-		return 0;
-	}  else {
-		NVT_ERR("failed to compare lapis firmware\n");
-		return -1;
-	}
 
-#endif
-}
 /* Kirby code for KIRBYU-235 by liaoxg1 at 2024/4/26 end */
 
 #if NVT_SET_CHARGER
@@ -2683,12 +2638,6 @@ Description:
 return:
 	Executive outcomes. 0---succeed. negative---failed
 *******************************************************/
-/* Kirby code for KIRBYU-3835  at 2024/7/25 start */
-bool dsi_panel_enable_flag = false;
-EXPORT_SYMBOL(dsi_panel_enable_flag);
-bool nvt_ts_probe_flag = true;
-EXPORT_SYMBOL(nvt_ts_probe_flag);
-/* Kirby code for KIRBYU-3835  at 2024/7/25 end*/
 
 static int32_t nvt_ts_probe(struct spi_device *client)
 {
@@ -2704,7 +2653,7 @@ static int32_t nvt_ts_probe(struct spi_device *client)
 #endif
 /* Kirby code for KIRBYU-235 by liaoxg1 at 2024/4/26 start */
 #if BOOT_UPDATE_FIRMWARE
-	tp_compare_ic();
+
 	NVT_LOG("tp_compare_ic_in_probe");
 #endif
 /* Kirby code for KIRBYU-235 by liaoxg1 at 2024/4/26 end */
@@ -2757,13 +2706,17 @@ static int32_t nvt_ts_probe(struct spi_device *client)
 	spi_set_drvdata(client, ts);
 
 	//---prepare for spi parameter---
-	if (ts->client->master->flags & SPI_MASTER_HALF_DUPLEX) {
+	if (ts->client->controller->flags & SPI_CONTROLLER_HALF_DUPLEX) {
 		NVT_ERR("Full duplex not supported by master\n");
 		ret = -EIO;
 		goto err_ckeck_full_duplex;
 	}
 	ts->client->bits_per_word = 8;
 	ts->client->mode = SPI_MODE_0;
+	ts->client->cs_setup.value = 300;
+	ts->client->cs_setup.unit = SPI_DELAY_UNIT_NSECS;
+	ts->client->cs_hold.value = 300;
+	ts->client->cs_hold.unit = SPI_DELAY_UNIT_NSECS;
 
 	ret = spi_setup(ts->client);
 	if (ret < 0) {
@@ -2949,16 +2902,14 @@ static int32_t nvt_ts_probe(struct spi_device *client)
 		goto err_create_nvt_fwu_wq_failed;
 	}
 	INIT_DELAYED_WORK(&ts->nvt_fwu_work, Boot_Update_Firmware);
+	mutex_lock(&nvt_fw_lock);
+	nvt_fw_ready = true;
+	mutex_unlock(&nvt_fw_lock);
 
 	// please make sure boot update start after display reset(RESX) sequence
 /* Kirby code for KIRBYU-3835  at 2024/7/25 start */
-	//load fw in probe during startup.After the system start,the fw is loaded when the lcd on
-	if (nvt_ts_probe_flag == true){
 	queue_delayed_work(nvt_fwu_wq, &ts->nvt_fwu_work,
 			   msecs_to_jiffies(5000));
-	NVT_LOG("nvt_ts_probe_flag is true\n");
-	dsi_panel_enable_flag = true;
-	}
 /* Kirby code for KIRBYU-3835  at 2024/7/25 end*/
 
 #endif
@@ -3178,6 +3129,9 @@ err_create_nvt_hall_check_wq_failed:
 err_create_nvt_esd_check_wq_failed:
 #endif
 #if BOOT_UPDATE_FIRMWARE
+	mutex_lock(&nvt_fw_lock);
+	nvt_fw_ready = false;
+	mutex_unlock(&nvt_fw_lock);
 	if (nvt_fwu_wq) {
 		cancel_delayed_work_sync(&ts->nvt_fwu_work);
 		destroy_workqueue(nvt_fwu_wq);
@@ -3301,6 +3255,9 @@ static void nvt_ts_remove(struct spi_device *client)
 #endif
 
 #if BOOT_UPDATE_FIRMWARE
+	mutex_lock(&nvt_fw_lock);
+	nvt_fw_ready = false;
+	mutex_unlock(&nvt_fw_lock);
 	if (nvt_fwu_wq) {
 		cancel_delayed_work_sync(&ts->nvt_fwu_work);
 		destroy_workqueue(nvt_fwu_wq);
@@ -3314,6 +3271,14 @@ static void nvt_ts_remove(struct spi_device *client)
 
 	nvt_irq_enable(false);
 	free_irq(client->irq, ts);
+
+#if NVT_SET_CHARGER
+	if (ts->nvt_charger_notify_wq) {
+		cancel_work_sync(&ts->charger_notify_work);
+		destroy_workqueue(ts->nvt_charger_notify_wq);
+		ts->nvt_charger_notify_wq = NULL;
+	}
+#endif
 
 	mutex_destroy(&ts->xbuf_lock);
 	mutex_destroy(&ts->lock);
@@ -3396,6 +3361,9 @@ static void nvt_ts_shutdown(struct spi_device *client)
 #endif /* #if NVT_TOUCH_ESD_PROTECT */
 
 #if BOOT_UPDATE_FIRMWARE
+	mutex_lock(&nvt_fw_lock);
+	nvt_fw_ready = false;
+	mutex_unlock(&nvt_fw_lock);
 	if (nvt_fwu_wq) {
 		cancel_delayed_work_sync(&ts->nvt_fwu_work);
 		destroy_workqueue(nvt_fwu_wq);
@@ -3988,13 +3956,6 @@ static int32_t __init nvt_driver_init(void)
 #endif
 
 /* Kirby code for KIRBYU-235 by liaoxg1 at 2024/4/26 start */
-	gpio_direction_input(DISP_ID_DET);
-	gpio_125 = gpio_get_value(DISP_ID_DET);
-	NVT_LOG("gpio_125 = %d", gpio_125);
-	if ((gpio_125 != 0) && (gpio_125!= 1)) {
-	    NVT_LOG("TP is not NVT\n");
-		return 0;
-	}
 /* Kirby code for KIRBYU-235 by liaoxg1 at 2024/4/26 end */
 	//---add spi driver---
 	ret = spi_register_driver(&nvt_spi_driver);
@@ -4030,7 +3991,7 @@ static int32_t __init nvt_driver_init(void)
 	}
 
 	/* register a class */
-	penraw_char_dev_class = class_create(THIS_MODULE, PENRAW_DEVICE_NAME);
+	penraw_char_dev_class = class_create(PENRAW_DEVICE_NAME);
 	if (IS_ERR(penraw_char_dev_class)) {
 		printk(KERN_ERR "class_create()\n");
 		cdev_del(&penraw_char_dev);

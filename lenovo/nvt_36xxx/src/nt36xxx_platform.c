@@ -23,7 +23,7 @@
 
 #if IS_ENABLED(NVT_PLATFORM_DRIVER)
 
-extern int ts_touch_info_uevent(struct device *dev, struct kobj_uevent_env *env);
+extern int ts_touch_info_uevent(const struct device *dev, struct kobj_uevent_env *env);
 const struct device_type tp_dev_type ={
 	.name ="novatek_ts",
 	.uevent= ts_touch_info_uevent,
