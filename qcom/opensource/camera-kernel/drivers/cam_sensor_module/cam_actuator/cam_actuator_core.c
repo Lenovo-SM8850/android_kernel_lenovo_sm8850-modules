@@ -1049,6 +1049,8 @@ int32_t cam_actuator_driver_cmd(struct cam_actuator_ctrl_t *a_ctrl,
 
 	CAM_DBG(CAM_ACTUATOR, "Opcode to Actuator: %d", cmd->op_code);
 
+	if (cmd->op_code == CAM_ACQUIRE_DEV)
+		cam_actuator_haptic_sensor_busy(true);
 	mutex_lock(&(a_ctrl->actuator_mutex));
 	switch (cmd->op_code) {
 	case CAM_ACQUIRE_DEV: {
@@ -1265,7 +1267,8 @@ int32_t cam_actuator_driver_cmd(struct cam_actuator_ctrl_t *a_ctrl,
 release_mutex:
 	cam_sensor_util_release_read_buf(&(a_ctrl->read_buf_list));
 	mutex_unlock(&(a_ctrl->actuator_mutex));
-
+	if (cmd->op_code == CAM_ACQUIRE_DEV)
+		cam_actuator_haptic_sensor_busy(false);
 	return rc;
 }
 
@@ -1328,3 +1331,311 @@ int32_t cam_actuator_flush_request(struct cam_req_mgr_flush_request *flush_req)
 	mutex_unlock(&(a_ctrl->actuator_mutex));
 	return rc;
 }
+
+#if IS_ENABLED(CONFIG_LENOVO_CAMERA_HAPTIC)
+/* Stock camera.ko: haptic_callback 0x16cfb4, poweron_work_func 0x16d948.
+ * Push the closed camera's VCM away from its loose rest position for vibration.
+ * The camera HAL owns the lens whenever a sensor or actuator is acquired.
+ */
+#include <linux/lenovo_haptic.h>
+#include <linux/workqueue.h>
+#include <linux/delay.h>
+#include "cam_soc_util.h"
+
+static DEFINE_MUTEX(haptic_camera_lock);
+static DEFINE_SPINLOCK(haptic_event_lock);
+static struct cam_actuator_ctrl_t *haptic_actuator;
+static unsigned int haptic_sensor_users;
+static bool haptic_powered;
+static bool haptic_moving, haptic_left_used, haptic_right_used, haptic_second_delay;
+static struct delayed_work haptic_poweron_work, haptic_poweroff_work;
+
+static int cam_actuator_haptic_write(struct cam_actuator_ctrl_t *a_ctrl,
+				    u32 addr, u32 data, enum camera_sensor_i2c_type type)
+{
+	struct cam_sensor_i2c_reg_array reg = { .reg_addr = addr, .reg_data = data };
+	struct cam_sensor_i2c_reg_setting setting = {
+		.reg_setting = &reg, .size = 1,
+		.addr_type = CAMERA_SENSOR_I2C_TYPE_BYTE, .data_type = type,
+	};
+
+	return camera_io_dev_write(&a_ctrl->io_master_info, &setting);
+}
+
+static int cam_actuator_haptic_move(struct cam_actuator_ctrl_t *a_ctrl)
+{
+	static const u8 addr[] = { 2, 3, 4, 6, 7, 8 };
+	static const u8 data[] = { 2, 2, 0, 4, 0x7c, 0x24 };
+	static const u16 initial[] = { 410, 360, 350 };
+	u32 code;
+	int rc, i;
+
+	msleep(5);
+	for (i = 0; i < ARRAY_SIZE(addr); i++) {
+		rc = cam_actuator_haptic_write(a_ctrl, addr[i], data[i],
+					     CAMERA_SENSOR_I2C_TYPE_BYTE);
+		if (rc < 0)
+			return rc;
+	}
+	msleep(5);
+	for (i = 0; i < ARRAY_SIZE(initial); i++) {
+		rc = cam_actuator_haptic_write(a_ctrl, 3, initial[i],
+					     CAMERA_SENSOR_I2C_TYPE_WORD);
+		if (rc < 0)
+			return rc;
+		msleep(25);
+	}
+	/* Stock setCode: floor(abs(150 - 350) / 15), 15 descending steps. */
+	for (i = 14; i >= 0; i--) {
+		rc = cam_actuator_haptic_write(a_ctrl, 3, 150 + i * 13,
+					     CAMERA_SENSOR_I2C_TYPE_WORD);
+		if (rc < 0)
+			return rc;
+		code = 150 + i * 13;
+		msleep(code < 141 ? 5 : code < 241 ? 10 : code < 291 ? 15 : 20);
+	}
+	rc = camera_io_dev_read(&a_ctrl->io_master_info, 3, &code,
+		CAMERA_SENSOR_I2C_TYPE_BYTE, CAMERA_SENSOR_I2C_TYPE_WORD, true);
+	if (rc < 0)
+		return rc;
+	if (code != 150) {
+		msleep(10);
+		return cam_actuator_haptic_write(a_ctrl, 3, 150,
+						CAMERA_SENSOR_I2C_TYPE_WORD);
+	}
+	return 0;
+}
+
+/* haptic_camera_lock and actuator_mutex held; release only our rail/CCI vote. */
+static void cam_actuator_haptic_release(struct cam_actuator_ctrl_t *a_ctrl)
+{
+	struct cam_actuator_soc_private *soc_private = a_ctrl->soc_info.soc_private;
+	struct cam_sensor_power_ctrl_t power = soc_private->power_info;
+	struct cam_sensor_power_setting down[2] = {
+		{ .seq_type = SENSOR_VAF, .seq_val = CAM_VAF },
+		{ .seq_type = SENSOR_VIO, .seq_val = CAM_VIO },
+	};
+
+	if (!haptic_powered || a_ctrl->bridge_intf.device_hdl >= 0)
+		return;
+	power.power_down_setting = down;
+	power.power_down_setting_size = ARRAY_SIZE(down);
+	power.dev = a_ctrl->soc_info.dev;
+	msm_camera_fill_vreg_params(&a_ctrl->soc_info, down, ARRAY_SIZE(down));
+	cam_sensor_util_power_down(&power, &a_ctrl->soc_info);
+	camera_io_release(&a_ctrl->io_master_info);
+	haptic_powered = false;
+}
+
+static void cam_actuator_haptic_poweron(struct work_struct *work)
+{
+	struct cam_actuator_ctrl_t *a_ctrl;
+	struct cam_actuator_soc_private *soc_private;
+	struct cam_sensor_power_ctrl_t power;
+	struct cam_sensor_power_setting up[2] = {
+		{ .seq_type = SENSOR_VAF, .seq_val = CAM_VAF, .config_val = 1, .delay = 2 },
+		{ .seq_type = SENSOR_VIO, .seq_val = CAM_VIO, .config_val = 1, .delay = 2 },
+	};
+	struct cam_sensor_power_setting down[2] = {
+		{ .seq_type = SENSOR_VAF, .seq_val = CAM_VAF },
+		{ .seq_type = SENSOR_VIO, .seq_val = CAM_VIO },
+	};
+	unsigned long flags;
+	int rc;
+
+	mutex_lock(&haptic_camera_lock);
+	a_ctrl = haptic_actuator;
+	if (!a_ctrl || haptic_sensor_users || haptic_powered)
+		goto done;
+	mutex_lock(&a_ctrl->actuator_mutex);
+	/* Protect HAL ownership and shared rails, without private stock offsets. */
+	if (a_ctrl->bridge_intf.device_hdl >= 0 || a_ctrl->is_deferred_park_lens ||
+	    cam_soc_util_regulators_enabled(&a_ctrl->soc_info))
+		goto unlock;
+	soc_private = a_ctrl->soc_info.soc_private;
+	power = soc_private->power_info;
+	power.power_setting = up;
+	power.power_setting_size = ARRAY_SIZE(up);
+	power.power_down_setting = down;
+	power.power_down_setting_size = ARRAY_SIZE(down);
+	power.dev = a_ctrl->soc_info.dev;
+	if (!a_ctrl->io_master_info.cci_client->sid) {
+		a_ctrl->io_master_info.cci_client->sid = 0x0c;
+		a_ctrl->io_master_info.cci_client->i2c_freq_mode = I2C_FAST_MODE;
+	}
+	rc = msm_camera_fill_vreg_params(&a_ctrl->soc_info, up, ARRAY_SIZE(up));
+	if (rc)
+		goto unlock;
+	rc = msm_camera_fill_vreg_params(&a_ctrl->soc_info, down, ARRAY_SIZE(down));
+	if (rc)
+		goto unlock;
+	rc = cam_sensor_core_power_up(&power, &a_ctrl->soc_info, NULL);
+	if (rc)
+		goto unlock;
+	rc = camera_io_init(&a_ctrl->io_master_info);
+	if (rc >= 0) {
+		haptic_powered = true;
+		rc = cam_actuator_haptic_move(a_ctrl);
+		if (rc < 0)
+			cam_actuator_haptic_release(a_ctrl);
+	} else {
+		cam_sensor_util_power_down(&power, &a_ctrl->soc_info);
+	}
+
+	if (rc < 0)
+		CAM_ERR(CAM_ACTUATOR, "haptic VCM move failed: %d", rc);
+unlock:
+	mutex_unlock(&a_ctrl->actuator_mutex);
+done:
+	spin_lock_irqsave(&haptic_event_lock, flags);
+	haptic_moving = false;
+	spin_unlock_irqrestore(&haptic_event_lock, flags);
+	mutex_unlock(&haptic_camera_lock);
+}
+
+static void cam_actuator_haptic_poweroff(struct work_struct *work)
+{
+	unsigned long flags;
+
+	mutex_lock(&haptic_camera_lock);
+	if (haptic_actuator) {
+		mutex_lock(&haptic_actuator->actuator_mutex);
+		if (!haptic_sensor_users)
+			cam_actuator_haptic_release(haptic_actuator);
+		mutex_unlock(&haptic_actuator->actuator_mutex);
+	}
+	mutex_unlock(&haptic_camera_lock);
+	spin_lock_irqsave(&haptic_event_lock, flags);
+	haptic_moving = false;
+	haptic_left_used = haptic_right_used = haptic_second_delay = false;
+	spin_unlock_irqrestore(&haptic_event_lock, flags);
+}
+
+static int cam_actuator_haptic_callback(struct notifier_block *nb,
+				      unsigned long action, void *ptr)
+{
+	const struct haptic_notify_data *data = ptr;
+	unsigned long flags;
+	bool start = false, delay = false;
+
+	if (!data)
+		return NOTIFY_OK;
+	/* Keep a pending release or move while the shared rails are on. */
+	if (action == 1 && (data->duration >= 200 ||
+	    (data->mode == 2 && data->duration == 0))) {
+		bool rails_enabled = false;
+
+		/* The haptic notifier is SRCU; keep regulator reads outside the spinlock. */
+		mutex_lock(&haptic_camera_lock);
+		if (haptic_actuator) {
+			mutex_lock(&haptic_actuator->actuator_mutex);
+			rails_enabled = cam_soc_util_regulators_enabled(
+				&haptic_actuator->soc_info) == 2;
+			mutex_unlock(&haptic_actuator->actuator_mutex);
+		}
+		mutex_unlock(&haptic_camera_lock);
+		if (rails_enabled)
+			return NOTIFY_OK;
+	}
+	spin_lock_irqsave(&haptic_event_lock, flags);
+	if (data->side == 1)
+		haptic_left_used = true;
+	else if (data->side == 2)
+		haptic_right_used = true;
+	if (action == 1 && (data->duration >= 200 ||
+	    (data->mode == 2 && data->duration == 0))) {
+		cancel_delayed_work(&haptic_poweroff_work);
+		if (!haptic_moving) {
+			haptic_moving = true;
+			start = delay = true;
+		} else if (haptic_left_used && haptic_right_used && !haptic_second_delay) {
+			haptic_left_used = haptic_right_used = false;
+			haptic_second_delay = delay = true;
+		}
+	} else if (action == 2) {
+		/* Stock STOP schedules release after exactly 375 jiffies. */
+		mod_delayed_work(system_wq, &haptic_poweroff_work, 375);
+	}
+	spin_unlock_irqrestore(&haptic_event_lock, flags);
+	if (start)
+		schedule_delayed_work(&haptic_poweron_work, 0);
+	/* Preserve stock's pre-vibration settling delay; notifier callers may be atomic. */
+	if (delay)
+		mdelay(100);
+	return NOTIFY_OK;
+}
+
+static struct notifier_block cam_actuator_haptic_nb = {
+	.notifier_call = cam_actuator_haptic_callback,
+};
+
+void cam_actuator_haptic_sensor_busy(bool busy)
+{
+	bool bound;
+
+	mutex_lock(&haptic_camera_lock);
+	if (busy)
+		haptic_sensor_users++;
+	else if (haptic_sensor_users)
+		haptic_sensor_users--;
+	bound = haptic_actuator != NULL;
+	mutex_unlock(&haptic_camera_lock);
+	if (!busy || !bound)
+		return;
+	/* Block new moves before draining; no worker lock held during cancellation. */
+	cancel_delayed_work_sync(&haptic_poweron_work);
+	cancel_delayed_work_sync(&haptic_poweroff_work);
+	mutex_lock(&haptic_camera_lock);
+	if (haptic_actuator) {
+		mutex_lock(&haptic_actuator->actuator_mutex);
+		cam_actuator_haptic_release(haptic_actuator);
+		mutex_unlock(&haptic_actuator->actuator_mutex);
+	}
+	mutex_unlock(&haptic_camera_lock);
+}
+
+int cam_actuator_haptic_bind(struct cam_actuator_ctrl_t *a_ctrl)
+{
+	int rc;
+
+	if (!of_property_read_bool(a_ctrl->soc_info.dev->of_node,
+				   "lenovo,haptic-vcm-parking"))
+		return 0;
+	/* TB323 rear actuator0: cam_vaf + cam_vio, CCI address 0x0c. */
+	if (a_ctrl->soc_info.index || a_ctrl->io_master_info.master_type != CCI_MASTER ||
+	    a_ctrl->soc_info.num_rgltr != 2)
+		return 0;
+	mutex_lock(&haptic_camera_lock);
+	if (haptic_actuator) {
+		mutex_unlock(&haptic_camera_lock);
+		return -EBUSY;
+	}
+	haptic_actuator = a_ctrl;
+	INIT_DELAYED_WORK(&haptic_poweron_work, cam_actuator_haptic_poweron);
+	INIT_DELAYED_WORK(&haptic_poweroff_work, cam_actuator_haptic_poweroff);
+	mutex_unlock(&haptic_camera_lock);
+	rc = register_haptic_notify(&cam_actuator_haptic_nb);
+	if (rc) {
+		mutex_lock(&haptic_camera_lock);
+		haptic_actuator = NULL;
+		mutex_unlock(&haptic_camera_lock);
+	}
+	return rc;
+}
+
+void cam_actuator_haptic_unbind(struct cam_actuator_ctrl_t *a_ctrl)
+{
+	if (haptic_actuator != a_ctrl)
+		return;
+	unregister_haptic_notify(&cam_actuator_haptic_nb);
+	cancel_delayed_work_sync(&haptic_poweron_work);
+	cancel_delayed_work_sync(&haptic_poweroff_work);
+	mutex_lock(&haptic_camera_lock);
+	mutex_lock(&a_ctrl->actuator_mutex);
+	cam_actuator_haptic_release(a_ctrl);
+	mutex_unlock(&a_ctrl->actuator_mutex);
+	haptic_actuator = NULL;
+	mutex_unlock(&haptic_camera_lock);
+	cam_actuator_haptic_poweroff(NULL);
+}
+#endif

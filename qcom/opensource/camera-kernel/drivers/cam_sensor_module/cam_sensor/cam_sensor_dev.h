@@ -122,6 +122,7 @@ struct cam_sensor_dev_res_info {
  * @read_buf_list               : Sensor register read cmd buffer handle list
  */
 struct cam_sensor_ctrl_t {
+	bool haptic_power_claimed;
 	char                           device_name[CAM_CTX_DEV_NAME_MAX_LENGTH];
 	struct platform_device        *pdev;
 	struct cam_hw_soc_info         soc_info;

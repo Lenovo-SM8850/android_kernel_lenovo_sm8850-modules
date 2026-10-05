@@ -26,6 +26,10 @@
 #define HAPTIC_HV_DRIVER_VERSION	"v1.6.0.1"
 static uint64_t IC_REG = 0;
 
+/* RTP (RichTap) streams: payload of the vibration notifier and per motor "stream started" flags */
+static bool mRtpVibInited_left;
+static bool mRtpVibInited_right;
+
 char *aw_ram_name = "haptic_ram.bin";
 char aw_rtp_name[][AW_RTP_NAME_MAX] = {
 	{"haptic_rtp_osc_24K_5s.bin"},
@@ -1627,7 +1631,22 @@ static void richtap_update_fifo_data(struct aw_haptic *aw_haptic, uint32_t fifo_
 
 		aw_info("update fifo len %d\n", pos);
 		aw_haptic->func->set_rtp_data(aw_haptic, aw_haptic->rtp_ptr, pos);
+		if (pos == 0) {
+			aw_info("stop haptic notify(rtp)!");
+			struct haptic_notify_data haptic_data_rtp;
 
+			haptic_data_rtp.duration = aw_haptic->duration;
+			haptic_data_rtp.side = AW_NAME_IS(aw_haptic, "left") ? 1 : 2;
+			haptic_data_rtp.mode = aw_haptic->play_mode;
+			haptic_notify_call_chain(1, &haptic_data_rtp);
+			if (AW_NAME_IS(aw_haptic, "left")) {
+				if (mRtpVibInited_left)
+					mRtpVibInited_left = false;
+			} else if (AW_NAME_IS(aw_haptic, "right")) {
+				if (mRtpVibInited_right)
+					mRtpVibInited_right = false;
+			}
+		}
 }
 
 static bool richtap_rtp_start(struct aw_haptic *aw_haptic)
@@ -1912,6 +1931,19 @@ static irqreturn_t irq_handle(int irq, void *data)
             if(aw_haptic->func->get_irq_state(aw_haptic) == AW_IRQ_ALMOST_EMPTY)
             {
                 aw_info("%s: fifo almost empty \n", __func__);
+                if (!mRtpVibInited_left && !mRtpVibInited_right) {
+                    aw_info("start haptic notify(rtp), rtp duration = %d!", aw_haptic->duration);
+                    struct haptic_notify_data haptic_data_rtp;
+
+                    haptic_data_rtp.duration = aw_haptic->duration;
+                    haptic_data_rtp.side = AW_NAME_IS(aw_haptic, "left") ? 1 : 2;
+                    haptic_data_rtp.mode = aw_haptic->play_mode;
+                    haptic_notify_call_chain(1, &haptic_data_rtp);
+                }
+                if (AW_NAME_IS(aw_haptic, "left"))
+                    mRtpVibInited_left = true;
+                else if (AW_NAME_IS(aw_haptic, "right"))
+                    mRtpVibInited_right = true;
                 /* modify next line second parameter according to ram.base_addr */
                 richtap_update_fifo_data(aw_haptic, (aw_haptic->ram.base_addr - (aw_haptic->ram.base_addr >> 2)));
                 //richtap_update_fifo_data(aw_haptic, (aw_haptic->ram.base_addr >> 1));
