@@ -1,15 +1,24 @@
 # SPDX-License-Identifier: GPL-2.0-only
-load("//build/kernel/kleaf:kernel.bzl", "ddk_module")
+load("//build/kernel/kleaf:kernel.bzl", "ddk_config", "ddk_module")
 
 package(default_visibility = ["//visibility:public"])
+
+ddk_config(
+    name = "canoe_perf_supplier_config",
+    kernel_build = "//vendor/lenovo/sm8850:canoe_perf_base_kernel",
+    deps = [
+        "//vendor/lenovo/sm8850-modules/qcom/opensource/audio-kernel:canoe_perf_mbhc_dlkm",
+        "//vendor/lenovo/sm8850:canoe_perf_config",
+    ],
+)
 
 ddk_module(
     name = "canoe_perf_fsa4480_sub",
     out = "fsa4480_sub_i2c.ko",
     srcs = glob(["src/*.c", "src/*.h", "inc/*.h"]),
     kernel_build = "//vendor/lenovo/sm8850:canoe_perf_base_kernel",
-    config = "//vendor/lenovo/sm8850:canoe_perf_config",
+    config = ":canoe_perf_supplier_config",
     includes = [],
     local_defines = ["CONFIG_QCOM_FSA4480_SUB_I2C_MODULE=1"],
-    deps = ["//vendor/lenovo/sm8850:all_headers", "//vendor/lenovo/sm8850:canoe_perf/drivers/soc/qcom/fsa4480_i2c", "//vendor/lenovo/sm8850:canoe_perf/drivers/base/regmap/qti-regmap-debugfs", "//vendor/lenovo/sm8850:canoe_perf/drivers/usb/typec/ucsi/ucsi_qti_glink"],
+    deps = ["//vendor/lenovo/sm8850-modules/qcom/opensource/audio-kernel:audio_headers", "//vendor/lenovo/sm8850-modules/qcom/opensource/audio-kernel:canoe_perf_mbhc_dlkm", "//vendor/lenovo/sm8850:all_headers", "//vendor/lenovo/sm8850:canoe_perf/drivers/soc/qcom/fsa4480_i2c", "//vendor/lenovo/sm8850:canoe_perf/drivers/base/regmap/qti-regmap-debugfs", "//vendor/lenovo/sm8850:canoe_perf/drivers/usb/typec/ucsi/ucsi_qti_glink"],
 )
