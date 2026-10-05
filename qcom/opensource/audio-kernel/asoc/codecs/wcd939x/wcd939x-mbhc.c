@@ -1806,7 +1806,7 @@ mono_stereo_detection:
 		goto zdet_complete;
 	}
 	snd_soc_component_update_bits(component, WCD939X_R_ATEST, 0x02, 0x02);
-	snd_soc_component_update_bits(component, WCD939X_PA_CTL2, 0x40, 0x01);
+	snd_soc_component_update_bits(component, WCD939X_PA_CTL2, 0x40, 0x00);
 	wcd939x_mbhc_zdet_ramp(component, zdet_param_ptr, &z1Ls, NULL, d1);
 	snd_soc_component_update_bits(component, WCD939X_PA_CTL2, 0x40, 0x00);
 	snd_soc_component_update_bits(component, WCD939X_R_ATEST, 0x02, 0x00);
@@ -1925,17 +1925,9 @@ static void wcd939x_mbhc_gnd_det_ctrl(struct snd_soc_component *component,
 static void wcd939x_mbhc_hph_pull_down_ctrl(struct snd_soc_component *component,
 					  bool enable)
 {
-	if (enable) {
-		snd_soc_component_update_bits(component, WCD939X_PA_CTL2,
-				    0x40, 0x40);
-		snd_soc_component_update_bits(component, WCD939X_PA_CTL2,
-				    0x10, 0x10);
-	} else {
-		snd_soc_component_update_bits(component, WCD939X_PA_CTL2,
-				    0x40, 0x00);
-		snd_soc_component_update_bits(component, WCD939X_PA_CTL2,
-				    0x10, 0x00);
-	}
+	/* TB323 keeps both pull-downs clear even for the enable request. */
+	snd_soc_component_update_bits(component, WCD939X_PA_CTL2, 0x40, 0x00);
+	snd_soc_component_update_bits(component, WCD939X_PA_CTL2, 0x10, 0x00);
 }
 
 static void wcd939x_mbhc_moisture_config(struct wcd_mbhc *mbhc)

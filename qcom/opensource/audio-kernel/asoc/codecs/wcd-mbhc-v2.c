@@ -21,7 +21,7 @@
 #if IS_ENABLED(CONFIG_QCOM_WCD_USBSS_I2C)
 #include <linux/soc/qcom/wcd939x-i2c.h>
 #endif
-#if IS_ENABLED(CONFIG_QCOM_FSA4480_I2C)
+#if IS_ENABLED(CONFIG_QCOM_FSA4480_I2C) || IS_ENABLED(CONFIG_QCOM_FSA4480_SUB_I2C)
 #include <linux/soc/qcom/fsa4480-i2c.h>
 #endif
 #include <linux/usb/typec.h>
@@ -799,6 +799,7 @@ void wcd_mbhc_report_plug(struct wcd_mbhc *mbhc, int insertion,
 		wcd_mbhc_clr_and_turnon_hph_padac(mbhc);
 	}
 	pr_debug("%s: leave hph_status %x\n", __func__, mbhc->hph_status);
+	mbhc->headset_detect_pending = true;
 }
 EXPORT_SYMBOL(wcd_mbhc_report_plug);
 
@@ -1172,6 +1173,7 @@ done:
 	mbhc->in_swch_irq_handler = false;
 	WCD_MBHC_RSC_UNLOCK(mbhc);
 	pr_debug("%s: leave\n", __func__);
+	mbhc->headset_detect_pending = true;
 }
 
 static irqreturn_t wcd_mbhc_mech_plug_detect_irq(int irq, void *data)
@@ -1185,6 +1187,13 @@ static irqreturn_t wcd_mbhc_mech_plug_detect_irq(int irq, void *data)
 		pr_err("%s: NULL irq data\n", __func__);
 		return IRQ_NONE;
 	}
+#if IS_ENABLED(CONFIG_QCOM_FSA4480_SUB_I2C)
+	if (mbhc->mbhc_cfg->enable_usbc_analog && mbhc->aatc_dev_sub_np &&
+	    !READ_ONCE(audio_4480_headset_ref)) {
+		mbhc->headset_detect_pending = true;
+		return IRQ_NONE;
+	}
+#endif
 	/* WCD939x USB AATC did not required mech plug detection, will receive
 	 * insertion/removal events from UCSI layer
 	 */
@@ -1715,7 +1724,75 @@ static int wcd_mbhc_set_keycode(struct wcd_mbhc *mbhc)
 	return result;
 }
 
-#if IS_ENABLED(CONFIG_QCOM_FSA4480_I2C) || IS_ENABLED(CONFIG_QCOM_WCD_USBSS_I2C)
+#if IS_ENABLED(CONFIG_QCOM_FSA4480_SUB_I2C)
+/* Stock MBHC sends a pulse for dual-headset insertion/removal (keys 752/753). */
+static void wcd_mbhc_double_headset_report(struct wcd_mbhc *mbhc, bool inserted)
+{
+	unsigned int key = inserted ? 752 : 753;
+
+	if (!mbhc->double_headset_input)
+		return;
+	input_report_key(mbhc->double_headset_input, key, 1);
+	input_sync(mbhc->double_headset_input);
+	input_report_key(mbhc->double_headset_input, key, 0);
+	input_sync(mbhc->double_headset_input);
+}
+
+static int wcd_mbhc_fsa_event(struct wcd_mbhc *mbhc, unsigned long mode)
+{
+	int l_det_en = 0, detection_type = 0;
+	int refs = READ_ONCE(audio_4480_headset_ref);
+	char *handset[] = { "handset-mic", NULL };
+	char *headset[] = { "headset-mic", NULL };
+
+	if (refs == 1 || refs == 2)
+		kobject_uevent_env(&mbhc->component->dev->kobj, KOBJ_CHANGE,
+				  refs == 2 ? handset : headset);
+	if (mode == TYPEC_ACCESSORY_AUDIO) {
+		if (mbhc->mbhc_cb->clk_setup)
+			mbhc->mbhc_cb->clk_setup(mbhc->component, true);
+		WCD_MBHC_REG_UPDATE_BITS(WCD_MBHC_L_DET_EN, 1);
+		if (!mbhc->mbhc_cb->lock_sleep(mbhc, true))
+			return 0;
+		if (mbhc->current_plug == MBHC_PLUG_TYPE_NONE &&
+		    mbhc->headset_detect_pending) {
+			wcd_mbhc_swch_irq_handler(mbhc);
+			mbhc->headset_detect_pending = false;
+		}
+		if (READ_ONCE(audio_4480_headset_ref) == 2)
+			wcd_mbhc_double_headset_report(mbhc, true);
+		mbhc->mbhc_cb->lock_sleep(mbhc, false);
+	} else if (mode < TYPEC_MAX_ACCESSORY) {
+		WCD_MBHC_REG_READ(WCD_MBHC_L_DET_EN, l_det_en);
+		WCD_MBHC_REG_READ(WCD_MBHC_MECH_DETECTION_TYPE, detection_type);
+		if (refs == 1)
+			wcd_mbhc_double_headset_report(mbhc, false);
+		/* One remaining headset must retain codec/microphone detection. */
+		if (mode != TYPEC_ACCESSORY_NONE || refs)
+			return 0;
+		if (detection_type == 1)
+			WCD_MBHC_REG_UPDATE_BITS(WCD_MBHC_MECH_DETECTION_TYPE, 0);
+		if (mbhc->mbhc_cb->lock_sleep(mbhc, true)) {
+			wcd_mbhc_swch_irq_handler(mbhc);
+			mbhc->mbhc_cb->lock_sleep(mbhc, false);
+		}
+	} else if (mode == TYPEC_MAX_ACCESSORY && mbhc->mbhc_cb->surge_reset_routine) {
+		mbhc->mbhc_cb->surge_reset_routine(mbhc);
+	}
+	return 0;
+}
+
+static int wcd_mbhc_usbc_sub_ana_event_handler(struct notifier_block *nb,
+					   unsigned long mode, void *ptr)
+{
+	struct wcd_mbhc *mbhc = container_of(nb, struct wcd_mbhc, aatc_dev_sub_nb);
+
+	return wcd_mbhc_fsa_event(mbhc, mode);
+}
+#endif
+
+#if IS_ENABLED(CONFIG_QCOM_FSA4480_I2C) || IS_ENABLED(CONFIG_QCOM_WCD_USBSS_I2C) || \
+    IS_ENABLED(CONFIG_QCOM_FSA4480_SUB_I2C)
 static int wcd_mbhc_usbc_ana_event_handler(struct notifier_block *nb,
 					   unsigned long mode, void *ptr)
 {
@@ -1727,7 +1804,10 @@ static int wcd_mbhc_usbc_ana_event_handler(struct notifier_block *nb,
 
 	if (!mbhc)
 		return -EINVAL;
-
+#if IS_ENABLED(CONFIG_QCOM_FSA4480_SUB_I2C)
+	if (mbhc->aatc_dev_sub_np)
+		return wcd_mbhc_fsa_event(mbhc, mode);
+#endif
 
 	if (mode == TYPEC_ACCESSORY_AUDIO) {
 		dev_dbg(mbhc->component->dev, "enter, %s: mode = %lu\n", __func__, mode);
@@ -1831,7 +1911,8 @@ int wcd_mbhc_start(struct wcd_mbhc *mbhc, struct wcd_mbhc_config *mbhc_cfg)
 		dev_dbg(mbhc->component->dev, "%s: usbc analog enabled\n",
 					__func__);
 		mbhc->swap_thr = GND_MIC_USBC_SWAP_THRESHOLD;
-		if (!mbhc->wcd_usbss_aatc_dev_np && !mbhc->fsa_aatc_dev_np) {
+		if (!mbhc->wcd_usbss_aatc_dev_np && !mbhc->fsa_aatc_dev_np &&
+		    !mbhc->aatc_dev_sub_np) {
 			dev_err(card->dev, "%s: wcd939x or fsa i2c node not found\n",
 									__func__);
 			rc = -EINVAL;
@@ -1869,6 +1950,26 @@ int wcd_mbhc_start(struct wcd_mbhc *mbhc, struct wcd_mbhc_config *mbhc_cfg)
 				 __func__, mbhc->mbhc_fw, mbhc->mbhc_cal);
 	}
 
+#if IS_ENABLED(CONFIG_QCOM_FSA4480_SUB_I2C)
+	if (mbhc_cfg->enable_usbc_analog && mbhc->aatc_dev_sub_np &&
+	    !mbhc->double_headset_input) {
+		struct input_dev *input = input_allocate_device();
+
+		if (!input) {
+			rc = -ENOMEM;
+			goto err;
+		}
+		input->name = "double-headset-input";
+		input_set_capability(input, EV_KEY, 752);
+		input_set_capability(input, EV_KEY, 753);
+		rc = input_register_device(input);
+		if (rc) {
+			input_free_device(input);
+			goto err;
+		}
+		mbhc->double_headset_input = input;
+	}
+#endif
 	if (mbhc_cfg->enable_usbc_analog) {
 		mbhc->aatc_dev_nb.notifier_call = wcd_mbhc_usbc_ana_event_handler;
 		mbhc->aatc_dev_nb.priority = 0;
@@ -1878,12 +1979,36 @@ int wcd_mbhc_start(struct wcd_mbhc *mbhc, struct wcd_mbhc_config *mbhc_cfg)
 					mbhc->wcd_usbss_aatc_dev_np);
 #endif
 #if IS_ENABLED(CONFIG_QCOM_FSA4480_I2C)
-		if (mbhc->fsa_aatc_dev_np)
+		if (mbhc->fsa_aatc_dev_np) {
 			rc = fsa4480_reg_notifier(&mbhc->aatc_dev_nb, mbhc->fsa_aatc_dev_np);
+			if (rc)
+				goto notifier_error;
+		}
+#endif
+#if IS_ENABLED(CONFIG_QCOM_FSA4480_SUB_I2C)
+		if (mbhc->aatc_dev_sub_np) {
+			mbhc->aatc_dev_sub_nb.notifier_call = wcd_mbhc_usbc_sub_ana_event_handler;
+			mbhc->aatc_dev_sub_nb.priority = 0;
+			rc = fsa4480_sub_reg_notifier(&mbhc->aatc_dev_sub_nb, mbhc->aatc_dev_sub_np);
+			if (rc) {
+#if IS_ENABLED(CONFIG_QCOM_FSA4480_I2C)
+				if (mbhc->fsa_aatc_dev_np)
+					fsa4480_unreg_notifier(&mbhc->aatc_dev_nb, mbhc->fsa_aatc_dev_np);
+#endif
+				goto notifier_error;
+			}
+		}
 #endif
 	}
 
 	return rc;
+#if IS_ENABLED(CONFIG_QCOM_FSA4480_I2C) || IS_ENABLED(CONFIG_QCOM_FSA4480_SUB_I2C)
+notifier_error:
+	if (mbhc->double_headset_input) {
+		input_unregister_device(mbhc->double_headset_input);
+		mbhc->double_headset_input = NULL;
+	}
+#endif
 err:
 	dev_dbg(mbhc->component->dev, "%s: leave %d\n", __func__, rc);
 	return rc;
@@ -1925,6 +2050,14 @@ void wcd_mbhc_stop(struct wcd_mbhc *mbhc)
 	if (mbhc->mbhc_cfg->enable_usbc_analog && mbhc->fsa_aatc_dev_np)
 		fsa4480_unreg_notifier(&mbhc->aatc_dev_nb, mbhc->fsa_aatc_dev_np);
 #endif
+#if IS_ENABLED(CONFIG_QCOM_FSA4480_SUB_I2C)
+	if (mbhc->mbhc_cfg->enable_usbc_analog && mbhc->aatc_dev_sub_np)
+		fsa4480_sub_unreg_notifier(&mbhc->aatc_dev_sub_nb, mbhc->aatc_dev_sub_np);
+#endif
+	if (mbhc->double_headset_input) {
+		input_unregister_device(mbhc->double_headset_input);
+		mbhc->double_headset_input = NULL;
+	}
 
 	pr_debug("%s: leave\n", __func__);
 }
@@ -1998,7 +2131,12 @@ int wcd_mbhc_init(struct wcd_mbhc *mbhc, struct snd_soc_component *component,
 					"wcd939x-i2c-handle", 0);
 	mbhc->fsa_aatc_dev_np = of_parse_phandle(card->dev->of_node,
 					"fsa4480-i2c-handle", 0);
+#if IS_ENABLED(CONFIG_QCOM_FSA4480_SUB_I2C)
+	mbhc->aatc_dev_sub_np = of_parse_phandle(card->dev->of_node,
+					"fsa4480-sub-i2c-handle", 0);
+#endif
 
+	mbhc->headset_detect_pending = true;
 	mbhc->in_swch_irq_handler = false;
 	mbhc->current_plug = MBHC_PLUG_TYPE_NONE;
 	mbhc->is_btn_press = false;
