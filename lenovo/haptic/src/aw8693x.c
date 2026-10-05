@@ -10,6 +10,32 @@
 #include "haptic_hv.h"
 #include "haptic_hv_reg.h"
 
+/*
+ * Vibration notifier chain, exported for the camera driver (stock TB323FU module: register_haptic_notify,
+ * unregister_haptic_notify, haptic_notify_call_chain). SRCU drains callbacks on unbind.
+ */
+SRCU_NOTIFIER_HEAD_STATIC(haptic_notifier_list);
+static bool vibOpened_left;
+static bool vibOpened_right;
+
+int register_haptic_notify(struct notifier_block *nb)
+{
+	return srcu_notifier_chain_register(&haptic_notifier_list, nb);
+}
+EXPORT_SYMBOL(register_haptic_notify);
+
+int unregister_haptic_notify(struct notifier_block *nb)
+{
+	return srcu_notifier_chain_unregister(&haptic_notifier_list, nb);
+}
+EXPORT_SYMBOL(unregister_haptic_notify);
+
+int haptic_notify_call_chain(unsigned long val, void *v)
+{
+	return srcu_notifier_call_chain(&haptic_notifier_list, val, v);
+}
+EXPORT_SYMBOL(haptic_notify_call_chain);
+
 #ifdef AW_DOUBLE
 extern struct aw_haptic *left;
 extern struct aw_haptic *right;
@@ -446,7 +472,22 @@ static uint8_t aw8693x_get_glb_state(struct aw_haptic *aw_haptic)
 
 static void aw8693x_play_go(struct aw_haptic *aw_haptic, bool flag)
 {
+	struct haptic_notify_data haptic_data = { };
 	uint8_t reg_val = 0;
+
+	if (aw_haptic->play_mode != AW_RTP_MODE) {
+		if (AW_NAME_IS(aw_haptic, "left")) {
+			vibOpened_left = true;
+			haptic_data.side = 1;
+		} else if (AW_NAME_IS(aw_haptic, "right")) {
+			vibOpened_right = true;
+			haptic_data.side = 2;
+		}
+		aw_info("start haptic notify, duration = %d!", aw_haptic->duration);
+		haptic_data.duration = aw_haptic->duration;
+		haptic_data.mode = aw_haptic->play_mode;
+		srcu_notifier_call_chain(&haptic_notifier_list, 1, &haptic_data);
+	}
 
 	aw_info("enter, flag = %d", flag);
 
@@ -606,6 +647,7 @@ static void aw8693x_play_mode(struct aw_haptic *aw_haptic, uint8_t play_mode)
 
 static void aw8693x_stop(struct aw_haptic *aw_haptic)
 {
+	struct haptic_notify_data haptic_data = { };
 	uint8_t reg_val = 0;
 	int ret = 0;
 
@@ -623,7 +665,22 @@ static void aw8693x_stop(struct aw_haptic *aw_haptic)
 		aw8693x_play_mode(aw_haptic, AW_STANDBY_MODE);
 	}
 
-
+	if (aw_haptic->play_mode != AW_RTP_MODE) {
+		if (vibOpened_left || vibOpened_right) {
+			haptic_data.duration = -1;
+			haptic_data.side = AW_NAME_IS(aw_haptic, "left") ? 1 : 2;
+			haptic_data.mode = aw_haptic->play_mode;
+			srcu_notifier_call_chain(&haptic_notifier_list, 2, &haptic_data);
+			aw_info("stop haptic notify!");
+		}
+	}
+	if (AW_NAME_IS(aw_haptic, "left")) {
+		if (vibOpened_left)
+			vibOpened_left = false;
+	} else if (AW_NAME_IS(aw_haptic, "right")) {
+		if (vibOpened_right)
+			vibOpened_right = false;
+	}
 }
 
 static void aw8693x_ram_init(struct aw_haptic *aw_haptic, bool flag)
