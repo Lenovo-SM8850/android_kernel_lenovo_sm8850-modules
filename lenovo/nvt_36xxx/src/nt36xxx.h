@@ -63,7 +63,7 @@
 //---INT trigger mode---
 //#define IRQ_TYPE_EDGE_RISING 1
 //#define IRQ_TYPE_EDGE_FALLING 2
-#define INT_TRIGGER_TYPE IRQ_TYPE_EDGE_RISING
+#define INT_TRIGGER_TYPE IRQ_TYPE_EDGE_FALLING
 
 //---bus transfer length---
 #define BUS_TRANSFER_LENGTH  256
@@ -73,7 +73,7 @@
 
 #define NVT_PLATFORM_DRIVER_NAME "novatek_ts"
 
-#define NVT_LOG_ERR 0
+#define NVT_LOG_ERR 1
 #define NVT_LOG_INFO 0
 
 #if NVT_LOG_ERR
@@ -90,60 +90,20 @@
 #define NVT_TS_NAME "NVTCapacitiveTouchScreen"
 #define NVT_PEN_NAME "NVTCapacitivePen"
 
-//---Touch info.---
-#ifdef BUILD_KIRBY_TOUCH
+// TB323FU stock probe/report bounds (llvm-objdump: 0x4a60, 0x76c0).
 #define NVT_SUPER_RESOLUTION_N 10
-#if NVT_SUPER_RESOLUTION_N
 #define POINT_DATA_LEN 108
-#define TOUCH_MAX_WIDTH 1600 * NVT_SUPER_RESOLUTION_N
-#define TOUCH_MAX_HEIGHT 2560 * NVT_SUPER_RESOLUTION_N
-#define PEN_MAX_WIDTH 1600 * NVT_SUPER_RESOLUTION_N
-#define PEN_MAX_HEIGHT 2560 * NVT_SUPER_RESOLUTION_N
-#else
-#define POINT_DATA_LEN 65
-#define TOUCH_MAX_WIDTH 1600
-#define TOUCH_MAX_HEIGHT 2560
-#define PEN_MAX_WIDTH 3200
-#define PEN_MAX_HEIGHT 5120
-#endif
+#define TOUCH_MAX_WIDTH (1904 * NVT_SUPER_RESOLUTION_N)
+#define TOUCH_MAX_HEIGHT (3040 * NVT_SUPER_RESOLUTION_N)
+#define PEN_MAX_WIDTH TOUCH_MAX_WIDTH
+#define PEN_MAX_HEIGHT TOUCH_MAX_HEIGHT
 #define TOUCH_MAX_FINGER_NUM 10
 #define TOUCH_KEY_NUM 0
-#if TOUCH_KEY_NUM > 0
-extern const uint16_t touch_key_array[TOUCH_KEY_NUM];
-#endif
 #define TOUCH_FORCE_NUM 1
-//---for Pen---
-#define PEN_PRESSURE_MAX (4095)
-#define PEN_DISTANCE_MAX (1)
+#define PEN_PRESSURE_MAX 4095
+#define PEN_DISTANCE_MAX 1
 #define PEN_TILT_MIN (-60)
-#define PEN_TILT_MAX (60)
-#else
-#define NVT_SUPER_RESOLUTION_N 10
-#if NVT_SUPER_RESOLUTION_N
-#define POINT_DATA_LEN 108
-#define TOUCH_MAX_HEIGHT 2944 * NVT_SUPER_RESOLUTION_N
-#define TOUCH_MAX_WIDTH 1840 * NVT_SUPER_RESOLUTION_N
-#define PEN_MAX_HEIGHT 2944 * NVT_SUPER_RESOLUTION_N
-#define PEN_MAX_WIDTH 1840 * NVT_SUPER_RESOLUTION_N
-#else
-#define POINT_DATA_LEN 65
-#define TOUCH_MAX_HEIGHT 2944
-#define TOUCH_MAX_WIDTH 1840
-#define PEN_MAX_HEIGHT 5888
-#define PEN_MAX_WIDTH 3680
-#endif
-#define TOUCH_MAX_FINGER_NUM 10
-#define TOUCH_KEY_NUM 0
-#if TOUCH_KEY_NUM > 0
-extern const uint16_t touch_key_array[TOUCH_KEY_NUM];
-#endif
-#define TOUCH_FORCE_NUM 1000
-//---for Pen---
-#define PEN_PRESSURE_MAX (4095)
-#define PEN_DISTANCE_MAX (1)
-#define PEN_TILT_MIN (-60)
-#define PEN_TILT_MAX (60)
-#endif
+#define PEN_TILT_MAX 60
 /* Enable only when module have tp reset pin and connected to host */
 #define NVT_TOUCH_SUPPORT_HW_RST 0
 
@@ -289,6 +249,7 @@ struct nvt_ts_data {
 	const struct nvt_ts_mem_map *mmap;
 	uint8_t hw_crc;
 	uint8_t auto_copy;
+	bool use_gcm;
 	uint16_t nvt_pid;
 	uint8_t *rbuf;
 	uint8_t *xbuf;
@@ -324,6 +285,7 @@ struct nvt_ts_data {
 #if NVT_CUST_PROC_CMD
 	int32_t edge_reject_state;
 	struct edge_grid_zone_info edge_grid_zone_info;
+	uint8_t gesture_mode;
 	uint8_t game_mode_state;
 	uint8_t pen_state;
 	uint8_t probe_state;
@@ -332,16 +294,25 @@ struct nvt_ts_data {
 	bool finger_event_flag;
 	bool stylus_event_flag;
 #endif
-#ifdef BUILD_LAPIS_TOUCH
+#ifdef BUILD_BALDUR_TOUCH
 	uint8_t haptics_state;
+	uint8_t pen_wakeup_state;
+	uint8_t pen_type;
+	uint8_t high_report_rate;
+	uint8_t report_threshold;
+	uint8_t game_edge;
 #endif
 #endif
 #if NVT_PM_WAIT_BUS_RESUME_COMPLETE
+	int nvt_ts_load_state_check;
 	bool dev_pm_suspend;
 	struct completion dev_pm_resume_completion;
 #endif
 #if NVT_REPORT_PEN_ID
 	struct penid_info penid;
+	uint32_t pen_sn;
+	uint16_t pen_vid;
+	uint16_t pen_pid;
 #endif
 };
 
@@ -372,8 +343,8 @@ typedef enum {
 #define SPI_READ_MASK(a)	(a & 0x7F)
 
 #define DUMMY_BYTES (1)
-#define NVT_TRANSFER_LEN	(63*1024)
-#define NVT_READ_LEN		(2*1024)
+#define NVT_TRANSFER_LEN	(15*1024)
+#define NVT_READ_LEN		(4*1024)
 #define NVT_XBUF_LEN		(NVT_TRANSFER_LEN+1+DUMMY_BYTES)
 
 typedef enum {
@@ -437,7 +408,12 @@ int32_t nvt_write_addr(uint32_t addr, uint8_t data);
 extern void nvt_esd_check_enable(uint8_t enable);
 #endif /* #if NVT_TOUCH_ESD_PROTECT */
 
-void nvt_pen_max_pressure_reconfig(uint8_t level);
+int32_t nvt_pen_type_set(uint8_t status);
+int32_t nvt_pen_wakeup_set(uint8_t status);
+void nvt_restore_pen_settings_locked(void);
+int32_t nvt_high_report_rate_set(uint8_t status);
+int32_t nvt_report_threshold_set(uint8_t status);
+int32_t nvt_game_edge_set(uint8_t status);
 int32_t nvt_ts_platform_driver_init(void);
 
 #endif /* _LINUX_NVT_TOUCH_H */

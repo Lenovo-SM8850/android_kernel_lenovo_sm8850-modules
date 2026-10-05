@@ -26,7 +26,7 @@
 #include <linux/of_irq.h>
 #include "nt36xxx.h"
 /* Kirby code for KIRBYU-960 by liaoxg1 at 2024/4/26 start */
-#include <linux/hqsysfs.h>
+/* Stock TB323FU does not import hqsysfs. */
 /* Kirby code for KIRBYU-960 by liaoxg1 at 2024/4/26 end */
 
 #if IS_ENABLED(NVT_DRM_PANEL_NOTIFY)
@@ -102,7 +102,7 @@ extern int32_t nvt_game_mode_set(uint8_t status);
 #if NVT_SUPPORT_PEN
 extern int32_t nvt_support_pen_set(uint8_t status);
 #endif
-#ifdef BUILD_LAPIS_TOUCH
+#ifdef BUILD_BALDUR_TOUCH
 extern int32_t nvt_haptics_set(uint8_t status);
 #endif
 static struct work_struct ts_restore_cmd_work;
@@ -119,8 +119,9 @@ bool nvt_gesture_flag = false;
 EXPORT_SYMBOL(nvt_gesture_flag);
 #endif
 struct nvt_ts_data *ts;
+static DEFINE_MUTEX(nvt_fw_lock);
+static bool nvt_fw_ready;
 /* Kirby code for KIRBYU-235 by liaoxg1 at 2024/4/26 start */
-#define DISP_ID_DET (301+125)
 
 #if IS_ENABLED(NVT_PLATFORM_DRIVER)
 static struct platform_device *nvt_ts_pdev;
@@ -129,12 +130,12 @@ static struct platform_device *nvt_ts_pdev;
 #if BOOT_UPDATE_FIRMWARE
 static struct workqueue_struct *nvt_fwu_wq;
 extern void Boot_Update_Firmware(struct work_struct *work);
-char *BOOT_UPDATE_FIRMWARE_NAME;
-char *MP_UPDATE_FIRMWARE_NAME;
+char *BOOT_UPDATE_FIRMWARE_NAME = "novatek_ts_fw.bin";
+char *MP_UPDATE_FIRMWARE_NAME = "novatek_ts_mp.bin";
 #endif
 /* Kirby code for KIRBYU-235 by liaoxg1 at 2024/4/26 end */
 /* Kirby code for KIRBYU-960 by liaoxg1 at 2024/4/26 start */
-static char tp_version_info[128] = "";
+
 /* Kirby code for KIRBYU-960 by liaoxg1 at 2024/4/26 end */
 #if IS_ENABLED(NVT_DRM_PANEL_NOTIFY)
 static struct drm_panel *active_panel;
@@ -163,7 +164,6 @@ static int nvt_mtk_drm_notifier_callback(struct notifier_block *nb,
 uint32_t ENG_RST_ADDR = 0x7FFF80;
 uint32_t SPI_RD_FAST_ADDR = 0; //read from dtsi
 /* Kirby code for KIRBYU-235 by liaoxg1 at 2024/4/26 start */
-int gpio_125;
 /* Kirby code for KIRBYU-235 by liaoxg1 at 2024/4/26 end */
 #if TOUCH_KEY_NUM > 0
 const uint16_t touch_key_array[TOUCH_KEY_NUM] = { KEY_BACK, KEY_HOME,
@@ -175,7 +175,7 @@ const uint16_t gesture_key_array[] = {
 	KEY_POWER, //GESTURE_WORD_C
 	KEY_POWER, //GESTURE_WORD_W
 	KEY_POWER, //GESTURE_WORD_V
-	KEY_POWER, //GESTURE_DOUBLE_CLICK
+	KEY_WAKEUP, //GESTURE_DOUBLE_CLICK
 	KEY_POWER, //GESTURE_WORD_Z
 	KEY_POWER, //GESTURE_WORD_M
 	KEY_POWER, //GESTURE_WORD_O
@@ -185,6 +185,7 @@ const uint16_t gesture_key_array[] = {
 	KEY_POWER, //GESTURE_SLIDE_DOWN
 	KEY_POWER, //GESTURE_SLIDE_LEFT
 	KEY_POWER, //GESTURE_SLIDE_RIGHT
+	KEY_POWER, //GESTURE_PEN_TAP
 };
 #endif
 
@@ -873,34 +874,7 @@ out:
 
 	return ret;
 }
-/* Kirby code for KIRBYU-960 by liaoxg1 at 2024/4/26 start */
-void get_tp_info(void)
-{
-    nvt_get_fw_info();
-#ifdef BUILD_KIRBY_TOUCH
-    if (gpio_125 == 0) {
-        sprintf(tp_version_info, "[Vendor]:HUAXING, [TP-IC]:NT36523N, [fw]:%d\n", ts->fw_ver);
-        printk("[%s]: tp_version %s\n", __func__, tp_version_info);
-    } else if (gpio_125 == 1) {
-        sprintf(tp_version_info, "[Vendor]:BOE, [TP-IC]:NT36523N, [fw]:%d\n", ts->fw_ver);
-        printk("[%s]: tp_version %s\n", __func__, tp_version_info);
-    } else {
-        NVT_ERR("failed to add nt36523n tp_info\n");
-    }
-#else
-    if (gpio_125 == 1) {
-        sprintf(tp_version_info, "[Vendor]:TIANMA, [TP-IC]:NT36532, [fw]:%d\n", ts->fw_ver);
-        printk("[%s]: tp_version %s\n", __func__, tp_version_info);
-    } else if (gpio_125 == 0) {
-        sprintf(tp_version_info, "[Vendor]:BOE, [TP-IC]:NT36532, [fw]:%d\n", ts->fw_ver);
-        printk("[%s]: tp_version %s\n", __func__, tp_version_info);
-    } else {
-        NVT_ERR("failed to add nt36532 tp_info\n");
-    }
-#endif
-    hq_register_hw_info(HWID_CTP, tp_version_info);
-}
-/* Kirby code for KIRBYU-960 by liaoxg1 at 2024/4/26 end */
+
 /*******************************************************
   Create Device Node (Proc Entry)
 *******************************************************/
@@ -1133,6 +1107,7 @@ static void nvt_flash_proc_deinit(void)
 #define GESTURE_SLIDE_LEFT 23
 #define GESTURE_SLIDE_RIGHT 24
 /* customized gesture id */
+#define GESTURE_PEN_TAP 25
 #define DATA_PROTOCOL 30
 
 /* function page definition */
@@ -1214,6 +1189,10 @@ void nvt_ts_wakeup_gesture_report(uint8_t gesture_id, uint8_t *data)
 	case GESTURE_SLIDE_RIGHT:
 		NVT_LOG("Gesture : Slide RIGHT.\n");
 		keycode = gesture_key_array[12];
+		break;
+	case GESTURE_PEN_TAP:
+		NVT_LOG("Gesture : Pen tap.\n");
+		keycode = gesture_key_array[13];
 		break;
 	default:
 		break;
@@ -1307,12 +1286,10 @@ static int32_t nvt_parse_dt(struct device *dev)
 	int32_t ret = 0;
 
 #if NVT_TOUCH_SUPPORT_HW_RST
-	ts->reset_gpio = of_get_named_gpio_flags(np, "novatek,reset-gpio", 0,
-						 &ts->reset_flags);
+	ts->reset_gpio = of_get_named_gpio(np, "novatek,reset-gpio", 0);
 	NVT_LOG("novatek,reset-gpio=%d\n", ts->reset_gpio);
 #endif
-	ts->irq_gpio = of_get_named_gpio_flags(np, "novatek,irq-gpio", 0,
-					       &ts->irq_flags);
+	ts->irq_gpio = of_get_named_gpio(np, "novatek,irq-gpio", 0);
 	NVT_LOG("novatek,irq-gpio=%d\n", ts->irq_gpio);
 
 	ts->pen_support = of_property_read_bool(np, "novatek,pen-support");
@@ -1645,40 +1622,10 @@ static int32_t nvt_ts_point_data_checksum(uint8_t *buf, uint8_t length)
 #define LEAVE_PEN_MODE 0
 #define DETECT_PEN 1
 #define ENTER_PEN_MODE 2
-int32_t nvt_check_stylus_state(uint8_t input_id, uint8_t *data)
-{
-	int32_t ret = 0;
-	uint8_t func_type = data[2];
-	uint8_t stylus_state = data[3];
 
-	if ((input_id == DATA_PROTOCOL) && (func_type == FUNCPAGE_STYLUS)) {
-		ret = stylus_state;
-		if (stylus_state == DETECT_PEN) {
-			NVT_LOG("Enter stylus mode\n");
-            input_report_key(ts->input_dev, KEY_SKIN_STYLUS, 1);
-            input_sync(ts->input_dev);
-            input_report_key(ts->input_dev, KEY_SKIN_STYLUS, 0);
-            input_sync(ts->input_dev);
-			ret = 1;
-		} else if (stylus_state == ENTER_PEN_MODE) {
-			ts->fw_pen_state = 1;
-			NVT_LOG("Enter PEN mode\n");
-			ret = 1;
-		} else if (stylus_state == LEAVE_PEN_MODE) {
-			ts->fw_pen_state = 0;
-			NVT_LOG("Leave PEN mode\n");
-			ret = 1;
-		} else {
-			NVT_ERR("invalid state %d!\n", stylus_state);
-			ret = -1;
-		}
-	}
-
-	return ret;
-}
 #endif
 
-#ifdef BUILD_LAPIS_TOUCH
+#ifdef BUILD_BALDUR_TOUCH
 uint8_t touch_info;
 static uint8_t touch_info_pre;
 #endif
@@ -1686,6 +1633,9 @@ static uint8_t touch_info_pre;
 #if REPORT_PEN_MAC_ADDR
 static uint8_t pen_mac_addr[6]={0};
 static uint8_t pen_mac_addr_pre[6]={0};
+static uint8_t pen_type_pre;
+static uint32_t pen_battery_pre, pen_sn_pre;
+static uint16_t pen_vid_pre, pen_pid_pre;
 #endif
 
 /*******************************************************
@@ -1779,7 +1729,9 @@ static irqreturn_t nvt_ts_work_func(int irq, void *data)
 			nvt_clear_aci_error_flag();
 		}
 		nvt_read_fw_history_all();
+		ts->nvt_ts_load_state_check = 1;
 		nvt_update_firmware(BOOT_UPDATE_FIRMWARE_NAME);
+		ts->nvt_ts_load_state_check = 2;
 		nvt_read_fw_history_all();
 #if NVT_CUST_PROC_CMD
 		wdt_recovery = true;
@@ -1807,10 +1759,6 @@ static irqreturn_t nvt_ts_work_func(int irq, void *data)
 #endif /* POINT_DATA_CHECKSUM */
 
 #if NVT_DPR_SWITCH
-	input_id = (uint8_t)(point_data[1] >> 3);
-	if (nvt_check_stylus_state(input_id, point_data)) {
-		goto XFER_ERROR; /* to skip point data parsing */
-	}
 #endif
 
 #if WAKEUP_GESTURE
@@ -1997,7 +1945,7 @@ static irqreturn_t nvt_ts_work_func(int irq, void *data)
 				pen_btn1 = (uint32_t)(point_data[77] & 0x01);
 				pen_btn2 = (uint32_t)((point_data[77] >> 1) &
 						      0x01);
-#ifdef BUILD_LAPIS_TOUCH
+#ifdef BUILD_BALDUR_TOUCH
 				touch_info = (point_data[77] >> 2) & 0x3F;
 #endif
 				pen_battery = (uint32_t)point_data[78];
@@ -2051,7 +1999,7 @@ static irqreturn_t nvt_ts_work_func(int irq, void *data)
 				if(LENOVO_MAX_BUFFER == pen_buffer_wp) {
 					pen_buffer_wp = 0;
 				}
-#ifdef BUILD_LAPIS_TOUCH
+#ifdef BUILD_BALDUR_TOUCH
 				//report Touch infomation
 				if(touch_info != touch_info_pre){
 					kobject_uevent(&nvt_ts_pdev->dev.kobj,KOBJ_CHANGE);
@@ -2087,6 +2035,28 @@ static irqreturn_t nvt_ts_work_func(int irq, void *data)
 				ts->penid.id[6] = point_data[73];
 				ts->penid.checksum = point_data[74];
 				ts->penid.type = point_data[75];
+				ts->pen_sn = ts->penid.id[0] | ts->penid.id[1] << 8 |
+					(ts->penid.id[2] & 0x3f) << 16;
+				ts->pen_vid = (ts->penid.id[2] >> 6) |
+					(ts->penid.id[3] & 0x3f) << 2 |
+					(ts->penid.id[3] >> 6) << 8 |
+					(ts->penid.id[4] & 0x3f) << 10;
+				ts->pen_pid = (ts->penid.id[4] >> 6) |
+					(ts->penid.id[5] & 0x3f) << 2 |
+					(ts->penid.id[5] >> 6) << 8 |
+					(ts->penid.id[6] & 0x3f) << 10;
+				if (ts->penid.type != pen_type_pre ||
+				    pen_battery != pen_battery_pre ||
+				    ts->pen_sn != pen_sn_pre ||
+				    ts->pen_vid != pen_vid_pre ||
+				    ts->pen_pid != pen_pid_pre) {
+					kobject_uevent(&nvt_ts_pdev->dev.kobj, KOBJ_CHANGE);
+					pen_type_pre = ts->penid.type;
+					pen_battery_pre = pen_battery;
+					pen_sn_pre = ts->pen_sn;
+					pen_vid_pre = ts->pen_vid;
+					pen_pid_pre = ts->pen_pid;
+				}
 #endif
 				goto XFER_ERROR;
 			} else {
@@ -2136,8 +2106,13 @@ XFER_ERROR:
 #if NVT_SUPPORT_PEN
 		nvt_support_pen_set(ts->pen_state);
 #endif
-#ifdef BUILD_LAPIS_TOUCH
-        nvt_haptics_set(ts->haptics_state);
+#ifdef BUILD_BALDUR_TOUCH
+		nvt_haptics_set(ts->haptics_state);
+		nvt_pen_type_set(ts->pen_type);
+		nvt_pen_wakeup_set(ts->pen_wakeup_state);
+		nvt_high_report_rate_set(ts->high_report_rate);
+		nvt_report_threshold_set(ts->report_threshold);
+		nvt_game_edge_set(ts->game_edge);
 #endif
 	}
 #endif
@@ -2242,6 +2217,7 @@ nvt_ts_check_chip_ver_trim(struct nvt_ts_hw_reg_addr_info hw_regs)
 					ts->mmap = trim_id_table[list].mmap;
 				}
 				ts->hw_crc = trim_id_table[list].hwinfo->hw_crc;
+				ts->use_gcm = trim_id_table[list].hwinfo->use_gcm;
 				ts->auto_copy =
 					trim_id_table[list].hwinfo->auto_copy;
 
@@ -2371,8 +2347,13 @@ static void nvt_restore_cmd_func(struct work_struct *work)
 #if NVT_SUPPORT_PEN
 		nvt_support_pen_set(ts->pen_state);
 #endif
-#ifdef BUILD_LAPIS_TOUCH
+#ifdef BUILD_BALDUR_TOUCH
 		nvt_haptics_set(ts->haptics_state);
+		nvt_pen_type_set(ts->pen_type);
+		nvt_pen_wakeup_set(ts->pen_wakeup_state);
+		nvt_high_report_rate_set(ts->high_report_rate);
+		nvt_report_threshold_set(ts->report_threshold);
+		nvt_game_edge_set(ts->game_edge);
 #endif
 #if NVT_DPR_SWITCH
 		ts->fw_pen_state= 0;
@@ -2384,33 +2365,31 @@ static void nvt_restore_cmd_func(struct work_struct *work)
 }
 #endif
 
-int ts_touch_info_uevent(struct device *dev, struct kobj_uevent_env *env)
+int ts_touch_info_uevent(const struct device *dev, struct kobj_uevent_env *env)
 {
-	int ret = 0;
+	int ret;
+	uint32_t sn = ts->penid.id[0] | ts->penid.id[1] << 8 |
+		(ts->penid.id[2] & 0x3f) << 16;
+	uint16_t vid = (ts->penid.id[2] >> 6) |
+		(ts->penid.id[3] & 0x3f) << 2 | (ts->penid.id[3] >> 6) << 8 |
+		(ts->penid.id[4] & 0x3f) << 10;
+	uint16_t pid = (ts->penid.id[4] >> 6) |
+		(ts->penid.id[5] & 0x3f) << 2 | (ts->penid.id[5] >> 6) << 8 |
+		(ts->penid.id[6] & 0x3f) << 10;
 
-	ret = add_uevent_var(env, "UEVENT_TO=PEN_FRAMEWORK");
-	if(ret)
-                return ret;
-
-	ret = add_uevent_var(env, "TYPE=TP");
-	if(ret)
+	ret = add_uevent_var(env, "TOUCH_INFORMATION=%02x", touch_info);
+	if (ret)
 		return ret;
-#ifdef BUILD_LAPIS_TOUCH
-	NVT_LOG("touch_info=%02x", touch_info);
-	NVT_LOG("touch_info_pre=%02x",touch_info_pre);
-	ret = add_uevent_var(env,"TOUCH_INFORMATION=%02x",touch_info);
-	if(ret)
+	ret = add_uevent_var(env, "UEVENT_TO=PEN_FRAMEWORK TYPE=TP");
+	if (ret)
 		return ret;
-#endif
-	ret = add_uevent_var(env,"MAC=%02x:%02x:%02x:%02x:%02x:%02x",
-			pen_mac_addr[5],pen_mac_addr[4],
-			pen_mac_addr[3],pen_mac_addr[2],
-			pen_mac_addr[1],pen_mac_addr[0]);
-
-	if(ret)
+	ret = add_uevent_var(env, "INFO=%d;%d;0x%04x;0x%04x;0x%06x",
+			ts->penid.type, pen_battery, pid, vid, sn);
+	if (ret)
 		return ret;
-
-	return 0;
+	return add_uevent_var(env, "MAC=%02x:%02x:%02x:%02x:%02x:%02x",
+			pen_mac_addr[5], pen_mac_addr[4], pen_mac_addr[3],
+			pen_mac_addr[2], pen_mac_addr[1], pen_mac_addr[0]);
 }
 
 #if IS_ENABLED(NVT_PLATFORM_DRIVER)
@@ -2443,42 +2422,7 @@ static int32_t nvt_ts_platform_device_init(void)
 #endif
 
 /* Kirby code for KIRBYU-235 by liaoxg1 at 2024/4/26 start */
-int tp_compare_ic(void)
-{
-	NVT_LOG("tp_compare_ic in!!");
-#ifdef BUILD_KIRBY_TOUCH
-	if (gpio_125 == 0) {
-		BOOT_UPDATE_FIRMWARE_NAME = "novatek_ts_csot_fw.bin";
-		MP_UPDATE_FIRMWARE_NAME = "novatek_ts_csot_mp.bin";
-		NVT_LOG("match nt36523n_dsi_vdo_csot_drv");
-		return 0;
-	} else if (gpio_125 == 1) {
-		BOOT_UPDATE_FIRMWARE_NAME = "novatek_ts_boe_fw.bin";
-		MP_UPDATE_FIRMWARE_NAME = "novatek_ts_boe_mp.bin";
-		NVT_LOG("match nt36523n_dsi_vdo_boe_drv");
-		return 0;
-	}  else {
-		NVT_ERR("failed to compare kirby firmware\n");
-		return -1;
-	}
-#else
-	if (gpio_125 == 1) {
-		BOOT_UPDATE_FIRMWARE_NAME = "novatek_ts_tianma_fw.bin";
-		MP_UPDATE_FIRMWARE_NAME = "novatek_ts_tianma_mp.bin";
-		NVT_LOG("match nt36532_dsi_vdo_tianma_drv");
-		return 0;
-	} else if (gpio_125 == 0) {
-		BOOT_UPDATE_FIRMWARE_NAME = "novatek_ts_boe_fw.bin";
-		MP_UPDATE_FIRMWARE_NAME = "novatek_ts_boe_mp.bin";
-		NVT_LOG("match nt36532_dsi_vdo_boe_drv");
-		return 0;
-	}  else {
-		NVT_ERR("failed to compare lapis firmware\n");
-		return -1;
-	}
 
-#endif
-}
 /* Kirby code for KIRBYU-235 by liaoxg1 at 2024/4/26 end */
 
 #if NVT_SET_CHARGER
@@ -2639,42 +2583,7 @@ static void nvt_pen_input_config(void)
 }
 
 
-void nvt_pen_max_pressure_reconfig(uint8_t level)
-{
-	int ret = 0;
-	int max_pressure = PEN_PRESSURE_MAX;
 
-	if (level == 1) {
-		max_pressure = 8191;
-	}
-
-	// pen input need reconfig
-
-	if (ts->pen_input_dev != NULL) {
-		input_unregister_device(ts->pen_input_dev);
-		input_free_device(ts->pen_input_dev);
-		ts->pen_input_dev = NULL;
-	}
-
-	//---allocate pen input device---
-	ts->pen_input_dev = input_allocate_device();
-	if (ts->pen_input_dev == NULL) {
-		NVT_ERR("reconfig allocate pen input device failed\n");
-		ret = -ENOMEM;
-	}
-
-	if (ts->pen_input_dev != NULL){
-		nvt_pen_input_config();
-	}
-	//change pen max pressure
-	input_set_abs_params(ts->pen_input_dev, ABS_PRESSURE, 0, max_pressure, 0, 0);
-
-	ret = input_register_device(ts->pen_input_dev);
-	if (ret) {
-		NVT_ERR("register pen input device (%s) failed. ret=%d\n",
-			ts->pen_input_dev->name, ret);
-	}
-}
 
 /*******************************************************
 Description:
@@ -2684,10 +2593,10 @@ return:
 	Executive outcomes. 0---succeed. negative---failed
 *******************************************************/
 /* Kirby code for KIRBYU-3835  at 2024/7/25 start */
-bool dsi_panel_enable_flag = false;
-EXPORT_SYMBOL(dsi_panel_enable_flag);
-bool nvt_ts_probe_flag = true;
-EXPORT_SYMBOL(nvt_ts_probe_flag);
+
+
+
+
 /* Kirby code for KIRBYU-3835  at 2024/7/25 end*/
 
 static int32_t nvt_ts_probe(struct spi_device *client)
@@ -2704,7 +2613,7 @@ static int32_t nvt_ts_probe(struct spi_device *client)
 #endif
 /* Kirby code for KIRBYU-235 by liaoxg1 at 2024/4/26 start */
 #if BOOT_UPDATE_FIRMWARE
-	tp_compare_ic();
+
 	NVT_LOG("tp_compare_ic_in_probe");
 #endif
 /* Kirby code for KIRBYU-235 by liaoxg1 at 2024/4/26 end */
@@ -2757,13 +2666,17 @@ static int32_t nvt_ts_probe(struct spi_device *client)
 	spi_set_drvdata(client, ts);
 
 	//---prepare for spi parameter---
-	if (ts->client->master->flags & SPI_MASTER_HALF_DUPLEX) {
+	if (ts->client->controller->flags & SPI_CONTROLLER_HALF_DUPLEX) {
 		NVT_ERR("Full duplex not supported by master\n");
 		ret = -EIO;
 		goto err_ckeck_full_duplex;
 	}
 	ts->client->bits_per_word = 8;
 	ts->client->mode = SPI_MODE_0;
+	ts->client->cs_setup.value = 300;
+	ts->client->cs_setup.unit = SPI_DELAY_UNIT_NSECS;
+	ts->client->cs_hold.value = 300;
+	ts->client->cs_hold.unit = SPI_DELAY_UNIT_NSECS;
 
 	ret = spi_setup(ts->client);
 	if (ret < 0) {
@@ -2874,7 +2787,7 @@ static int32_t nvt_ts_probe(struct spi_device *client)
 #endif
 
 #if NVT_DPR_SWITCH
-	input_set_capability(ts->input_dev, EV_KEY, KEY_SKIN_STYLUS);
+
 #endif
 #if WAKEUP_GESTURE
 	for (retry = 0;
@@ -2884,7 +2797,7 @@ static int32_t nvt_ts_probe(struct spi_device *client)
 				     gesture_key_array[retry]);
 	}
 	ts->input_dev->event = nvt_gesture_switch;
-	input_set_capability(ts->input_dev, EV_KEY, 523);
+	input_set_capability(ts->input_dev, EV_KEY, KEY_WAKEUP);
 #endif
 	sprintf(ts->phys, "input/ts");
 	ts->input_dev->name = NVT_TS_NAME;
@@ -2949,16 +2862,14 @@ static int32_t nvt_ts_probe(struct spi_device *client)
 		goto err_create_nvt_fwu_wq_failed;
 	}
 	INIT_DELAYED_WORK(&ts->nvt_fwu_work, Boot_Update_Firmware);
+	mutex_lock(&nvt_fw_lock);
+	nvt_fw_ready = true;
+	mutex_unlock(&nvt_fw_lock);
 
 	// please make sure boot update start after display reset(RESX) sequence
 /* Kirby code for KIRBYU-3835  at 2024/7/25 start */
-	//load fw in probe during startup.After the system start,the fw is loaded when the lcd on
-	if (nvt_ts_probe_flag == true){
 	queue_delayed_work(nvt_fwu_wq, &ts->nvt_fwu_work,
 			   msecs_to_jiffies(5000));
-	NVT_LOG("nvt_ts_probe_flag is true\n");
-	dsi_panel_enable_flag = true;
-	}
 /* Kirby code for KIRBYU-3835  at 2024/7/25 end*/
 
 #endif
@@ -3080,8 +2991,13 @@ static int32_t nvt_ts_probe(struct spi_device *client)
 #if NVT_DPR_SWITCH
 	ts->fw_pen_state = 0;
 #endif
-#ifdef BUILD_LAPIS_TOUCH
+#ifdef BUILD_BALDUR_TOUCH
 	ts->haptics_state = 0;
+	ts->pen_wakeup_state = 0;
+	ts->pen_type = 0;
+	ts->high_report_rate = 0;
+	ts->report_threshold = 0;
+	ts->game_edge = 0;
 #endif
 	INIT_WORK(&ts_restore_cmd_work, nvt_restore_cmd_func);
 	ts->probe_state = 1;
@@ -3178,6 +3094,9 @@ err_create_nvt_hall_check_wq_failed:
 err_create_nvt_esd_check_wq_failed:
 #endif
 #if BOOT_UPDATE_FIRMWARE
+	mutex_lock(&nvt_fw_lock);
+	nvt_fw_ready = false;
+	mutex_unlock(&nvt_fw_lock);
 	if (nvt_fwu_wq) {
 		cancel_delayed_work_sync(&ts->nvt_fwu_work);
 		destroy_workqueue(nvt_fwu_wq);
@@ -3301,6 +3220,9 @@ static void nvt_ts_remove(struct spi_device *client)
 #endif
 
 #if BOOT_UPDATE_FIRMWARE
+	mutex_lock(&nvt_fw_lock);
+	nvt_fw_ready = false;
+	mutex_unlock(&nvt_fw_lock);
 	if (nvt_fwu_wq) {
 		cancel_delayed_work_sync(&ts->nvt_fwu_work);
 		destroy_workqueue(nvt_fwu_wq);
@@ -3396,6 +3318,9 @@ static void nvt_ts_shutdown(struct spi_device *client)
 #endif /* #if NVT_TOUCH_ESD_PROTECT */
 
 #if BOOT_UPDATE_FIRMWARE
+	mutex_lock(&nvt_fw_lock);
+	nvt_fw_ready = false;
+	mutex_unlock(&nvt_fw_lock);
 	if (nvt_fwu_wq) {
 		cancel_delayed_work_sync(&ts->nvt_fwu_work);
 		destroy_workqueue(nvt_fwu_wq);
@@ -3496,6 +3421,7 @@ static int32_t nvt_ts_suspend(struct device *dev)
 #endif // WAKEUP_GESTURE
 
 	msleep(50);
+	ts->nvt_ts_load_state_check = 0;
 
 	mutex_unlock(&ts->lock);
 
@@ -3534,14 +3460,49 @@ static int32_t nvt_ts_suspend(struct device *dev)
 	return 0;
 }
 /* Kirby code for KIRBYU-3835  at 2024/7/25 start */
-void nvt_nvt_update_firmware_work(struct completion *load_fw_completion)
+static bool is_offmode(void)
 {
-	NVT_LOG("nvt_update_firmware,start\n");
-	ts->load_fw_completion = load_fw_completion;
-	queue_delayed_work(nvt_fwu_wq, &ts->nvt_fwu_work, msecs_to_jiffies(0));
-	NVT_LOG("nvt_update_firmware,end\n");
+	static struct device_node *np;
+	static bool offmode;
+	const char *bootargs = NULL;
+
+	if (np)
+		return offmode;
+	np = of_find_node_by_path("/chosen");
+	if (np) {
+		of_property_read_string(np, "bootargs", &bootargs);
+		if (!bootargs)
+			pr_err("%s: failed to get bootargs property\n", __func__);
+		else if (strstr(bootargs, "offmode.charge=1"))
+			offmode = true;
+	}
+	pr_err("offmode.charge=%d\n", offmode);
+	return offmode;
 }
-EXPORT_SYMBOL(nvt_nvt_update_firmware_work);
+
+void nvt_update_firmware_work(struct completion *load_fw_completion)
+{
+	if (!load_fw_completion) {
+		NVT_ERR("%s:  invalid load_fw_completion!\n", __func__);
+		return;
+	}
+	if (is_offmode()) {
+		NVT_LOG("System is in offmode charging!\n");
+		return;
+	}
+	mutex_lock(&nvt_fw_lock);
+	if (!nvt_fw_ready || !ts || !nvt_fwu_wq) {
+		NVT_ERR("touch FW worker is not ready\n");
+		complete_all(load_fw_completion);
+		mutex_unlock(&nvt_fw_lock);
+		return;
+	}
+	ts->load_fw_completion = load_fw_completion;
+	ts->nvt_ts_load_state_check = 2;
+	queue_delayed_work(nvt_fwu_wq, &ts->nvt_fwu_work, 0);
+	mutex_unlock(&nvt_fw_lock);
+}
+EXPORT_SYMBOL(nvt_update_firmware_work);
 /* Kirby code for KIRBYU-3835  at 2024/7/25 end */
 
 
@@ -3579,13 +3540,11 @@ static int32_t nvt_ts_resume(struct device *dev)
 	gpio_set_value(ts->reset_gpio, 1);
 #endif
 /* Kirby code for KIRBYU-3835  at 2024/7/25 start */
-/*
-	if (nvt_update_firmware(BOOT_UPDATE_FIRMWARE_NAME)) {
+	if (!ts->nvt_ts_load_state_check &&
+	    nvt_update_firmware(BOOT_UPDATE_FIRMWARE_NAME))
 		NVT_ERR("download firmware failed, ignore check fw state\n");
-	} else {
+	else
 		nvt_check_fw_reset_state(RESET_STATE_REK);
-	}
-*/
 /* Kirby code for KIRBYU-3835  at 2024/7/25 end */
 
 #if WAKEUP_GESTURE
@@ -3617,6 +3576,7 @@ static int32_t nvt_ts_resume(struct device *dev)
 #endif /* #if NVT_TOUCH_ESD_PROTECT */
 
 	bTouchIsAwake = 1;
+	ts->nvt_ts_load_state_check = 0;
 
 	mutex_unlock(&ts->lock);
 
@@ -3977,9 +3937,13 @@ return:
 static int32_t __init nvt_driver_init(void)
 {
 	int32_t ret = 0;
+#ifdef CONFIG_OF
+	struct device_node *node;
+#endif
 	int alloc_ret;
 	dev_t dev;
 	int cdev_err;
+	struct device *penraw_device;
 
 #ifdef BUILD_KIRBY_TOUCH
 	NVT_LOG("nvt_36523n start\n");
@@ -3988,13 +3952,6 @@ static int32_t __init nvt_driver_init(void)
 #endif
 
 /* Kirby code for KIRBYU-235 by liaoxg1 at 2024/4/26 start */
-	gpio_direction_input(DISP_ID_DET);
-	gpio_125 = gpio_get_value(DISP_ID_DET);
-	NVT_LOG("gpio_125 = %d", gpio_125);
-	if ((gpio_125 != 0) && (gpio_125!= 1)) {
-	    NVT_LOG("TP is not NVT\n");
-		return 0;
-	}
 /* Kirby code for KIRBYU-235 by liaoxg1 at 2024/4/26 end */
 	//---add spi driver---
 	ret = spi_register_driver(&nvt_spi_driver);
@@ -4002,6 +3959,16 @@ static int32_t __init nvt_driver_init(void)
 		NVT_ERR("failed to add spi driver");
 		goto err_driver;
 	}
+
+#ifdef CONFIG_OF
+	for_each_matching_node(node, nvt_match_table) {
+		if (of_device_is_available(node))
+			break;
+	}
+	if (!node)
+		return 0;
+	of_node_put(node);
+#endif
 
 	pen_report_num = 0;
 	pen_frame_no = 0;
@@ -4011,7 +3978,8 @@ static int32_t __init nvt_driver_init(void)
 	alloc_ret = alloc_chrdev_region(&dev, MINOR_NUMBER_START, NUMBER_MINOR_NUMBER, PENRAW_DRIVER_NAME);
 	if (alloc_ret != 0) {
 		printk(KERN_ERR "failed to alloc_chrdev_region()\n");
-		return -EINVAL;
+		ret = alloc_ret;
+		goto err_spi;
 	}
 
 	/* get one number from the not-assigend numbers */
@@ -4025,21 +3993,24 @@ static int32_t __init nvt_driver_init(void)
 	cdev_err = cdev_add(&penraw_char_dev, dev, NUMBER_MINOR_NUMBER);
 	if (cdev_err != 0) {
 		printk(KERN_ERR "failed to cdev_add()\n");
-		unregister_chrdev_region(dev, NUMBER_MINOR_NUMBER);
-		return -EINVAL;
+		ret = cdev_err;
+		goto err_region;
 	}
 
 	/* register a class */
-	penraw_char_dev_class = class_create(THIS_MODULE, PENRAW_DEVICE_NAME);
+	penraw_char_dev_class = class_create(PENRAW_DEVICE_NAME);
 	if (IS_ERR(penraw_char_dev_class)) {
 		printk(KERN_ERR "class_create()\n");
-		cdev_del(&penraw_char_dev);
-		unregister_chrdev_region(dev, NUMBER_MINOR_NUMBER);
-		return -EINVAL;
+		ret = PTR_ERR(penraw_char_dev_class);
+		goto err_cdev;
 	}
 
 	/* create "/sys/class/my_device/my_device" */
-	device_create(penraw_char_dev_class, NULL, MKDEV(major_number, 0), NULL, PENRAW_DEVICE_NAME);
+	penraw_device = device_create(penraw_char_dev_class, NULL, MKDEV(major_number, 0), NULL, PENRAW_DEVICE_NAME);
+	if (IS_ERR(penraw_device)) {
+		ret = PTR_ERR(penraw_device);
+		goto err_class;
+	}
 
 #ifdef BUILD_KIRBY_TOUCH
 	NVT_LOG("nvt_36523n finished\n");
@@ -4047,6 +4018,16 @@ static int32_t __init nvt_driver_init(void)
 	NVT_LOG("nvt_36532 start\n");
 #endif
 
+	return 0;
+
+err_class:
+	class_destroy(penraw_char_dev_class);
+err_cdev:
+	cdev_del(&penraw_char_dev);
+err_region:
+	unregister_chrdev_region(dev, NUMBER_MINOR_NUMBER);
+err_spi:
+	spi_unregister_driver(&nvt_spi_driver);
 err_driver:
 	return ret;
 }
@@ -4063,6 +4044,8 @@ static void __exit nvt_driver_exit(void)
 	dev_t dev = MKDEV(major_number, MINOR_NUMBER_START);
 
 	spi_unregister_driver(&nvt_spi_driver);
+	if (!penraw_char_dev_class)
+		return;
 	/* remove "/dev/lenovo_penraw */
 	device_destroy(penraw_char_dev_class, MKDEV(major_number, 0));
 

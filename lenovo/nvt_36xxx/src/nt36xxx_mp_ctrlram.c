@@ -85,8 +85,6 @@ static int32_t TestResult_PenRingX_DiffMax = 0;
 static int32_t TestResult_PenRingX_DiffMin = 0;
 static int32_t TestResult_PenRingY_DiffMax = 0;
 static int32_t TestResult_PenRingY_DiffMin = 0;
-static int32_t TestResult_Cap_Rawdata = 0;
-static int32_t TestResult_SPI_Comm = 0;
 
 static int32_t *RawData_Short = NULL;
 static int32_t *RawData_Open = NULL;
@@ -109,7 +107,7 @@ static int32_t *RawData_PenRingY_DiffMin = NULL;
 static int32_t *RawData_PenRingY_DiffMax = NULL;
 
 static struct proc_dir_entry *NVT_proc_selftest_entry = NULL;
-static struct proc_dir_entry *NVT_proc_android_touch_entry = NULL;
+
 static int8_t nvt_mp_test_result_printed = 0;
 static uint8_t fw_ver = 0;
 static uint16_t nvt_pid = 0;
@@ -1574,191 +1572,107 @@ Description:
 return:
 	n.a.
 *******************************************************/
-void print_selftest_result(int32_t TestResult, uint8_t RecordResult[], int32_t rawdata[], uint8_t x_len, uint8_t y_len)
+static void print_selftest_status(struct seq_file *m, int32_t result)
 {
-	int32_t i = 0;
-#if TOUCH_KEY_NUM > 0
-	int32_t k = 0;
-#endif /* #if TOUCH_KEY_NUM > 0 */
-
-	switch (TestResult) {
-		case 0:
-			nvt_mp_printf(" PASS.\n");
-			break;
-
-		case 1:
-			nvt_mp_printf(" ERROR! Read Data FAIL!\n");
-			break;
-
-		case -1:
-			nvt_mp_printf(" FAIL!\n");
-			nvt_mp_printf("RecordResult:\n");
-			for (i = 0; i < y_len; i++) {
-				if (!nvt_mp_test_result_printed)
-					nvt_print_result_log_in_one_line(RecordResult + i * x_len, x_len);
-				nvt_mp_printf("\n");
-			}
-#if TOUCH_KEY_NUM > 0
-			if (!nvt_mp_test_result_printed)
-				nvt_print_result_log_in_one_line(RecordResult + y_len * x_len, Key_Channel);
-			nvt_mp_printf("\n");
-#endif /* #if TOUCH_KEY_NUM > 0 */
-			nvt_mp_printf("ReadData:\n");
-			if (!nvt_mp_test_result_printed)
-				nvt_print_data_log_in_one_line(rawdata + i * x_len, x_len);
-#if TOUCH_KEY_NUM > 0
-			if (!nvt_mp_test_result_printed)
-				nvt_print_data_log_in_one_line(rawdata + y_len * x_len, Key_Channel);
-			nvt_mp_printf("\n");
-#endif /* #if TOUCH_KEY_NUM > 0 */
-			break;
-	}
-	nvt_mp_printf("\n");
+	if (result == 0)
+		nvt_mp_seq_printf(m, " PASS.\n");
+	else if (result == 1)
+		nvt_mp_seq_printf(m, " ERROR! Read Data FAIL!\n");
+	else
+		nvt_mp_seq_printf(m, " FAIL!\n");
 }
 
-void seq_print_selftest_result(struct seq_file *m, int32_t TestResult, uint8_t RecordResult[],
-			   int32_t rawdata[], uint8_t x_len, uint8_t y_len)
+void print_selftest_result(struct seq_file *m, int32_t result,
+			 uint8_t records[], int32_t rawdata[],
+			 uint8_t x_len, uint8_t y_len)
 {
-	int32_t i = 0;
-	int32_t j = 0;
-	int32_t iArrayIndex = 0;
+	int32_t i, j;
 
-	if (m) {
-		nvt_mp_seq_printf(m, "ReadData:\n");
+	print_selftest_status(m, result);
+	if (result == -1) {
+		nvt_mp_seq_printf(m, "RecordResult:\n");
 		for (i = 0; i < y_len; i++) {
-			for (j = 0; j < x_len; j++) {
-				iArrayIndex = i * x_len + j;
-				seq_printf(m, "%6d,", rawdata[iArrayIndex]);
-			}
+			for (j = 0; j < x_len; j++)
+				seq_printf(m, "0x%02X, ", records[i * x_len + j]);
+			if (!nvt_mp_test_result_printed)
+				nvt_print_result_log_in_one_line(records + i * x_len, x_len);
 			nvt_mp_seq_printf(m, "\n");
 		}
-#if TOUCH_KEY_NUM > 0
-		for (k = 0; k < Key_Channel; k++) {
-			iArrayIndex = y_len * x_len + k;
-			seq_printf(m, "%6d,", rawdata[iArrayIndex]);
-		}
-		nvt_mp_seq_printf(m, "\n");
-#endif /* #if TOUCH_KEY_NUM > 0 */
 	}
- }
+	if (result == 0 || result == -1) {
+		nvt_mp_seq_printf(m, "ReadData:\n");
+		for (i = 0; i < y_len; i++) {
+			for (j = 0; j < x_len; j++)
+				seq_printf(m, "%6d,", rawdata[i * x_len + j]);
+			if (!nvt_mp_test_result_printed)
+				nvt_print_data_log_in_one_line(rawdata + i * x_len, x_len);
+			nvt_mp_seq_printf(m, "\n");
+		}
+	}
+	nvt_mp_seq_printf(m, "\n");
+}
 
-/*******************************************************
-Description:
-	Novatek touchscreen self-test sequence print show
-	function.
-
-return:
-	Executive outcomes. 0---succeed.
-*******************************************************/
+/* TB323FU factory ABI: only emit the five-pass bitmap on a full pass. */
 static int32_t c_show_selftest(struct seq_file *m, void *v)
 {
-	char test_result_bmp[5] = { 0 };
+	bool passed = !TestResult_Short && !TestResult_Open &&
+		!TestResult_FW_Rawdata && !TestResult_FW_CC && !TestResult_Noise;
 
-	NVT_LOG("++\n");
-
-	nvt_mp_printf("FW Version: %d, NVT PID: 0x%04X\n\n", fw_ver, nvt_pid);
-	nvt_mp_printf("SPI communication test");
-	if (TestResult_SPI_Comm == 0) {
-		test_result_bmp[0] = 'P';
-		nvt_mp_printf("Pass!\n");
+	if (ts->pen_support)
+		passed = passed && !TestResult_Pen_FW_Raw && !TestResult_Pen_Noise;
+	if (passed) {
+		nvt_mp_seq_printf(m, "0P-1P-2P-3P-4P\n\n");
+		nvt_mp_seq_printf(m, "Selftest PASS.\n\n");
 	} else {
-		test_result_bmp[0] = 'F';
-		nvt_mp_printf("Fail!\n");
+		nvt_mp_seq_printf(m, "Selftest FAIL!\n\n");
 	}
-
-	nvt_mp_printf("Short Test");
-	if (TestResult_Short == 0) {
-		test_result_bmp[3] = 'P';
-		nvt_mp_printf("Pass!\n");
-	} else {
-		test_result_bmp[3] = 'F';
-		nvt_mp_printf("Fail!\n");
-	}
-	print_selftest_result(TestResult_Short, RecordResult_Short,
-			      RawData_Short, X_Channel, Y_Channel);
-	nvt_mp_printf("Open Test");
-	if (TestResult_Open == 0) {
-		test_result_bmp[2] = 'P';
-		nvt_mp_printf("Pass!\n");
-	} else {
-		test_result_bmp[2] = 'F';
-		nvt_mp_printf("Fail!\n");
-	}
-	print_selftest_result(TestResult_Open, RecordResult_Open,
-			      RawData_Open, X_Channel, Y_Channel);
-	nvt_mp_printf("FW Rawdata Test");
-	if (TestResult_Cap_Rawdata == 0) {
-		test_result_bmp[1] = 'P';
-		nvt_mp_printf("Pass!\n");
-		print_selftest_result(TestResult_FW_Rawdata, RecordResult_FW_Rawdata,
-				      RawData_FW_Rawdata, X_Channel, Y_Channel);
-	} else { // TestResult_Cap_Rawdata is -1
-		test_result_bmp[1] = 'F';
-		nvt_mp_printf("FAIL!\n");
-		if (TestResult_FW_Rawdata == -1) {
-			nvt_mp_printf("FW Rawdata");
-			print_selftest_result(TestResult_FW_Rawdata, RecordResult_FW_Rawdata,
-					      RawData_FW_Rawdata, X_Channel, Y_Channel);
-		}
-		if (TestResult_FW_CC == -1) {
-			nvt_mp_printf("FW CC");
-			print_selftest_result(TestResult_FW_CC, RecordResult_FW_CC,
-					      RawData_FW_CC, X_Channel, Y_Channel);
-		}
-	}
-	nvt_mp_printf("Noise Test");
-	if (TestResult_Noise == 0) {
-		test_result_bmp[4] = 'P';
-		print_selftest_result(TestResult_FW_DiffMax, RecordResult_FW_DiffMax,
-					  RawData_Diff_Max, X_Channel, Y_Channel);	
-	} else { // TestResult_Noise is -1
-		test_result_bmp[4] = 'F';
-		nvt_mp_printf(" FAIL!\n");
-		if (TestResult_FW_DiffMax == -1) {
-			nvt_mp_printf("FW Diff Max");
-			print_selftest_result(TestResult_FW_DiffMax, RecordResult_FW_DiffMax,
-						  RawData_Diff_Max, X_Channel, Y_Channel);
-		}
-		if (TestResult_FW_DiffMin == -1) {
-			nvt_mp_printf("FW Diff Min");
-			print_selftest_result(TestResult_FW_DiffMin, RecordResult_FW_DiffMin,
-						  RawData_Diff_Min, X_Channel, Y_Channel);
-		}
-	}
-
-	nvt_mp_seq_printf(m, "0%c-1%c-2%c-3%c-4%c\n",
-		test_result_bmp[0],
-		test_result_bmp[1],
-		test_result_bmp[2],
-		test_result_bmp[3],
-		test_result_bmp[4]);
-
 	nvt_mp_seq_printf(m, "FW Version: %d, NVT PID: 0x%04X\n\n", fw_ver, nvt_pid);
 	nvt_mp_seq_printf(m, "Short Test");
-	seq_print_selftest_result(m, TestResult_Short, RecordResult_Short,
-					RawData_Short, X_Channel, Y_Channel);
+	print_selftest_result(m, TestResult_Short, RecordResult_Short, RawData_Short, X_Channel, Y_Channel);
 	nvt_mp_seq_printf(m, "Open Test");
-	seq_print_selftest_result(m, TestResult_Open, RecordResult_Open,
-					RawData_Open, X_Channel, Y_Channel);
+	print_selftest_result(m, TestResult_Open, RecordResult_Open, RawData_Open, X_Channel, Y_Channel);
 	nvt_mp_seq_printf(m, "FW Rawdata Test");
-	seq_print_selftest_result(m, TestResult_FW_Rawdata, RecordResult_FW_Rawdata,
-					RawData_FW_Rawdata, X_Channel, Y_Channel);
-	nvt_mp_seq_printf(m, "Noise Test\n");
-	nvt_mp_seq_printf(m, "FW Diff Max");
-	seq_print_selftest_result(m, TestResult_FW_DiffMax, RecordResult_FW_DiffMax,
-					RawData_Diff_Max, X_Channel, Y_Channel);
-	nvt_mp_seq_printf(m, "FW Diff Min");
-	seq_print_selftest_result(m, TestResult_FW_DiffMin, RecordResult_FW_DiffMin,
-					RawData_Diff_Min, X_Channel, Y_Channel);
+	print_selftest_result(m, TestResult_FW_Rawdata, RecordResult_FW_Rawdata, RawData_FW_Rawdata, X_Channel, Y_Channel);
 	nvt_mp_seq_printf(m, "FW CC Test");
-	seq_print_selftest_result(m, TestResult_FW_CC, RecordResult_FW_CC,
-					RawData_FW_CC, X_Channel, Y_Channel);
-
+	print_selftest_result(m, TestResult_FW_CC, RecordResult_FW_CC, RawData_FW_CC, X_Channel, Y_Channel);
+	nvt_mp_seq_printf(m, "Noise Test");
+	print_selftest_status(m, TestResult_Noise);
+	nvt_mp_seq_printf(m, "FW Diff Max");
+	print_selftest_result(m, TestResult_FW_DiffMax, RecordResult_FW_DiffMax, RawData_Diff_Max, X_Channel, Y_Channel);
+	nvt_mp_seq_printf(m, "FW Diff Min");
+	print_selftest_result(m, TestResult_FW_DiffMin, RecordResult_FW_DiffMin, RawData_Diff_Min, X_Channel, Y_Channel);
+	if (ts->pen_support) {
+		nvt_mp_seq_printf(m, "Pen FW Rawdata Test");
+		print_selftest_status(m, TestResult_Pen_FW_Raw);
+		nvt_mp_seq_printf(m, "Pen Tip X Raw");
+		print_selftest_result(m, TestResult_PenTipX_Raw, RecordResult_PenTipX_Raw, RawData_PenTipX_Raw, ts->x_num, ts->y_gang_num);
+		nvt_mp_seq_printf(m, "Pen Tip Y Raw");
+		print_selftest_result(m, TestResult_PenTipY_Raw, RecordResult_PenTipY_Raw, RawData_PenTipY_Raw, ts->x_gang_num, ts->y_num);
+		nvt_mp_seq_printf(m, "Pen Ring X Raw");
+		print_selftest_result(m, TestResult_PenRingX_Raw, RecordResult_PenRingX_Raw, RawData_PenRingX_Raw, ts->x_num, ts->y_gang_num);
+		nvt_mp_seq_printf(m, "Pen Ring Y Raw");
+		print_selftest_result(m, TestResult_PenRingY_Raw, RecordResult_PenRingY_Raw, RawData_PenRingY_Raw, ts->x_gang_num, ts->y_num);
+		nvt_mp_seq_printf(m, "Pen Noise Test");
+		print_selftest_status(m, TestResult_Pen_Noise);
+		nvt_mp_seq_printf(m, "Pen Tip X Diff Max");
+		print_selftest_result(m, TestResult_PenTipX_DiffMax, RecordResult_PenTipX_DiffMax, RawData_PenTipX_DiffMax, ts->x_num, ts->y_gang_num);
+		nvt_mp_seq_printf(m, "Pen Tip X Diff Min");
+		print_selftest_result(m, TestResult_PenTipX_DiffMin, RecordResult_PenTipX_DiffMin, RawData_PenTipX_DiffMin, ts->x_num, ts->y_gang_num);
+		nvt_mp_seq_printf(m, "Pen Tip Y Diff Max");
+		print_selftest_result(m, TestResult_PenTipY_DiffMax, RecordResult_PenTipY_DiffMax, RawData_PenTipY_DiffMax, ts->x_gang_num, ts->y_num);
+		nvt_mp_seq_printf(m, "Pen Tip Y Diff Min");
+		print_selftest_result(m, TestResult_PenTipY_DiffMin, RecordResult_PenTipY_DiffMin, RawData_PenTipY_DiffMin, ts->x_gang_num, ts->y_num);
+		nvt_mp_seq_printf(m, "Pen Ring X Diff Max");
+		print_selftest_result(m, TestResult_PenRingX_DiffMax, RecordResult_PenRingX_DiffMax, RawData_PenRingX_DiffMax, ts->x_num, ts->y_gang_num);
+		nvt_mp_seq_printf(m, "Pen Ring X Diff Min");
+		print_selftest_result(m, TestResult_PenRingX_DiffMin, RecordResult_PenRingX_DiffMin, RawData_PenRingX_DiffMin, ts->x_num, ts->y_gang_num);
+		nvt_mp_seq_printf(m, "Pen Ring Y Diff Max");
+		print_selftest_result(m, TestResult_PenRingY_DiffMax, RecordResult_PenRingY_DiffMax, RawData_PenRingY_DiffMax, ts->x_gang_num, ts->y_num);
+		nvt_mp_seq_printf(m, "Pen Ring Y Diff Min");
+		print_selftest_result(m, TestResult_PenRingY_DiffMin, RecordResult_PenRingY_DiffMin, RawData_PenRingY_DiffMin, ts->x_gang_num, ts->y_num);
+	}
 	nvt_mp_test_result_printed = 1;
-
-	NVT_LOG("--\n");
-
-    return 0;
+	return 0;
 }
 
 /*******************************************************
@@ -1841,10 +1755,7 @@ static int32_t nvt_selftest_open(struct inode *inode, struct file *file)
 {
 	struct device_node *np = ts->client->dev.of_node;
 	unsigned char mpcriteria[32] = { 0 };	//novatek-mp-criteria-default
-	uint8_t buf[8] = { 0 };
 
-	TestResult_SPI_Comm = 0;
-	TestResult_Cap_Rawdata = 0;
 	TestResult_Short = 0;
 	TestResult_Open = 0;
 	TestResult_FW_Rawdata = 0;
@@ -1878,19 +1789,6 @@ static int32_t nvt_selftest_open(struct inode *inode, struct file *file)
 #if NVT_TOUCH_ESD_PROTECT
 	nvt_esd_check_enable(false);
 #endif /* #if NVT_TOUCH_ESD_PROTECT */
-
-	//---SPI Communication Test---
-	buf[0] = 0x00;
-	if (CTP_SPI_READ(ts->client, buf, 2) < 0) {
-		TestResult_SPI_Comm = -1;
-		TestResult_Short = -1;
-		TestResult_Open = -1;
-		TestResult_Cap_Rawdata = -1;
-		TestResult_Noise = -1;
-		goto err_nvt_spi_read;
-	} else {
-		TestResult_SPI_Comm = 0;
-	}
 
 	//---Download MP FW---
 	if (nvt_update_firmware(MP_UPDATE_FIRMWARE_NAME) < 0) {
@@ -1976,16 +1874,6 @@ static int32_t nvt_selftest_open(struct inode *inode, struct file *file)
 	} else {
 		TestResult_FW_CC = RawDataTest_SinglePoint_Sub(RawData_FW_CC, RecordResult_FW_CC, X_Channel, Y_Channel,
 											PS_Config_Lmt_FW_CC_P, PS_Config_Lmt_FW_CC_N);
-	}
-
-	if ((TestResult_FW_Rawdata == 1) || (TestResult_FW_CC == 1)) {
-		TestResult_Cap_Rawdata = 1;
-		goto failed_out;
-	} else {
-		if ((TestResult_FW_Rawdata == -1) || (TestResult_FW_CC == -1))
-			TestResult_Cap_Rawdata = -1;
-		else
-			TestResult_Cap_Rawdata = 0;
 	}
 
 	if (ts->pen_support) {
@@ -2098,7 +1986,6 @@ static int32_t nvt_selftest_open(struct inode *inode, struct file *file)
 	//---Download Normal FW---
 	nvt_update_firmware(BOOT_UPDATE_FIRMWARE_NAME);
 
-err_nvt_spi_read:
 	mutex_unlock(&ts->lock);
 
 	NVT_LOG("--\n");
@@ -2460,14 +2347,9 @@ return:
 *******************************************************/
 int32_t nvt_mp_proc_init(void)
 {
-	NVT_proc_android_touch_entry = proc_mkdir("android_touch", NULL);
-	if (NVT_proc_android_touch_entry == NULL) {
-		NVT_ERR("create /proc/androdi_touch Failed!\n");
-		return -1;
-	}
-	NVT_proc_selftest_entry = proc_create(NVT_SELFTEST, 0664, NVT_proc_android_touch_entry,&nvt_selftest_fops);
+	NVT_proc_selftest_entry = proc_create(NVT_SELFTEST, 0444, NULL,&nvt_selftest_fops);
 	if (NVT_proc_selftest_entry == NULL) {
-		NVT_ERR("create /proc/android_touch/self_test Failed!\n");
+		NVT_ERR("create /proc/nvt_selftest Failed!\n");
 		return -1;
 	} else {
 		if(nvt_mp_buffer_init()) {
@@ -2475,7 +2357,7 @@ int32_t nvt_mp_proc_init(void)
 			return -1;
 		}
 		else {
-			NVT_LOG("create /proc/android_touch/self_test Succeeded!\n");
+			NVT_LOG("create /proc/nvt_selftest Succeeded!\n");
 		}
 		return 0;
 	}
