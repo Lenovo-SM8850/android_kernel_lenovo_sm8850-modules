@@ -1577,6 +1577,10 @@ int aw882xx_dev_probe(struct aw_device *aw_dev)
 
 int aw882xx_dev_remove(struct aw_device *aw_dev)
 {
+	mutex_lock(&g_dev_lock);
+	list_del_init(&aw_dev->list_node);
+	mutex_unlock(&g_dev_lock);
+
 	aw882xx_monitor_deinit(&aw_dev->monitor_desc);
 	aw882xx_cali_deinit(&aw_dev->cali_desc);
 	if (aw_dev->channel == 0)
