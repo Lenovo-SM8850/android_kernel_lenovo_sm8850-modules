@@ -7,6 +7,7 @@
 #include <linux/module.h>
 #include <cam_sensor_cmn_header.h>
 #include "cam_sensor_core.h"
+#include "cam_actuator_core.h"
 #include "cam_sensor_util.h"
 #include "cam_soc_util.h"
 #include "cam_trace.h"
@@ -2095,6 +2096,10 @@ int cam_sensor_power_up(struct cam_sensor_ctrl_t *s_ctrl)
 		s_ctrl->io_master_info.qup_client->i3c_wait_for_hotjoin = true;
 	}
 
+	if (!s_ctrl->haptic_power_claimed) {
+		cam_actuator_haptic_sensor_busy(true);
+		s_ctrl->haptic_power_claimed = true;
+	}
 	rc = cam_sensor_core_power_up(power_info, soc_info, i3c_probe_completion);
 	if (rc < 0) {
 		CAM_ERR(CAM_SENSOR, "core power up failed:%d", rc);
@@ -2114,6 +2119,10 @@ cci_failure:
 		CAM_ERR(CAM_SENSOR, "power down failure");
 
 powerup_failure:
+	if (s_ctrl->haptic_power_claimed) {
+		cam_actuator_haptic_sensor_busy(false);
+		s_ctrl->haptic_power_claimed = false;
+	}
 	if (s_ctrl->aon_camera_id != NOT_AON_CAM) {
 		if (cam_sensor_util_aon_ops(false,
 			s_ctrl->sensordata->subdev_id[SUB_MODULE_CSIPHY]))
@@ -2183,6 +2192,10 @@ int cam_sensor_power_down(struct cam_sensor_ctrl_t *s_ctrl)
 	}
 
 	camera_io_release(&(s_ctrl->io_master_info));
+	if (s_ctrl->haptic_power_claimed) {
+		cam_actuator_haptic_sensor_busy(false);
+		s_ctrl->haptic_power_claimed = false;
+	}
 
 	return rc;
 }
