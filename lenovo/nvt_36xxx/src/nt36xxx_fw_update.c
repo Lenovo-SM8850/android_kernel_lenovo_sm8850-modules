@@ -636,9 +636,16 @@ static void nvt_read_bld_hw_crc(void)
 	nvt_set_page(ts->mmap->BLD_ILM_DLM_CRC_ADDR);
 	buf[0] = ts->mmap->BLD_ILM_DLM_CRC_ADDR & 0x7F;
 	buf[1] = 0x00;
-	CTP_SPI_READ(ts->client, buf, 2);
-	NVT_ERR("crc_done = %d, ilm_crc_flag = %d, dlm_crc_flag = %d\n",
-			(buf[1] >> 2) & 0x01, (buf[1] >> 0) & 0x01, (buf[1] >> 1) & 0x01);
+	if (ts->use_gcm) {
+		CTP_SPI_READ(ts->client, buf, 3);
+		NVT_ERR("0x%02x 0x%02x, crc_done = %d, ilm_crc_flag = %d, dlm_crc_flag = %d\n",
+			buf[1], buf[2], (buf[2] >> 3) & 1,
+			(buf[1] >> 4) & 1, (buf[1] >> 5) & 1);
+	} else {
+		CTP_SPI_READ(ts->client, buf, 2);
+		NVT_ERR("0x%02x, crc_done = %d, ilm_crc_flag = %d, dlm_crc_flag = %d\n",
+			buf[1], (buf[1] >> 2) & 1, buf[1] & 1, (buf[1] >> 1) & 1);
+	}
 
 	/* ILM CRC */
 	nvt_set_page(ts->mmap->G_ILM_CHECKSUM_ADDR);
