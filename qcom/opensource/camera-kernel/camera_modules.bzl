@@ -73,6 +73,11 @@ def _define_module(target, variant):
             modules_label("qcom/opensource/securemsm-kernel:{}_smmu_proxy_dlkm".format(tv)),
 			modules_label("qcom/opensource/mmrm-driver:{}_mmrm_driver".format(tv)),
         ])
+    if tv == "canoe_perf":
+        deps.extend([
+            modules_label("lenovo/haptic:canoe_perf_haptic"),
+            modules_label("lenovo/haptic:haptic_headers"),
+        ])
     ddk_module(
         name = "{}_camera".format(tv),
         out = "camera.ko",
@@ -294,6 +299,7 @@ def _define_module(target, variant):
         },
         copts = ["-include", "$(location :camera_banner)"],
         deps = base_deps + deps,
+        local_defines = ["CONFIG_LENOVO_CAMERA_HAPTIC=1"] if tv == "canoe_perf" else [],
         kconfig = "Kconfig",
         defconfig = "{}_defconfig_generated".format(tv),
         kernel_build = kernel_build,
