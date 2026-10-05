@@ -5,5 +5,6 @@ kernel_module_group(
     name = "canoe_perf_modules",
     srcs = [
         "//vendor/lenovo/sm8850-modules/lenovo/aw882xx:canoe_perf_aw882xx",
+        "//vendor/lenovo/sm8850-modules/lenovo/haptic:canoe_perf_haptic",
     ],
 )
