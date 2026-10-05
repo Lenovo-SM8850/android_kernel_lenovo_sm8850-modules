@@ -46,6 +46,7 @@
 #endif
 
 #include <linux/jiffies.h>
+#include <linux/lenovo_lcd_touch.h>
 #include <linux/string.h>
 #include <linux/cdev.h>
 #include <linux/uaccess.h>
@@ -119,6 +120,11 @@ bool nvt_gesture_flag = false;
 EXPORT_SYMBOL(nvt_gesture_flag);
 
 void nvt_update_firmware_work(struct completion *load_fw_completion);
+static const struct lenovo_lcd_touch_ops nvt_lcd_touch_ops = {
+	.owner = THIS_MODULE,
+	.update_firmware = nvt_update_firmware_work,
+	.gesture_flag = &nvt_gesture_flag,
+};
 #endif
 struct nvt_ts_data *ts;
 static DEFINE_MUTEX(nvt_fw_lock);
@@ -2628,6 +2634,7 @@ return:
 static int32_t nvt_ts_probe(struct spi_device *client)
 {
 	int32_t ret = 0;
+	bool lcd_registered = false;
 #if IS_ENABLED(NVT_DRM_PANEL_NOTIFY) || IS_ENABLED(NVT_QCOM_PANEL_EVENT_NOTIFY)
 	struct device_node *dp = NULL;
 #endif
@@ -3033,6 +3040,10 @@ static int32_t nvt_ts_probe(struct spi_device *client)
 #else
 	NVT_LOG("nt36532 probe end\n");
 #endif
+	ret = lenovo_lcd_register_touch(&nvt_lcd_touch_ops);
+	if (ret)
+		goto err_lcd_touch_register;
+	lcd_registered = true;
 #if IS_ENABLED(NVT_PLATFORM_DRIVER)
 	/* ts platform deivce */
 	ret = nvt_ts_platform_device_init();
@@ -3060,6 +3071,10 @@ err_platform_device_init_failed:
 	kfree(nvt_ts_pdev);
 	nvt_ts_pdev = NULL;
 #endif
+
+err_lcd_touch_register:
+	if (lcd_registered)
+		lenovo_lcd_unregister_touch(&nvt_lcd_touch_ops);
 
 #if IS_ENABLED(NVT_DRM_PANEL_NOTIFY)
 	if (active_panel) {
@@ -3193,6 +3208,7 @@ return:
 *******************************************************/
 static void nvt_ts_remove(struct spi_device *client)
 {
+	lenovo_lcd_unregister_touch(&nvt_lcd_touch_ops);
 	NVT_LOG("Removing driver...\n");
 
 #if IS_ENABLED(NVT_PLATFORM_DRIVER)
@@ -3299,6 +3315,7 @@ static void nvt_ts_remove(struct spi_device *client)
 
 static void nvt_ts_shutdown(struct spi_device *client)
 {
+	lenovo_lcd_unregister_touch(&nvt_lcd_touch_ops);
 	NVT_LOG("Shutdown driver...\n");
 
 	nvt_irq_enable(false);
