@@ -78,6 +78,10 @@ def _define_target_modules(target, variant, registry, modules, product = None, c
         srcs = _get_module_srcs(module, options)
         deps = headers + [dep_formatter(dep) for dep in module.deps]
 
+        secondary_fsa = target == "canoe" and variant == "perf" and module.name == "mbhc_dlkm"
+        if secondary_fsa:
+            deps.append("//vendor/lenovo/sm8850-modules/lenovo/fsa4480_sub:canoe_perf_fsa4480_sub")
+
         if not srcs:
             continue
 
@@ -87,7 +91,8 @@ def _define_target_modules(target, variant, registry, modules, product = None, c
             srcs = srcs,
             out = "{}.ko".format(module.name),
             deps = deps,
-            local_defines = options.keys(),
+            local_defines = options.keys() + (["CONFIG_QCOM_FSA4480_SUB_I2C_MODULE=1"]
+                if secondary_fsa else []),
         )
 
         submodule_rules.append(rule_name)
