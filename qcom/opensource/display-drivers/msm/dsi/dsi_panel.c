@@ -13,6 +13,7 @@
 #include <video/mipi_display.h>
 
 #include "dsi_panel.h"
+#include "dsi_lenovo.h"
 #include "dsi_ctrl_hw.h"
 #include "dsi_parser.h"
 #include "sde_dbg.h"
@@ -61,6 +62,8 @@ static int isl97900_led_event(struct device_node *node, enum isl_function event,
 #define MIN_PREFILL_LINES      40
 #define RSCC_MODE_THRESHOLD_TIME_US 40
 #define DCS_COMMAND_THRESHOLD_TIME_US 40
+
+static DECLARE_COMPLETION(load_fw_completion);
 
 static void dsi_dce_prepare_pps_header(char *buf, u32 pps_delay_ms)
 {
@@ -480,6 +483,14 @@ int dsi_panel_power_on(struct dsi_panel *panel, bool is_cont_splash)
 		goto error_disable_vregs;
 	}
 
+	if (panel->lenovo_baldur) {
+		usleep_range(2000, 2100);
+		rc = bias_enable(true);
+		if (rc)
+			DSI_ERR("[%s] failed to set bias, rc=%d\n", panel->name, rc);
+		usleep_range(5000, 5100);
+	}
+
 	/* For HFI continuous splash case - avoid panel-reset GPIO */
 	if (is_cont_splash && panel->disp_op == MSM_DISP_OP_HFI) {
 		DSI_DEBUG("[%s] skipping panel reset in hfi path with cont-splash\n", panel->name);
@@ -491,6 +502,8 @@ int dsi_panel_power_on(struct dsi_panel *panel, bool is_cont_splash)
 		}
 	}
 
+	if (panel->lenovo_baldur)
+		nvt_update_firmware_work(&load_fw_completion);
 	goto exit;
 
 error_disable_gpio:
@@ -518,12 +531,23 @@ int dsi_panel_power_off(struct dsi_panel *panel)
 		return rc;
 	}
 
+	if (panel->lenovo_baldur) {
+		init_completion(&load_fw_completion);
+		usleep_range(10000, 10100);
+		if (nvt_gesture_flag)
+			return 0;
+	}
+
 	if (gpio_is_valid(panel->reset_config.disp_en_gpio))
 		gpio_set_value(panel->reset_config.disp_en_gpio, 0);
+	if (panel->lenovo_baldur)
+		usleep_range(15000, 15100);
 
 	if (gpio_is_valid(panel->reset_config.reset_gpio) &&
 					!panel->reset_gpio_always_on)
 		gpio_set_value(panel->reset_config.reset_gpio, 0);
+	if (panel->lenovo_baldur)
+		usleep_range(5000, 5100);
 
 	if (gpio_is_valid(panel->reset_config.lcd_mode_sel_gpio))
 		gpio_set_value(panel->reset_config.lcd_mode_sel_gpio, 0);
@@ -533,6 +557,12 @@ int dsi_panel_power_off(struct dsi_panel *panel)
 		if (rc)
 			DSI_WARN("set dir for panel test gpio failed rc=%d\n",
 				 rc);
+	}
+
+	if (panel->lenovo_baldur) {
+		rc = bias_enable(false);
+		if (rc)
+			DSI_ERR("[%s] failed to set bias, rc=%d\n", panel->name, rc);
 	}
 
 	rc = dsi_panel_set_pinctrl_state(panel, false, false);
@@ -545,6 +575,18 @@ int dsi_panel_power_off(struct dsi_panel *panel)
 	if (rc)
 		DSI_ERR("[%s] failed to enable vregs, rc=%d\n",
 				panel->name, rc);
+
+	if (panel->lenovo_baldur) {
+		usleep_range(5000, 5100);
+		if (!IS_ERR_OR_NULL(panel->pinctrl.pinctrl) &&
+		    !IS_ERR_OR_NULL(panel->pinctrl.iovdd_disable)) {
+			rc = pinctrl_select_state(panel->pinctrl.pinctrl,
+				panel->pinctrl.iovdd_disable);
+			if (rc)
+				DSI_ERR("[%s] failed to set iovdd_disable pinctrl, rc=%d\n",
+					panel->name, rc);
+		}
+	}
 
 	return rc;
 }
@@ -665,6 +707,21 @@ static int dsi_panel_pinctrl_init(struct dsi_panel *panel)
 	if (IS_ERR_OR_NULL(panel->pinctrl.pwm_pin)) {
 		panel->pinctrl.pwm_pin = NULL;
 		DSI_DEBUG("failed to get pinctrl pwm_pin");
+	}
+
+	if (panel->lenovo_baldur) {
+		panel->pinctrl.iovdd_enable =
+			pinctrl_lookup_state(panel->pinctrl.pinctrl, "iovdd_enable");
+		if (IS_ERR_OR_NULL(panel->pinctrl.iovdd_enable)) {
+			panel->pinctrl.iovdd_enable = NULL;
+			DSI_ERR("failed to get pinctrl iovdd_enable");
+		}
+		panel->pinctrl.iovdd_disable =
+			pinctrl_lookup_state(panel->pinctrl.pinctrl, "iovdd_disable");
+		if (IS_ERR_OR_NULL(panel->pinctrl.iovdd_disable)) {
+			panel->pinctrl.iovdd_disable = NULL;
+			DSI_ERR("failed to get pinctrl iovdd_disable");
+		}
 	}
 
 	panel->pinctrl.cur_state = NULL;
@@ -807,6 +864,9 @@ int dsi_panel_set_backlight(struct dsi_panel *panel, u32 bl_lvl)
 		rc = dsi_panel_update_backlight(panel, bl_lvl);
 		break;
 	case DSI_BACKLIGHT_EXTERNAL:
+		/* Stock writes zero after OFF commands in dsi_panel_disable(). */
+		if (panel->lenovo_baldur && bl_lvl)
+			bl_set_level(bl_lvl);
 		break;
 	case DSI_BACKLIGHT_PWM:
 		rc = dsi_panel_update_pwm_backlight(panel, bl_lvl);
@@ -2111,6 +2171,7 @@ static int dsi_panel_parse_dfps_caps(struct dsi_panel *panel)
 	struct dsi_parser_utils *utils = &panel->utils;
 	const char *name = panel->name;
 	const char *type;
+	struct device_node *timings, *child;
 	u32 i;
 
 	supported = utils->read_bool(utils->data,
@@ -2136,6 +2197,8 @@ static int dsi_panel_parse_dfps_caps(struct dsi_panel *panel)
 		dfps_caps->type = DSI_DFPS_IMMEDIATE_HFP;
 	} else if (!strcmp(type, "dfps_immediate_porch_mode_vfp")) {
 		dfps_caps->type = DSI_DFPS_IMMEDIATE_VFP;
+	} else if (panel->lenovo_baldur && !strcmp(type, "dfps_custom")) {
+		dfps_caps->type = DSI_DFPS_CUSTOM;
 	} else {
 		DSI_ERR("[%s] dfps type is not recognized\n", name);
 		rc = -EINVAL;
@@ -2165,6 +2228,43 @@ static int dsi_panel_parse_dfps_caps(struct dsi_panel *panel)
 		DSI_ERR("[%s] dfps refresh rate list parse failed\n", name);
 		rc = -EINVAL;
 		goto error;
+	}
+	if (dfps_caps->type == DSI_DFPS_CUSTOM) {
+		timings = utils->get_child_by_name(utils->data, "qcom,dfps-timings");
+		if (!timings && !panel->host_config.ext_bridge_mode) {
+			DSI_ERR("no dfps timing nodes defined\n");
+			return -EINVAL;
+		}
+		if (!utils->get_child_count(timings) ||
+		    utils->get_child_count(timings) != dfps_caps->dfps_list_len) {
+			DSI_ERR("invalid count of dtiming node\n");
+			return -EINVAL;
+		}
+		dfps_caps->dfps_timings = kcalloc(dfps_caps->dfps_list_len,
+				sizeof(*dfps_caps->dfps_timings), GFP_KERNEL);
+		if (!dfps_caps->dfps_timings)
+			return -ENOMEM;
+		i = 0;
+		dsi_for_each_child_node(timings, child) {
+			struct dsi_dfps_timing *t = &dfps_caps->dfps_timings[i];
+			bool all_failed = true;
+
+			/* Stock only rejects a first node when every read fails. */
+			all_failed &= !!utils->read_u32(child, "hfp", &t->hfp);
+			all_failed &= !!utils->read_u32(child, "hbp", &t->hbp);
+			all_failed &= !!utils->read_u32(child, "hsa", &t->hsa);
+			all_failed &= !!utils->read_u32(child, "vfp", &t->vfp);
+			all_failed &= !!utils->read_u32(child, "vbp", &t->vbp);
+			all_failed &= !!utils->read_u32(child, "vsa", &t->vsa);
+			all_failed &= !!utils->read_u32(child, "fps", &t->fps);
+			if (!i && all_failed) {
+				DSI_ERR("invalid dtiming nodes\n");
+				kfree(dfps_caps->dfps_timings);
+				dfps_caps->dfps_timings = NULL;
+				return -EINVAL;
+			}
+			i++;
+		}
 	}
 	dfps_caps->dfps_support = true;
 
@@ -4318,13 +4418,12 @@ static int dsi_panel_parse_esd_config(struct dsi_panel *panel)
 		} else if (!strcmp(string, "reg_read")) {
 			esd_config->status_mode = ESD_MODE_REG_READ;
 		} else if (!strcmp(string, "te_signal_check")) {
-			if (panel->panel_mode == DSI_OP_CMD_MODE) {
-				esd_config->status_mode = ESD_MODE_PANEL_TE;
-			} else {
+			if (panel->panel_mode != DSI_OP_CMD_MODE && !panel->lenovo_baldur) {
 				DSI_ERR("TE-ESD not valid for video mode\n");
 				rc = -EINVAL;
 				goto error;
 			}
+			esd_config->status_mode = ESD_MODE_PANEL_TE;
 		} else if (!strcmp(string, "rw_low_detection")) {
 			esd_config->status_mode = ESD_MODE_PANEL_RW;
 		} else if (!strcmp(string, "esd_sw_sim_success")) {
@@ -4512,6 +4611,10 @@ struct dsi_panel *dsi_panel_get(struct device *parent,
 	dsi_panel_setup_vm_ops(panel, trusted_vm_env);
 
 	panel->panel_of_node = of_node;
+	panel->lenovo_baldur = IS_ENABLED(CONFIG_DRM_MSM_LENOVO_BALDUR) &&
+		of_property_read_bool(of_node, "lenovo,lcd-power-sequence");
+	panel->power_info.lenovo_baldur = panel->lenovo_baldur;
+	panel->post_power_info.lenovo_baldur = panel->lenovo_baldur;
 	panel->parent = parent;
 	panel->type = type;
 	panel->post_power_enable_status = false;
@@ -4647,6 +4750,7 @@ void dsi_panel_put(struct dsi_panel *panel)
 	/* free resources allocated for ESD check */
 	dsi_panel_esd_config_deinit(&panel->esd_config);
 
+	kfree(panel->dfps_caps.dfps_timings);
 	kfree(panel->avr_caps.avr_step_fps_list);
 	kfree(panel);
 }
@@ -6185,6 +6289,9 @@ int dsi_panel_enable(struct dsi_panel *panel)
 			goto error;
 		}
 	}
+	if (panel->lenovo_baldur &&
+	    !wait_for_completion_timeout(&load_fw_completion, msecs_to_jiffies(350)))
+		DSI_ERR("TP load fw flow is not finished!\n");
 	panel->panel_initialized = true;
 
 error:
@@ -6282,6 +6389,11 @@ int dsi_panel_disable(struct dsi_panel *panel)
 			pr_warn_ratelimited("[%s] failed to send DSI_CMD_SET_OFF cmds, rc=%d\n",
 					panel->name, rc);
 			rc = 0;
+		}
+		if (panel->lenovo_baldur) {
+			msleep(15);
+			bl_set_level(0);
+			msleep(85);
 		}
 	}
 	panel->panel_initialized = false;
