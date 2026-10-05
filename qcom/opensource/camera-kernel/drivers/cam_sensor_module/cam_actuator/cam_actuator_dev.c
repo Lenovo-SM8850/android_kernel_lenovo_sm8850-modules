@@ -542,6 +542,12 @@ static int cam_actuator_platform_component_bind(struct device *dev,
 
 	platform_set_drvdata(pdev, a_ctrl);
 	a_ctrl->cam_act_state = CAM_ACTUATOR_INIT;
+	rc = cam_actuator_haptic_bind(a_ctrl);
+	if (rc) {
+		cam_unregister_subdev(&a_ctrl->v4l2_dev_str);
+		platform_set_drvdata(pdev, NULL);
+		goto destroy_worker;
+	}
 	CAM_DBG(CAM_ACTUATOR, "Component bound successfully %d",
 		a_ctrl->soc_info.index);
 
@@ -580,6 +586,7 @@ static void cam_actuator_platform_component_unbind(struct device *dev,
 		return;
 	}
 
+	cam_actuator_haptic_unbind(a_ctrl);
 	mutex_lock(&(a_ctrl->actuator_mutex));
 	cam_actuator_shutdown(a_ctrl);
 	mutex_unlock(&(a_ctrl->actuator_mutex));

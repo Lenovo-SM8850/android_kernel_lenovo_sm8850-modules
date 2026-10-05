@@ -65,4 +65,14 @@ int32_t cam_actuator_driver_cmd(struct cam_actuator_ctrl_t *a_ctrl, void *arg);
 void cam_actuator_shutdown(struct cam_actuator_ctrl_t *a_ctrl);
 
 struct completion *cam_actuator_get_i3c_completion(uint32_t index);
+#if IS_ENABLED(CONFIG_LENOVO_CAMERA_HAPTIC)
+int cam_actuator_haptic_bind(struct cam_actuator_ctrl_t *a_ctrl);
+void cam_actuator_haptic_unbind(struct cam_actuator_ctrl_t *a_ctrl);
+void cam_actuator_haptic_sensor_busy(bool busy);
+#else
+static inline int cam_actuator_haptic_bind(struct cam_actuator_ctrl_t *a_ctrl) { return 0; }
+static inline void cam_actuator_haptic_unbind(struct cam_actuator_ctrl_t *a_ctrl) { }
+static inline void cam_actuator_haptic_sensor_busy(bool busy) { }
+#endif
+
 #endif /* _CAM_ACTUATOR_CORE_H_ */

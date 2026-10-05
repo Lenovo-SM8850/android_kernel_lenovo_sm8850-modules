@@ -911,5 +911,6 @@ extern int haptic_hv_i2c_write_bits(struct aw_haptic *aw_haptic, uint8_t reg_add
 /* the motor name ("left"/"right", from the DT compatible) is a fixed size buffer */
 #define AW_NAME_IS(h, s)	(!memcmp((h)->name, (s), sizeof(s)))
 
+#include <linux/lenovo_haptic.h>
 
 #endif
