@@ -13,6 +13,8 @@
 #include <video/mipi_display.h>
 
 #include "dsi_panel.h"
+#include "dsi_lenovo.h"
+#include "../../lenovo/SM8850/panel_power.h"
 #include "dsi_ctrl_hw.h"
 #include "dsi_parser.h"
 #include "sde_dbg.h"
@@ -466,6 +468,12 @@ static int dsi_panel_set_pinctrl_state(struct dsi_panel *panel, bool enable, boo
 int dsi_panel_power_on(struct dsi_panel *panel, bool is_cont_splash)
 {
 	int rc = 0;
+	const struct lenovo_panel_power_ops *power_ops = NULL;
+
+#ifdef CONFIG_DRM_MSM_LENOVO_DISPLAY
+	if (panel->lenovo_lcd)
+		power_ops = lenovo_panel_lcd_power_ops();
+#endif
 
 	rc = dsi_pwr_enable_regulator(&panel->power_info, true);
 	if (rc) {
@@ -480,6 +488,9 @@ int dsi_panel_power_on(struct dsi_panel *panel, bool is_cont_splash)
 		goto error_disable_vregs;
 	}
 
+	if (power_ops && power_ops->before_reset)
+		rc = power_ops->before_reset(panel);
+
 	/* For HFI continuous splash case - avoid panel-reset GPIO */
 	if (is_cont_splash && panel->disp_op == MSM_DISP_OP_HFI) {
 		DSI_DEBUG("[%s] skipping panel reset in hfi path with cont-splash\n", panel->name);
@@ -491,6 +502,8 @@ int dsi_panel_power_on(struct dsi_panel *panel, bool is_cont_splash)
 		}
 	}
 
+	if (power_ops && power_ops->after_reset)
+		power_ops->after_reset(panel);
 	goto exit;
 
 error_disable_gpio:
@@ -512,18 +525,32 @@ exit:
 int dsi_panel_power_off(struct dsi_panel *panel)
 {
 	int rc = 0;
+	const struct lenovo_panel_power_ops *power_ops = NULL;
+
+#ifdef CONFIG_DRM_MSM_LENOVO_DISPLAY
+	if (panel->lenovo_lcd)
+		power_ops = lenovo_panel_lcd_power_ops();
+#endif
 
 	if (panel->skip_panel_off) {
 		DSI_DEBUG("skip panel power off\n");
 		return rc;
 	}
 
+	if (power_ops && power_ops->prepare_power_off &&
+	    power_ops->prepare_power_off(panel))
+		return 0;
+
 	if (gpio_is_valid(panel->reset_config.disp_en_gpio))
 		gpio_set_value(panel->reset_config.disp_en_gpio, 0);
+	if (power_ops && power_ops->after_display_disable)
+		power_ops->after_display_disable(panel);
 
 	if (gpio_is_valid(panel->reset_config.reset_gpio) &&
 					!panel->reset_gpio_always_on)
 		gpio_set_value(panel->reset_config.reset_gpio, 0);
+	if (power_ops && power_ops->after_reset_low)
+		power_ops->after_reset_low(panel);
 
 	if (gpio_is_valid(panel->reset_config.lcd_mode_sel_gpio))
 		gpio_set_value(panel->reset_config.lcd_mode_sel_gpio, 0);
@@ -535,6 +562,9 @@ int dsi_panel_power_off(struct dsi_panel *panel)
 				 rc);
 	}
 
+	if (power_ops && power_ops->disable_bias)
+		power_ops->disable_bias(panel);
+
 	rc = dsi_panel_set_pinctrl_state(panel, false, false);
 	if (rc) {
 		DSI_ERR("[%s] failed set pinctrl state, rc=%d\n", panel->name,
@@ -545,6 +575,9 @@ int dsi_panel_power_off(struct dsi_panel *panel)
 	if (rc)
 		DSI_ERR("[%s] failed to enable vregs, rc=%d\n",
 				panel->name, rc);
+
+	if (power_ops && power_ops->after_regulators_off)
+		rc = power_ops->after_regulators_off(panel, rc);
 
 	return rc;
 }
@@ -665,6 +698,21 @@ static int dsi_panel_pinctrl_init(struct dsi_panel *panel)
 	if (IS_ERR_OR_NULL(panel->pinctrl.pwm_pin)) {
 		panel->pinctrl.pwm_pin = NULL;
 		DSI_DEBUG("failed to get pinctrl pwm_pin");
+	}
+
+	if (panel->lenovo_lcd) {
+		panel->pinctrl.iovdd_enable =
+			pinctrl_lookup_state(panel->pinctrl.pinctrl, "iovdd_enable");
+		if (IS_ERR_OR_NULL(panel->pinctrl.iovdd_enable)) {
+			panel->pinctrl.iovdd_enable = NULL;
+			DSI_ERR("failed to get pinctrl iovdd_enable");
+		}
+		panel->pinctrl.iovdd_disable =
+			pinctrl_lookup_state(panel->pinctrl.pinctrl, "iovdd_disable");
+		if (IS_ERR_OR_NULL(panel->pinctrl.iovdd_disable)) {
+			panel->pinctrl.iovdd_disable = NULL;
+			DSI_ERR("failed to get pinctrl iovdd_disable");
+		}
 	}
 
 	panel->pinctrl.cur_state = NULL;
@@ -807,6 +855,9 @@ int dsi_panel_set_backlight(struct dsi_panel *panel, u32 bl_lvl)
 		rc = dsi_panel_update_backlight(panel, bl_lvl);
 		break;
 	case DSI_BACKLIGHT_EXTERNAL:
+		/* Stock writes zero after OFF commands in dsi_panel_disable(). */
+		if (panel->lenovo_lcd && bl_lvl)
+			bl_set_level(bl_lvl);
 		break;
 	case DSI_BACKLIGHT_PWM:
 		rc = dsi_panel_update_pwm_backlight(panel, bl_lvl);
@@ -2111,6 +2162,7 @@ static int dsi_panel_parse_dfps_caps(struct dsi_panel *panel)
 	struct dsi_parser_utils *utils = &panel->utils;
 	const char *name = panel->name;
 	const char *type;
+	struct device_node *timings, *child;
 	u32 i;
 
 	supported = utils->read_bool(utils->data,
@@ -2136,6 +2188,8 @@ static int dsi_panel_parse_dfps_caps(struct dsi_panel *panel)
 		dfps_caps->type = DSI_DFPS_IMMEDIATE_HFP;
 	} else if (!strcmp(type, "dfps_immediate_porch_mode_vfp")) {
 		dfps_caps->type = DSI_DFPS_IMMEDIATE_VFP;
+	} else if (panel->lenovo_lcd && !strcmp(type, "dfps_custom")) {
+		dfps_caps->type = DSI_DFPS_CUSTOM;
 	} else {
 		DSI_ERR("[%s] dfps type is not recognized\n", name);
 		rc = -EINVAL;
@@ -2165,6 +2219,43 @@ static int dsi_panel_parse_dfps_caps(struct dsi_panel *panel)
 		DSI_ERR("[%s] dfps refresh rate list parse failed\n", name);
 		rc = -EINVAL;
 		goto error;
+	}
+	if (dfps_caps->type == DSI_DFPS_CUSTOM) {
+		timings = utils->get_child_by_name(utils->data, "qcom,dfps-timings");
+		if (!timings && !panel->host_config.ext_bridge_mode) {
+			DSI_ERR("no dfps timing nodes defined\n");
+			return -EINVAL;
+		}
+		if (!utils->get_child_count(timings) ||
+		    utils->get_child_count(timings) != dfps_caps->dfps_list_len) {
+			DSI_ERR("invalid count of dtiming node\n");
+			return -EINVAL;
+		}
+		dfps_caps->dfps_timings = kcalloc(dfps_caps->dfps_list_len,
+				sizeof(*dfps_caps->dfps_timings), GFP_KERNEL);
+		if (!dfps_caps->dfps_timings)
+			return -ENOMEM;
+		i = 0;
+		dsi_for_each_child_node(timings, child) {
+			struct dsi_dfps_timing *t = &dfps_caps->dfps_timings[i];
+			bool all_failed = true;
+
+			/* Stock only rejects a first node when every read fails. */
+			all_failed &= !!utils->read_u32(child, "hfp", &t->hfp);
+			all_failed &= !!utils->read_u32(child, "hbp", &t->hbp);
+			all_failed &= !!utils->read_u32(child, "hsa", &t->hsa);
+			all_failed &= !!utils->read_u32(child, "vfp", &t->vfp);
+			all_failed &= !!utils->read_u32(child, "vbp", &t->vbp);
+			all_failed &= !!utils->read_u32(child, "vsa", &t->vsa);
+			all_failed &= !!utils->read_u32(child, "fps", &t->fps);
+			if (!i && all_failed) {
+				DSI_ERR("invalid dtiming nodes\n");
+				kfree(dfps_caps->dfps_timings);
+				dfps_caps->dfps_timings = NULL;
+				return -EINVAL;
+			}
+			i++;
+		}
 	}
 	dfps_caps->dfps_support = true;
 
@@ -4318,13 +4409,12 @@ static int dsi_panel_parse_esd_config(struct dsi_panel *panel)
 		} else if (!strcmp(string, "reg_read")) {
 			esd_config->status_mode = ESD_MODE_REG_READ;
 		} else if (!strcmp(string, "te_signal_check")) {
-			if (panel->panel_mode == DSI_OP_CMD_MODE) {
-				esd_config->status_mode = ESD_MODE_PANEL_TE;
-			} else {
+			if (panel->panel_mode != DSI_OP_CMD_MODE && !panel->lenovo_lcd) {
 				DSI_ERR("TE-ESD not valid for video mode\n");
 				rc = -EINVAL;
 				goto error;
 			}
+			esd_config->status_mode = ESD_MODE_PANEL_TE;
 		} else if (!strcmp(string, "rw_low_detection")) {
 			esd_config->status_mode = ESD_MODE_PANEL_RW;
 		} else if (!strcmp(string, "esd_sw_sim_success")) {
@@ -4512,6 +4602,11 @@ struct dsi_panel *dsi_panel_get(struct device *parent,
 	dsi_panel_setup_vm_ops(panel, trusted_vm_env);
 
 	panel->panel_of_node = of_node;
+	panel->lenovo_lcd = IS_ENABLED(CONFIG_DRM_MSM_LENOVO_DISPLAY) &&
+		of_property_read_bool(of_root, "lenovo,lcd-display") &&
+		of_property_read_bool(of_node, "lenovo,lcd-power-sequence");
+	panel->power_info.lenovo_lcd = panel->lenovo_lcd;
+	panel->post_power_info.lenovo_lcd = panel->lenovo_lcd;
 	panel->parent = parent;
 	panel->type = type;
 	panel->post_power_enable_status = false;
@@ -4647,6 +4742,7 @@ void dsi_panel_put(struct dsi_panel *panel)
 	/* free resources allocated for ESD check */
 	dsi_panel_esd_config_deinit(&panel->esd_config);
 
+	kfree(panel->dfps_caps.dfps_timings);
 	kfree(panel->avr_caps.avr_step_fps_list);
 	kfree(panel);
 }
@@ -6185,6 +6281,8 @@ int dsi_panel_enable(struct dsi_panel *panel)
 			goto error;
 		}
 	}
+	if (panel->lenovo_lcd && !lenovo_lcd_wait_for_firmware())
+		DSI_ERR("TP load fw flow is not finished!\n");
 	panel->panel_initialized = true;
 
 error:
@@ -6282,6 +6380,11 @@ int dsi_panel_disable(struct dsi_panel *panel)
 			pr_warn_ratelimited("[%s] failed to send DSI_CMD_SET_OFF cmds, rc=%d\n",
 					panel->name, rc);
 			rc = 0;
+		}
+		if (panel->lenovo_lcd) {
+			msleep(15);
+			bl_set_level(0);
+			msleep(85);
 		}
 	}
 	panel->panel_initialized = false;

@@ -168,6 +168,11 @@ module_entry(
             "msm/sde_cesta.c",
             "msm/sde_cesta_hw.c",
         ],
+        "CONFIG_DRM_MSM_LENOVO_DISPLAY": [
+            "lenovo/chips/backlight.c",
+            "lenovo/chips/bias.c",
+            "lenovo/SM8850/panel_lcd.c",
+        ],
         "CONFIG_DRM_MSM_DSI": [
             "msm/dsi/dsi_phy.c",
             "msm/dsi/dsi_pwr.c",
@@ -193,6 +198,7 @@ module_entry(
             "msm/dsi/dsi_display.c",
             "msm/dsi/dsi_display_manager.c",
             "msm/dsi/dsi_panel.c",
+            "lenovo/SM8850/panel_power.h",
             "msm/dsi/dsi_clk_manager.c",
             "msm/dsi/dsi_display_test.c",
         ],
