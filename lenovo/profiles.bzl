@@ -5,6 +5,7 @@ COMMON_MODULES = [
 ]
 
 LCD_MODULES = [
+    "//vendor/lenovo/sm8850-modules/lenovo/nvt_36xxx:canoe_perf_nvt_36xxx",
 ]
 
 PERIPHERAL_MODULES = [

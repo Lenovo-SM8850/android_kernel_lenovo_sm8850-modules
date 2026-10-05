@@ -42,7 +42,6 @@ struct nvt_ts_bin_map {
 
 static struct nvt_ts_bin_map *bin_map;
 /* Kirby code for KIRBYU-960 by liaoxg1 at 2024/4/26 start */
-extern void get_tp_info(void);
 /* Kirby code for KIRBYU-960 by liaoxg1 at 2024/4/26 end */
 
 static int32_t nvt_get_fw_need_write_size(const struct firmware *fw_entry)
@@ -146,29 +145,42 @@ static int32_t nvt_bin_header_parser(const u8 *fwdata, size_t fwsize)
 	uint8_t ovly_info = 0;
 	uint8_t find_bin_header = 0;
 
+	if (!fwdata || fwsize < 0x30)
+		return -EINVAL;
+
 	/* Find the header size */
 	end = fwdata[0] + (fwdata[1] << 8) + (fwdata[2] << 16) + (fwdata[3] << 24);
+	if (end < 0x30 || (end & 0xf) || end > fwsize ||
+	    (end - 0x30) / 0x10 > 255)
+		return -EINVAL;
+	/* The ILM BIN offset may include padding after the actual header.
+	 * The nonempty partition at BIN address zero marks its end.
+	 */
+	for (pos = 0x30; pos < end; pos += 0x10) {
+		if (byte_to_word(&fwdata[pos + 4]) &&
+		    !byte_to_word(&fwdata[pos + 8])) {
+			end = pos + 0x10;
+			break;
+		}
+	}
+
+	pos = 0x30;	/* info section starts at 0x30 */
+	while (pos < end) {
+		info_sec_num++;
+		pos += 0x10;
+	}
 
 	/* check cascade next header */
 	cascade_2nd_header_info = (fwdata[0x20] & 0x02) >> 1;
 	NVT_LOG("cascade_2nd_header_info = %d\n", cascade_2nd_header_info);
 
 	if (cascade_2nd_header_info) {
-		pos = 0x30;	// info section start at 0x30 offset
-		while (pos < (end / 2)) {
-			info_sec_num ++;
-			pos += 0x10;	/* each header info is 16 bytes */
-		}
-
+		if (end > fwsize / 2 || info_sec_num == 255)
+			return -EINVAL;
+		end *= 2;	/* include the cascade second header */
 		info_sec_num = info_sec_num + 1; //next header section
 
 		spi_dma_div_cnt_val = fwdata[0x29] & 0x01;
-	} else {
-		pos = 0x30;	// info section start at 0x30 offset
-		while (pos < end) {
-			info_sec_num ++;
-			pos += 0x10;	/* each header info is 16 bytes */
-		}
 	}
 
 	/*
@@ -207,7 +219,7 @@ static int32_t nvt_bin_header_parser(const u8 *fwdata, size_t fwsize)
 			if (ts->hw_crc)
 				bin_map[list].crc = byte_to_word(&fwdata[0x18 + list*4]);
 			else { //ts->hw_crc
-				if ((bin_map[list].BIN_addr + bin_map[list].size) < fwsize)
+				if (((u64)bin_map[list].BIN_addr + bin_map[list].size) < fwsize)
 					bin_map[list].crc = CheckSum(&fwdata[bin_map[list].BIN_addr], bin_map[list].size);
 				else {
 					NVT_ERR("access range (0x%08X to 0x%08X) is larger than bin size!\n",
@@ -234,13 +246,15 @@ static int32_t nvt_bin_header_parser(const u8 *fwdata, size_t fwsize)
 				pos = end - 0x10;
 			}
 
+			if (pos > fwsize || fwsize - pos < 0x10)
+				return -EINVAL;
 			bin_map[list].SRAM_addr = byte_to_word(&fwdata[pos]);
 			bin_map[list].size = byte_to_word(&fwdata[pos+4]);
 			bin_map[list].BIN_addr = byte_to_word(&fwdata[pos+8]);
 			if (ts->hw_crc)
 				bin_map[list].crc = byte_to_word(&fwdata[pos+12]);
 			else { //ts->hw_crc
-				if ((bin_map[list].BIN_addr + bin_map[list].size) < fwsize)
+				if (((u64)bin_map[list].BIN_addr + bin_map[list].size) < fwsize)
 					bin_map[list].crc = CheckSum(&fwdata[bin_map[list].BIN_addr], bin_map[list].size);
 				else {
 					NVT_ERR("access range (0x%08X to 0x%08X) is larger than bin size!\n",
@@ -263,15 +277,20 @@ static int32_t nvt_bin_header_parser(const u8 *fwdata, size_t fwsize)
 		 */
 		if (list >= (ilm_dlm_num + info_sec_num)) {
 			/* overlay info located at DLM (list = 1) start addr */
+			if ((u64)bin_map[1].BIN_addr +
+			    0x10 * (list - ilm_dlm_num - info_sec_num) > fwsize)
+				return -EINVAL;
 			pos = bin_map[1].BIN_addr + (0x10 * (list- ilm_dlm_num - info_sec_num));
 
+			if (pos > fwsize || fwsize - pos < 0x10)
+				return -EINVAL;
 			bin_map[list].SRAM_addr = byte_to_word(&fwdata[pos]);
 			bin_map[list].size = byte_to_word(&fwdata[pos+4]);
 			bin_map[list].BIN_addr = byte_to_word(&fwdata[pos+8]);
 			if (ts->hw_crc)
 				bin_map[list].crc = byte_to_word(&fwdata[pos+12]);
 			else { //ts->hw_crc
-				if ((bin_map[list].BIN_addr + bin_map[list].size) < fwsize)
+				if (((u64)bin_map[list].BIN_addr + bin_map[list].size) < fwsize)
 					bin_map[list].crc = CheckSum(&fwdata[bin_map[list].BIN_addr], bin_map[list].size);
 				else {
 					NVT_ERR("access range (0x%08X to 0x%08X) is larger than bin size!\n",
@@ -283,7 +302,7 @@ static int32_t nvt_bin_header_parser(const u8 *fwdata, size_t fwsize)
 		}
 
 		/* BIN size error detect */
-		if ((bin_map[list].BIN_addr + bin_map[list].size) > fwsize) {
+		if (((u64)bin_map[list].BIN_addr + bin_map[list].size) > fwsize) {
 			NVT_ERR("access range (0x%08X to 0x%08X) is larger than bin size!\n",
 					bin_map[list].BIN_addr, bin_map[list].BIN_addr + bin_map[list].size);
 			return -EINVAL;
@@ -443,7 +462,6 @@ return:
 static int32_t nvt_write_firmware(const u8 *fwdata, size_t fwsize)
 {
 	uint32_t list = 0;
-	char *name;
 	uint32_t BIN_addr, SRAM_addr, size;
 	int32_t ret = 0;
 
@@ -454,7 +472,6 @@ static int32_t nvt_write_firmware(const u8 *fwdata, size_t fwsize)
 		SRAM_addr = bin_map[list].SRAM_addr;
 		size = bin_map[list].size;
 		BIN_addr = bin_map[list].BIN_addr;
-		name = bin_map[list].name;
 
 //		NVT_LOG("[%d][%s] SRAM (0x%08X), SIZE (0x%08X), BIN (0x%08X)\n",
 //				list, name, SRAM_addr, size, BIN_addr);
@@ -917,12 +934,21 @@ void Boot_Update_Firmware(struct work_struct *work)
 	mutex_lock(&ts->lock);
 	nvt_update_firmware(BOOT_UPDATE_FIRMWARE_NAME);
 /* Kirby code for KIRBYU-960 by liaoxg1 at 2024/4/26 start */
-	get_tp_info();
+	/* msm_drm waits for this completion before finishing panel enable. */
 /* Kirby code for KIRBYU-960 by liaoxg1 at 2024/4/26 end */
 	mutex_unlock(&ts->lock);
+	if (ts->load_fw_completion)
+		complete(ts->load_fw_completion);
+	else
+		NVT_LOG("load_fw_completion is NULL\n");
 #if NVT_SUPPORT_PEN
 	if(ts->probe_state == 1){
+#ifdef BUILD_BALDUR_TOUCH
+		/* Boot init may select pen support before this delayed download. */
+		nvt_support_pen_set(ts->pen_state <= 3 ? ts->pen_state & 1 : 0);
+#else
 		nvt_support_pen_set(0);
+#endif
 		ts->probe_state = 0;
 	}
 #endif
