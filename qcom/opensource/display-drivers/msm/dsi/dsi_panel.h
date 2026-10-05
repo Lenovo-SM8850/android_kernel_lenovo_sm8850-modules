@@ -82,6 +82,12 @@ enum dsi_panel_physical_type {
 	DSI_DISPLAY_PANEL_TYPE_MAX,
 };
 
+struct dsi_dfps_timing {
+	u32 hbp, hsa, hfp;
+	u32 vbp, vsa, vfp;
+	u32 fps;
+};
+
 struct dsi_dfps_capabilities {
 	enum dsi_dfps_type type;
 	u32 min_refresh_rate;
@@ -89,6 +95,7 @@ struct dsi_dfps_capabilities {
 	u32 *dfps_list;
 	u32 dfps_list_len;
 	bool dfps_support;
+	struct dsi_dfps_timing *dfps_timings;
 };
 
 struct dsi_qsync_capabilities {
@@ -130,6 +137,8 @@ struct dsi_pinctrl_info {
 	struct pinctrl_state *active_with_esync_without_te;
 	struct pinctrl_state *suspend;
 	struct pinctrl_state *pwm_pin;
+	struct pinctrl_state *iovdd_enable;
+	struct pinctrl_state *iovdd_disable;
 };
 
 struct dsi_panel_phy_props {
@@ -244,6 +253,7 @@ struct dsi_panel_ops {
 };
 
 struct dsi_panel {
+	bool lenovo_baldur;
 	const char *name;
 	const char *type;
 	struct device_node *panel_of_node;

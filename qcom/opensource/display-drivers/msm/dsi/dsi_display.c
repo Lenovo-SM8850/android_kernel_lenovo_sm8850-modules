@@ -18,6 +18,8 @@
 #include "msm_mmu.h"
 #include "dsi_display.h"
 #include "dsi_panel.h"
+#include "dsi_lenovo.h"
+#include <linux/pinctrl/consumer.h>
 #include "dsi_ctrl.h"
 #include "dsi_ctrl_hw.h"
 #include "dsi_drm.h"
@@ -1012,6 +1014,22 @@ void dsi_display_toggle_error_interrupt_status(struct dsi_display * display, boo
 	}
 }
 
+/* Lenovo video-panel TE check: a high GPIO level denotes a panel fault. */
+static noinline int dsi_display_status_te_check(struct dsi_display *display)
+{
+	if (!display || !display->panel)
+		return -EINVAL;
+
+	if (gpio_is_valid(display->disp_te_gpio)) {
+		gpio_direction_input(display->disp_te_gpio);
+		if (gpio_get_value(display->disp_te_gpio)) {
+			DSI_ERR("TE check failed\n");
+			return -EINVAL;
+		}
+	}
+	return 1;
+}
+
 int dsi_display_check_status(struct drm_connector *connector, void *display,
 					bool te_check_override)
 {
@@ -1057,6 +1075,11 @@ int dsi_display_check_status(struct drm_connector *connector, void *display,
 
 	dsi_display_set_ctrl_esd_check_flag(dsi_display, true);
 
+	if (panel->lenovo_baldur && status_mode == ESD_MODE_PANEL_TE) {
+		rc = dsi_display_status_te_check(dsi_display);
+		goto handle_status;
+	}
+
 	dsi_display_clk_ctrl(dsi_display->dsi_clk_handle, DSI_CORE_CLK | DSI_LINK_CLK, DSI_CLK_ON);
 
 	/* Disable error interrupts while doing an ESD check */
@@ -1086,13 +1109,15 @@ int dsi_display_check_status(struct drm_connector *connector, void *display,
 	}
 
 	/* Handle Panel failures during display disable sequence */
+handle_status:
 	if (rc <=0)
 		atomic_set(&panel->esd_recovery_pending, 1);
 	else
 		/* Enable error interrupts post an ESD success */
 		dsi_display_toggle_error_interrupt_status(dsi_display, true);
 
-	dsi_display_clk_ctrl(dsi_display->dsi_clk_handle, DSI_CORE_CLK | DSI_LINK_CLK, DSI_CLK_OFF);
+	if (!panel->lenovo_baldur || status_mode != ESD_MODE_PANEL_TE)
+		dsi_display_clk_ctrl(dsi_display->dsi_clk_handle, DSI_CORE_CLK | DSI_LINK_CLK, DSI_CLK_OFF);
 release_panel_lock:
 	dsi_panel_release_panel_lock(panel);
 	SDE_EVT32(SDE_EVTLOG_FUNC_EXIT, rc);
@@ -5323,6 +5348,38 @@ static int dsi_display_get_dfps_timing(struct dsi_display *display,
 	timing = &per_ctrl_mode.timing;
 
 	switch (dfps_caps.type) {
+	case DSI_DFPS_CUSTOM: {
+		struct dsi_dfps_timing *t = NULL;
+		u32 i;
+
+		for (i = 0; i < dfps_caps.dfps_list_len; i++) {
+			DSI_INFO("log %d %d\n", dfps_caps.dfps_timings[i].fps,
+				 adj_mode->timing.refresh_rate);
+			if (dfps_caps.dfps_timings[i].fps == adj_mode->timing.refresh_rate) {
+				t = &dfps_caps.dfps_timings[i];
+				break;
+			}
+		}
+		if (!t) {
+			rc = -EINVAL;
+			DSI_ERR("cannot find %d dfps timing node, rc = %d\n",
+				adj_mode->timing.refresh_rate, rc);
+			break;
+		}
+		if (t->hbp)
+			adj_mode->timing.h_back_porch = t->hbp * display->ctrl_count;
+		if (t->hfp)
+			adj_mode->timing.h_front_porch = t->hfp * display->ctrl_count;
+		if (t->hsa)
+			adj_mode->timing.h_sync_width = t->hsa * display->ctrl_count;
+		if (t->vbp)
+			adj_mode->timing.v_back_porch = t->vbp;
+		if (t->vfp)
+			adj_mode->timing.v_front_porch = t->vfp;
+		if (t->vsa)
+			adj_mode->timing.v_sync_width = t->vsa;
+		break;
+	}
 	case DSI_DFPS_IMMEDIATE_VFP:
 		rc = dsi_display_dfps_calc_front_porch(
 				curr_refresh_rate,
@@ -6423,10 +6480,20 @@ end:
 	return rc;
 }
 
+static noinline void set_panel_id(const char *panel_name)
+{
+	if (strstr(panel_name, "baldur_nt36523_csot_3k_dsc_vid"))
+		DSI_INFO("panel_name = %s,vendor:CSOT, ic:NT36523N\n", panel_name);
+	else
+		DSI_INFO("Failed to add LCM!\n");
+	/* Stock hq_regiser_hw_info(32, panel_name) is intentionally omitted. */
+}
+
 int dsi_display_dev_probe(struct platform_device *pdev)
 {
 	struct dsi_display *display = NULL;
 	struct device_node *mdp_node = NULL;
+	struct device_node *panel_node;
 	int rc = 0, index = DSI_PRIMARY, mdp_count;
 	struct dsi_display_boot_param *boot_disp = NULL;
 
@@ -6486,6 +6553,11 @@ int dsi_display_dev_probe(struct platform_device *pdev)
 
 	display->pdev = pdev;
 	display->boot_disp = boot_disp;
+	panel_node = of_parse_phandle(pdev->dev.of_node, "qcom,dsi-default-panel", 0);
+	if (IS_ENABLED(CONFIG_DRM_MSM_LENOVO_BALDUR) &&
+	    of_property_read_bool(panel_node, "lenovo,lcd-power-sequence"))
+		set_panel_id(boot_disp->name);
+	of_node_put(panel_node);
 
 	dsi_display_parse_cmdline_topology(display, index);
 
@@ -9082,6 +9154,18 @@ int dsi_display_prepare(struct dsi_display *display)
 		goto error_ctrl_deinit;
 	}
 
+	if (display->panel->lenovo_baldur) {
+		if (!IS_ERR_OR_NULL(display->panel->pinctrl.pinctrl) &&
+		    !IS_ERR_OR_NULL(display->panel->pinctrl.iovdd_enable)) {
+			rc = pinctrl_select_state(display->panel->pinctrl.pinctrl,
+				display->panel->pinctrl.iovdd_enable);
+			if (rc)
+				DSI_ERR("[%s] failed to set iovdd_enable pinctrl, rc=%d\n",
+					display->panel->name, rc);
+		}
+		usleep_range(1000, 1100);
+	}
+
 	rc = dsi_display_clk_ctrl(display->dsi_clk_handle,
 			DSI_LINK_CLK, DSI_CLK_ON);
 	if (rc) {
@@ -10158,6 +10242,8 @@ void __init dsi_display_register(void)
 {
 	dsi_phy_drv_register();
 	dsi_ctrl_drv_register();
+	register_bl();
+	register_bias();
 
 	dsi_display_parse_boot_display_selection();
 

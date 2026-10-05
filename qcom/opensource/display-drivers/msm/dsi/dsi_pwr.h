@@ -54,6 +54,7 @@ struct dsi_regulator_info {
 	struct dsi_vreg *vregs;
 	u32 count;
 	u32 refcount;
+	bool lenovo_baldur;
 };
 
 /**
