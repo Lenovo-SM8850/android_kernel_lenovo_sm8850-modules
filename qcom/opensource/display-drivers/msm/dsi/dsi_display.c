@@ -6,6 +6,9 @@
 
 #include <linux/list.h>
 #include <linux/of.h>
+#if IS_ENABLED(CONFIG_DRM_MSM_LENOVO_DISPLAY)
+#include <linux/hqsysfs.h>
+#endif
 #include <linux/of_gpio.h>
 #include <linux/err.h>
 #include <linux/version.h>
@@ -4435,6 +4438,18 @@ static void dsi_display_check_sync_mode(struct dsi_display *display)
 	DSI_INFO("sync mode detected\n");
 }
 
+#if IS_ENABLED(CONFIG_DRM_MSM_LENOVO_DISPLAY)
+static void set_panel_id(struct dsi_panel *panel)
+{
+	const char *identity;
+
+	if (!of_property_read_string(panel->panel_of_node,
+				     "lenovo,hardware-info-name", &identity))
+		/* The legacy registration API retains this read-only DT string. */
+		hq_regiser_hw_info(HWID_LCM, (char *)identity);
+}
+#endif
+
 static int dsi_display_res_init(struct dsi_display *display)
 {
 	int rc = 0;
@@ -4474,6 +4489,9 @@ static int dsi_display_res_init(struct dsi_display *display)
 		goto error_ctrl_put;
 	}
 
+#if IS_ENABLED(CONFIG_DRM_MSM_LENOVO_DISPLAY)
+	set_panel_id(display->panel);
+#endif
 	display->panel->te_using_watchdog_timer |= display->sw_te_using_wd;
 
 	dsi_display_check_sync_mode(display);
