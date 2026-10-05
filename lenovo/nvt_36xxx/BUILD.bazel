@@ -8,8 +8,7 @@ ddk_module(
     out = "nvt_36xxx.ko",
     srcs = glob(["src/*.c", "src/*.h", "inc/*.h"]),
     kernel_build = "//vendor/lenovo/sm8850:canoe_perf_base_kernel",
-    config = "//vendor/lenovo/sm8850:canoe_perf_config",
     includes = ['src'],
-    local_defines = ['BUILD_BALDUR_TOUCH'],
-    deps = ["//vendor/lenovo/sm8850:all_headers", "//vendor/lenovo/sm8850:canoe_perf/drivers/soc/qcom/panel_event_notifier"],
+    local_defines = ['BUILD_NOVATEK_TOUCH'],
+    deps = ["//vendor/lenovo/sm8850-modules/qcom/opensource/display-drivers:linux_includes", "//vendor/lenovo/sm8850:all_headers", "//vendor/lenovo/sm8850:canoe_perf/drivers/soc/qcom/panel_event_notifier"],
 )
