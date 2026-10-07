@@ -1411,6 +1411,10 @@ static void cam_actuator_haptic_release(struct cam_actuator_ctrl_t *a_ctrl)
 {
 	struct cam_actuator_soc_private *soc_private = a_ctrl->soc_info.soc_private;
 	struct cam_sensor_power_ctrl_t power = soc_private->power_info;
+	struct cam_sensor_power_setting up[2] = {
+		{ .seq_type = SENSOR_VAF, .seq_val = CAM_VAF },
+		{ .seq_type = SENSOR_VIO, .seq_val = CAM_VIO },
+	};
 	struct cam_sensor_power_setting down[2] = {
 		{ .seq_type = SENSOR_VAF, .seq_val = CAM_VAF },
 		{ .seq_type = SENSOR_VIO, .seq_val = CAM_VIO },
@@ -1418,9 +1422,13 @@ static void cam_actuator_haptic_release(struct cam_actuator_ctrl_t *a_ctrl)
 
 	if (!haptic_powered || a_ctrl->bridge_intf.device_hdl >= 0)
 		return;
+	/* Power down matches each entry against the haptic power-up sequence. */
+	power.power_setting = up;
+	power.power_setting_size = ARRAY_SIZE(up);
 	power.power_down_setting = down;
 	power.power_down_setting_size = ARRAY_SIZE(down);
 	power.dev = a_ctrl->soc_info.dev;
+	msm_camera_fill_vreg_params(&a_ctrl->soc_info, up, ARRAY_SIZE(up));
 	msm_camera_fill_vreg_params(&a_ctrl->soc_info, down, ARRAY_SIZE(down));
 	cam_sensor_util_power_down(&power, &a_ctrl->soc_info);
 	camera_io_release(&a_ctrl->io_master_info);
