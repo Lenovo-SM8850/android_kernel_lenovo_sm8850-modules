@@ -8,11 +8,12 @@
 
 #include "regulator_wl2868c.h"
 #include <linux/mutex.h>
+#include <linux/delay.h>
 
 #define  REGULATOR_MAX  7
 
 static int CI = -1;
-struct mutex i2c_control_mutex;
+static DEFINE_MUTEX(i2c_control_mutex);
 
 enum CHIP_NUM {
 	WL2868C,
@@ -102,12 +103,13 @@ static struct ldo_volt_range fan_range[REGULATOR_MAX] = {
 
 static struct chip_info pmic_chip[CHIP_NUM_MAX] = {
 	CHIP(WL2868C,  0x2F, 0x82, 0x00, 0x0E, 0x03, wl_range),
-	CHIP(ET5907,   0x35, 0x00, 0x01, 0x03, 0x04, et_range),
+	CHIP(ET5907,   0x35, 0x01, 0x00, 0x03, 0x04, et_range),
 	CHIP(FAN53870, 0x35, 0x01, 0x01, 0x03, 0x04, fan_range),
 };
 
 static const struct of_device_id wl2868c_i2c_of_match[] = {
 	{ .compatible = "will,wl2868c", },
+	{ .compatible = "will,et5907", },
 	{},
 };
 
@@ -184,14 +186,16 @@ static int  wl2868c_regulator_enable(struct regulator_dev *rdev)
 	ret = regmap_read(wl2868c_regmap, chip->ldo_en_addr, &current_bit);
 	if (ret < 0) {
 		REG_PRINT("read ldo en reg failed");
-		return -EIO;
+		mutex_unlock(&i2c_control_mutex);
+		return ret;
 	}
 	enable_bit = 1 << (wl2868c_reg->channel_num);
 	current_bit |= enable_bit;
 	ret = regmap_write(wl2868c_regmap, chip->ldo_en_addr, current_bit);
 	if (ret < 0) {
 		REG_PRINT("write ldo enable address failed");
-		return -EIO;
+		mutex_unlock(&i2c_control_mutex);
+		return ret;
 	}
 	REG_PRINT("Enable %s", wl2868c_reg->regulator_name);
 	mutex_unlock(&i2c_control_mutex);
@@ -215,7 +219,8 @@ static int  wl2868c_regulator_disable(struct regulator_dev *rdev)
 	ret = regmap_read(wl2868c_regmap, chip->ldo_en_addr, &current_bit);
 	if (ret < 0) {
 		REG_PRINT("read ldo en reg failed");
-		return -EIO;
+		mutex_unlock(&i2c_control_mutex);
+		return ret;
 	}
 	disable_bit = ~(1 << wl2868c_reg->channel_num);
 	current_bit &= disable_bit;
@@ -223,7 +228,8 @@ static int  wl2868c_regulator_disable(struct regulator_dev *rdev)
 	ret = regmap_write(wl2868c_regmap, chip->ldo_en_addr, current_bit);
 	if (ret < 0) {
 		REG_PRINT("write ldo enable address failed");
-		return -EIO;
+		mutex_unlock(&i2c_control_mutex);
+		return ret;
 	}
 	mutex_unlock(&i2c_control_mutex);
 	return ret;
@@ -269,8 +275,10 @@ static int  wl2868c_regulator_get_voltage(struct regulator_dev *rdev)
 	reg_addr = chip->ldo_out_addr + wl2868c_reg->channel_num;
 	range = &chip->ldo_range[wl2868c_reg->channel_num];
 	ret = regmap_read(wl2868c_regmap, reg_addr, &volt);
-	if (ret < 0)
+	if (ret < 0) {
 		REG_PRINT("read voltage failed");
+		return ret;
+	}
 
 	switch (wl2868c_reg->chip_index) {
 	case WL2868C:
@@ -330,7 +338,11 @@ static int  wl2868c_regulator_set_voltage(struct regulator_dev *rdev,
 	chip = wl2868c_reg->chip_info;
 	range = &chip->ldo_range[wl2868c_reg->channel_num];
 	volt_reg = chip->ldo_out_addr + wl2868c_reg->channel_num;
+	if (min_uV < range->min_uV || min_uV > range->max_uV)
+		return -EINVAL;
 	round_uV = VOLTAGE_ROUND_UP(min_uV, range->min_uV, range->uV_step);
+	if (round_uV > range->max_uV)
+		return -EINVAL;
 	switch (wl2868c_reg->chip_index) {
 	case WL2868C:
 		switch (wl2868c_reg->channel_num){
@@ -394,8 +406,10 @@ static int wl2868c_register_ldo(struct wl2868c_regulator *wl2868c_reg, struct re
 	struct ldo_volt_range *range = NULL;
 
 	ret = of_property_read_string(reg_node, "regulator-name", &wl2868c_reg->regulator_name);
+	if (ret)
+		return ret;
 	ret = of_property_read_u32(reg_node, "ldo-channel", &wl2868c_reg->channel_num);
-	if (0 != ret) {
+	if (ret || wl2868c_reg->channel_num >= REGULATOR_MAX) {
 		REG_PRINT("ldo esential infomation lost");
 		return -EINVAL;
 	}
@@ -424,14 +438,13 @@ static int wl2868c_register_ldo(struct wl2868c_regulator *wl2868c_reg, struct re
 	if (IS_ERR(wl2868c_reg->rdev)) {
 		REG_PRINT("%s: failed to register regulator\n",
 				wl2868c_reg->rdesc.name);
-		return -EINVAL;
+		return PTR_ERR(wl2868c_reg->rdev);
 	}
 	REG_PRINT("%s: regulator registered\n", wl2868c_reg->rdesc.name);
 	return ret;
 }
 
-static int wl2868c_i2c_probe(struct i2c_client *client,
-		const struct i2c_device_id *id)
+static int wl2868c_i2c_probe(struct i2c_client *client)
 {
 	int i;
 	int ret_ldo7 = 0;
@@ -442,7 +455,7 @@ static int wl2868c_i2c_probe(struct i2c_client *client,
 	struct device_node *node = NULL;
 	struct wl2868c_regulator *wl2868c_reg = NULL;
 	struct regmap *wl2868c_regmap;
-	const char *pinctrl_name;
+	const char *pinctrl_name = NULL;
 	const unsigned int max_try_time = 10;
 	int try_time = 0;
 	int chip_id;
@@ -463,8 +476,7 @@ static int wl2868c_i2c_probe(struct i2c_client *client,
 	if (pinctrl_name) {
 		pinctrl = devm_pinctrl_get_select(dev, pinctrl_name);
 		if (IS_ERR(pinctrl)) {
-			REG_PRINT("Couldn't select %s pinctrl rc=%ld",
-				pinctrl_name, PTR_ERR(pinctrl));
+			return dev_err_probe(dev, PTR_ERR(pinctrl), "pinctrl setup failed\n");
 		} else {
 			REG_PRINT("pinctrl probe success");
 		}
@@ -511,9 +523,9 @@ static int wl2868c_i2c_probe(struct i2c_client *client,
 	}
 
 	wl2868c_regmap = devm_regmap_init_i2c(client, &chip_regmap_config[CI]);
-	if (!wl2868c_regmap) {
+	if (IS_ERR(wl2868c_regmap)) {
 		REG_PRINT("chip regmap init failed");
-		return -EIO;
+		return PTR_ERR(wl2868c_regmap);
 	}
 
 	if (CI == 0)
@@ -524,7 +536,6 @@ static int wl2868c_i2c_probe(struct i2c_client *client,
 			return -EIO;
 		}
 	}
-	mutex_init(&i2c_control_mutex);
 	REG_PRINT("i2c probe success");
 
 	for_each_available_child_of_node (dev->of_node, child) {
@@ -537,6 +548,7 @@ static int wl2868c_i2c_probe(struct i2c_client *client,
 
 		if(wl2868c_reg == NULL){
 			REG_PRINT("failed to allocate memory for wl2868c_reg");
+			of_node_put(child);
 			return -ENOMEM;
 		}
 		wl2868c_reg->of_node = child;
@@ -547,6 +559,7 @@ static int wl2868c_i2c_probe(struct i2c_client *client,
 		ret = wl2868c_register_ldo(wl2868c_reg, wl2868c_regmap);
 		if (ret < 0) {
 			REG_PRINT("register regulator failed");
+			of_node_put(child);
 			return ret;
 		}
 	}
@@ -554,15 +567,8 @@ static int wl2868c_i2c_probe(struct i2c_client *client,
 	return 0;
 }
 
-static int wl2868c_i2c_remove(struct i2c_client *client)
-{
-	i2c_unregister_device(client);
-	return 0;
-}
-
 static struct i2c_driver wl2868c_i2c_driver = {
 	.probe = wl2868c_i2c_probe,
-	.remove = wl2868c_i2c_remove,
 	.driver = {
 		.name = "WL2868C_I2C",
 		.of_match_table = wl2868c_i2c_of_match,
@@ -570,7 +576,7 @@ static struct i2c_driver wl2868c_i2c_driver = {
 	},
 };
 
-int __init wl2868c_chip_init_module(void)
+static int __init wl2868c_chip_init_module(void)
 {
 	if (i2c_add_driver(&wl2868c_i2c_driver)) {
 		REG_PRINT("i2c driver register failed");
@@ -580,7 +586,7 @@ int __init wl2868c_chip_init_module(void)
 	return 0;
 }
 
-void __exit wl2868c_chip_exit_module(void)
+static void __exit wl2868c_chip_exit_module(void)
 {
 	i2c_del_driver(&wl2868c_i2c_driver);
 }
@@ -588,3 +594,7 @@ void __exit wl2868c_chip_exit_module(void)
 MODULE_AUTHOR("Lan Degao  landegao@huaqin.com");
 MODULE_DESCRIPTION("7-ldo PMIC power supply for camera and other usage");
 MODULE_LICENSE("GPL v2");
+
+module_init(wl2868c_chip_init_module);
+module_exit(wl2868c_chip_exit_module);
+MODULE_DEVICE_TABLE(of, wl2868c_i2c_of_match);
