@@ -1,0 +1,17 @@
+# SPDX-License-Identifier: GPL-2.0-only
+load("//build/kernel/kleaf:kernel.bzl", "ddk_module")
+
+package(default_visibility = ["//visibility:public"])
+
+ddk_module(
+    name = "canoe_perf_sar_swtp",
+    out = "sar_swtp.ko",
+    srcs = [
+        "sar_swtp.c",
+    ],
+    kernel_build = "//vendor/lenovo/sm8850:canoe_perf_base_kernel",
+    config = "//vendor/lenovo/sm8850:canoe_perf_config",
+    deps = [
+        "//vendor/lenovo/sm8850:all_headers",
+    ],
+)
