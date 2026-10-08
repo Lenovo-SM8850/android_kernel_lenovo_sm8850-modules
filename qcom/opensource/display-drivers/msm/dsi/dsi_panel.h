@@ -130,6 +130,11 @@ struct dsi_dms_vid_caps {
 };
 
 struct dsi_pinctrl_info {
+#ifdef CONFIG_DRM_MSM_LENOVO_DISPLAY
+	struct pinctrl_state *vo4_set[2];
+	struct pinctrl_state *vo4_en[2];
+	struct pinctrl_state *oled_nreset[2];
+#endif
 	struct pinctrl *pinctrl;
 	struct pinctrl_state *cur_state;
 	struct pinctrl_state *active;
