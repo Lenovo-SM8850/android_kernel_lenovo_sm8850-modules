@@ -21,4 +21,5 @@ PERIPHERAL_MODULES = [
     "//vendor/lenovo/sm8850-modules/lenovo/radio/sar_swtp:canoe_perf_sar_swtp",
     "//vendor/lenovo/sm8850-modules/lenovo/regulator/sgm66075:canoe_perf_sgm",
     "//vendor/lenovo/sm8850-modules/lenovo/touch/gt9976n_thp:canoe_perf_gt9976n_thp_core",
+    "//vendor/lenovo/sm8850-modules/lenovo/fingerprint/gf_tee:canoe_perf_gf_tee",
 ]
