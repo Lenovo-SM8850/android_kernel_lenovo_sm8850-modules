@@ -4,6 +4,7 @@
  * Copyright (c) 2022-2025, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
+#include <linux/of.h>
 #include <linux/module.h>
 #include <linux/crc32.h>
 #include <media/cam_sensor.h>
@@ -15,6 +16,98 @@
 #include "cam_mem_mgr_api.h"
 
 #define MAX_READ_SIZE  0x7FFFF
+
+/* Read SC820ACS fuse data through volatile OTP setup registers. */
+static int sc820acs_front_fuse_read(struct cam_eeprom_ctrl_t *e_ctrl)
+{
+	struct cam_eeprom_soc_private *priv = e_ctrl->soc_info.soc_private;
+	struct cam_sensor_i2c_reg_array setup[] = {
+		{ .reg_addr = 0x36b0, .reg_data = 0x48 },
+		{ .reg_addr = 0x36b1, .reg_data = 0x38 },
+		{ .reg_addr = 0x36b2, .reg_data = 0x41 },
+		{ .reg_addr = 0x4408, .reg_data = 0x80 },
+		{ .reg_addr = 0x4409, .reg_data = 0x00 },
+		{ .reg_addr = 0x440a, .reg_data = 0x81 },
+		{ .reg_addr = 0x440b, .reg_data = 0xff },
+		{ .reg_addr = 0x4401, .reg_data = 0x13 },
+		{ .reg_addr = 0x4412, .reg_data = 0x01 },
+		{ .reg_addr = 0x4407, .reg_data = 0x00 },
+		{ .reg_addr = 0x4400, .reg_data = 0x11 },
+	};
+	struct cam_sensor_i2c_reg_setting setting = {
+		.reg_setting = setup, .size = ARRAY_SIZE(setup),
+		.addr_type = CAMERA_SENSOR_I2C_TYPE_WORD,
+		.data_type = CAMERA_SENSOR_I2C_TYPE_BYTE,
+	};
+	uint32_t status, value;
+	uint16_t slave_addr = priv->i2c_info.slave_addr;
+	uint8_t fuse[13];
+	int rc, restore_rc, i;
+
+	e_ctrl->fuse_id_valid = false;
+	priv->i2c_info.slave_addr = 0x6c;
+	rc = cam_eeprom_update_i2c_info(e_ctrl, &priv->i2c_info);
+	if (rc)
+		goto restore;
+	rc = camera_io_dev_write(&e_ctrl->io_master_info, &setting);
+	if (rc)
+		goto restore;
+	for (i = 0; i < 4; i++) {
+		usleep_range(10000, 10100);
+		rc = camera_io_dev_read(&e_ctrl->io_master_info, 0x4420, &status,
+			CAMERA_SENSOR_I2C_TYPE_WORD, CAMERA_SENSOR_I2C_TYPE_BYTE, false);
+		if (rc || !(status & 1))
+			break;
+	}
+	if (rc)
+		goto restore;
+	if (status & 1) {
+		rc = -ETIMEDOUT;
+		goto restore;
+	}
+	for (i = 0; i < ARRAY_SIZE(fuse); i++) {
+		rc = camera_io_dev_read(&e_ctrl->io_master_info, 0x8000 + i, &value,
+			CAMERA_SENSOR_I2C_TYPE_WORD, CAMERA_SENSOR_I2C_TYPE_BYTE, false);
+		if (rc)
+			goto restore;
+		fuse[i] = value;
+	}
+	memcpy(e_ctrl->fuse_id, fuse, sizeof(fuse));
+	e_ctrl->fuse_id_valid = true;
+restore:
+	priv->i2c_info.slave_addr = slave_addr;
+	restore_rc = cam_eeprom_update_i2c_info(e_ctrl, &priv->i2c_info);
+	return rc ? rc : restore_rc;
+}
+
+static int sc820acs_front_fuse_copy(struct cam_eeprom_ctrl_t *e_ctrl,
+		struct cam_packet *packet)
+{
+	struct cam_buf_io_cfg *cfg = (void *)((uint8_t *)&packet->payload +
+		packet->io_configs_offset);
+	uintptr_t address;
+	size_t length;
+	int rc, i;
+
+	if (e_ctrl->soc_info.index != 1 || !e_ctrl->fuse_id_valid)
+		return -ENODATA;
+	for (i = 0; i < packet->num_io_configs; i++, cfg++) {
+		if (cfg->direction != CAM_BUF_OUTPUT)
+			return -EINVAL;
+		rc = cam_mem_get_cpu_buf(cfg->mem_handle[0], &address, &length);
+		if (rc)
+			return rc;
+		if (!address || cfg->offsets[0] > length ||
+		    sizeof(e_ctrl->fuse_id) > length - cfg->offsets[0]) {
+			cam_mem_put_cpu_buf(cfg->mem_handle[0]);
+			return -EINVAL;
+		}
+		memcpy((void *)(address + cfg->offsets[0]), e_ctrl->fuse_id,
+			sizeof(e_ctrl->fuse_id));
+		cam_mem_put_cpu_buf(cfg->mem_handle[0]);
+	}
+	return 0;
+}
 
 /**
  * cam_eeprom_read_memory() - read map data into buffer
@@ -134,6 +227,13 @@ static int cam_eeprom_read_memory(struct cam_eeprom_ctrl_t *e_ctrl,
 				return rc;
 			}
 		}
+	}
+	if (of_property_read_bool(of_root, "lenovo,front-eeprom-fuse") &&
+	    e_ctrl->soc_info.index == 1 && block->num_map) {
+		int fuse_rc = sc820acs_front_fuse_read(e_ctrl);
+
+		if (fuse_rc)
+			CAM_WARN(CAM_EEPROM, "front fuse read failed rc %d", fuse_rc);
 	}
 	return rc;
 }
@@ -1273,6 +1373,11 @@ static int32_t cam_eeprom_pkt_parse(struct cam_eeprom_ctrl_t *e_ctrl, void *arg)
 	}
 
 	switch (csl_packet->header.op_code & 0xFFFFFF) {
+	case 2:
+		if (!of_property_read_bool(of_root, "lenovo,front-eeprom-fuse"))
+			goto invalid_opcode;
+		rc = sc820acs_front_fuse_copy(e_ctrl, csl_packet);
+		break;
 	case CAM_EEPROM_PACKET_OPCODE_INIT:
 		if (e_ctrl->userspace_probe == false) {
 			rc = cam_eeprom_parse_read_memory_map(
@@ -1405,6 +1510,7 @@ static int32_t cam_eeprom_pkt_parse(struct cam_eeprom_ctrl_t *e_ctrl, void *arg)
 		break;
 	}
 	default:
+invalid_opcode:
 		CAM_ERR(CAM_EEPROM, "Invalid op-code 0x%x",
 			csl_packet->header.op_code & 0xFFFFFF);
 		rc = -EINVAL;

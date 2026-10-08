@@ -176,6 +176,8 @@ struct eebin_info {
  * @eebin_info          :   EEBIN address, size info
  */
 struct cam_eeprom_ctrl_t {
+	uint8_t fuse_id[13];
+	bool fuse_id_valid;
 	char device_name[CAM_CTX_DEV_NAME_MAX_LENGTH];
 	struct platform_device *pdev;
 	struct spi_device *spi;
