@@ -10,6 +10,7 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  */
+#include <linux/of.h>
 #include <linux/hqsysfs.h>
 #include <linux/proc_fs.h>
 #include <linux/of_gpio.h>
@@ -67,9 +68,7 @@ static HW_INFO(HWID_SC7603B_CHARGE, sc7603b_charge);
 static HW_INFO(HWID_VIBRATOR, vibrator);
 static HW_INFO(HWID_THERMAL_NTC, thermal_ntc);
 static HW_INFO(HWID_SDCARD_STATUS, sdcard_status);
-#ifdef CONFIG_LENOVO_CELLULAR_HQSYSFS
 static HW_INFO(HWID_SIM_STATUS, sim_status);
-#endif
 static HW_INFO(HWID_SMARTPA, smartpa);
 static HW_INFO(HWID_AUDIO_CODEC, audio_codec);
 static HW_INFO(HWID_NXP3222_REPEATER, nxp3222_repeater);
@@ -116,9 +115,7 @@ static struct attribute *huaqin_attrs[] = {
 	&hw_info_vibrator.attr,
 	&hw_info_thermal_ntc.attr,
 	&hw_info_sdcard_status.attr,
-#ifdef CONFIG_LENOVO_CELLULAR_HQSYSFS
 	&hw_info_sim_status.attr,
-#endif
 	&hw_info_smartpa.attr,
 	&hw_info_audio_codec.attr,
 	&hw_info_nxp3222_repeater.attr,
@@ -149,29 +146,29 @@ static ssize_t huaqin_show(struct kobject *kobj, struct attribute *a, char *buf)
 			}
 		}
 	} else if (HWID_PCBA == hw->hw_id) {
-#ifdef CONFIG_LENOVO_CELLULAR_HQSYSFS
-		if (!strcmp(pcba_config, "UNKNOW") ||
-		    !strcmp(pcba_stage, "UNKNOW") ||
-		    !strcmp(pcba_protocol, "UNKNOW"))
-			count = sprintf(buf, "PCBA_WUJI_UNKNOW\n");
-		else
-			count = sprintf(buf, "PCBA_WUJI_%s_%s_%s\n",
-				pcba_config, pcba_stage, pcba_protocol);
-#else
-		if (!strcmp(pcba_config, "UNKNOW") ||
-		    !strcmp(pcba_stage, "UNKNOW"))
-			count = sprintf(buf, "PCBA_BALDUR_UNKNOW\n");
-		else
-			count = sprintf(buf, "PCBA_BALDUR_%s_%s\n",
-				pcba_config, pcba_stage);
-#endif
+		if (of_property_read_bool(of_root, "lenovo,cellular-hardware-info")) {
+			if (!strcmp(pcba_config, "UNKNOW") ||
+			    !strcmp(pcba_stage, "UNKNOW") ||
+			    !strcmp(pcba_protocol, "UNKNOW"))
+				count = sprintf(buf, "PCBA_WUJI_UNKNOW\n");
+			else
+				count = sprintf(buf, "PCBA_WUJI_%s_%s_%s\n",
+					pcba_config, pcba_stage, pcba_protocol);
+		} else {
+			if (!strcmp(pcba_config, "UNKNOW") ||
+			    !strcmp(pcba_stage, "UNKNOW"))
+				count = sprintf(buf, "PCBA_BALDUR_UNKNOW\n");
+			else
+				count = sprintf(buf, "PCBA_BALDUR_%s_%s\n",
+					pcba_config, pcba_stage);
+		}
 	} else {
 		if (0 == hw->hw_exist) {
-			#ifdef CONFIG_LENOVO_CELLULAR_HQSYSFS
-			count = sprintf(buf, "Not support\n");
-#else
-			count = sprintf(buf, "Not support!\n");
-#endif
+			if (of_property_read_bool(of_root, "lenovo,cellular-hardware-info")) {
+				count = sprintf(buf, "Not support\n");
+			} else {
+				count = sprintf(buf, "Not support!\n");
+			}
 		} else if (NULL == hw->hw_device_name) {
 			count = sprintf(buf, "Installed with no device Name!\n");
 		} else {
@@ -196,19 +193,19 @@ static ssize_t huaqin_store(struct kobject *kobj, struct attribute *a, const cha
 	if (strstr(name, "Gyroscope"))
 		hq_regiser_hw_info(HWID_GYRO, imu);
 	if (strstr(name, "Magnetometer")) {
-#ifdef CONFIG_LENOVO_CELLULAR_HQSYSFS
-		hq_regiser_hw_info(HWID_MSENSOR, "qmc630x");
-#else
-		hq_regiser_hw_info(HWID_MSENSOR,
-			strstr(name, "memsic") ? "mmc56x3x" : "qmc6309h");
-#endif
+		if (of_property_read_bool(of_root, "lenovo,cellular-hardware-info")) {
+			hq_regiser_hw_info(HWID_MSENSOR, "qmc630x");
+		} else {
+			hq_regiser_hw_info(HWID_MSENSOR,
+				strstr(name, "memsic") ? "mmc56x3x" : "qmc6309h");
+		}
 	}
 	if (strstr(name, "Alsps")) {
-#ifdef CONFIG_LENOVO_CELLULAR_HQSYSFS
-		hq_regiser_hw_info(HWID_ALSPS, "stk3a5x");
-#else
-		hq_regiser_hw_info(HWID_ALSPS, "stk_stk3acx");
-#endif
+		if (of_property_read_bool(of_root, "lenovo,cellular-hardware-info")) {
+			hq_regiser_hw_info(HWID_ALSPS, "stk3a5x");
+		} else {
+			hq_regiser_hw_info(HWID_ALSPS, "stk_stk3acx");
+		}
 	}
 	if (strstr(name, "Sar"))
 		hq_regiser_hw_info(HWID_SAR, "aw963xx0");
@@ -224,7 +221,16 @@ static const struct sysfs_ops huaqin_sysfs_ops = {
 	.show = huaqin_show,
 	.store = huaqin_store,
 };
+static umode_t huaqin_attr_visible(struct kobject *kobj,
+		struct attribute *attr, int index)
+{
+	if (attr == &hw_info_sim_status.attr && !of_property_read_bool(of_root, "lenovo,cellular-hardware-info"))
+		return 0;
+	return attr->mode;
+}
+
 static struct attribute_group huaqin_group = {
+	.is_visible = huaqin_attr_visible,
 	.attrs = huaqin_attrs,
  };
 
