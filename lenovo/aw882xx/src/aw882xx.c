@@ -15,6 +15,7 @@
 /*#define DEBUG*/
 #include <linux/of.h>
 #include <linux/module.h>
+#include <linux/regulator/consumer.h>
 #include <linux/i2c.h>
 #include <sound/core.h>
 #include <sound/pcm.h>
@@ -2963,6 +2964,36 @@ static struct attribute_group aw882xx_attribute_group = {
 	.attrs = aw882xx_attributes,
 };
 
+static void aw882xx_disable_supply(void *supply)
+{
+	regulator_disable(supply);
+}
+
+/* Wuji stock votes survive suspend; bootloader votes alone expire at late init. */
+static int aw882xx_enable_supplies(struct device *dev)
+{
+	static const char * const names[] = { "pa-dvdd", "pa-vddio" };
+	static const int microvolts[] = { 1800000, 1200000 };
+	struct regulator *supply;
+	int i, ret;
+
+	for (i = 0; i < ARRAY_SIZE(names); i++) {
+		supply = devm_regulator_get(dev, names[i]);
+		if (IS_ERR(supply))
+			return PTR_ERR(supply);
+		ret = regulator_set_voltage(supply, microvolts[i], microvolts[i]);
+		if (ret)
+			return ret;
+		ret = regulator_enable(supply);
+		if (ret)
+			return ret;
+		ret = devm_add_action_or_reset(dev, aw882xx_disable_supply, supply);
+		if (ret)
+			return ret;
+	}
+	return 0;
+}
+
 static int aw882xx_i2c_suspend(struct device *dev)
 {
 	struct aw882xx *aw882xx = dev_get_drvdata(dev);
@@ -3022,6 +3053,12 @@ static int aw882xx_i2c_probe(struct i2c_client *i2c, const struct i2c_device_id 
 	ret = aw882xx_gpio_request(aw882xx);
 	if (ret)
 		return ret;
+
+	if (aw882xx->manage_supplies) {
+		ret = aw882xx_enable_supplies(&i2c->dev);
+		if (ret)
+			return ret;
+	}
 
 	/* hardware reset */
 	aw882xx_hw_reset(aw882xx);
