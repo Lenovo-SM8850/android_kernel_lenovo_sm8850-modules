@@ -13,7 +13,9 @@
  */
 
 /*#define DEBUG*/
+#include <linux/of.h>
 #include <linux/module.h>
+#include <linux/regulator/consumer.h>
 #include <linux/i2c.h>
 #include <sound/core.h>
 #include <sound/pcm.h>
@@ -2962,6 +2964,49 @@ static struct attribute_group aw882xx_attribute_group = {
 	.attrs = aw882xx_attributes,
 };
 
+struct aw882xx_supplies {
+	struct regulator_bulk_data rails[2];
+};
+
+static void aw882xx_disable_supplies(void *data)
+{
+	struct aw882xx_supplies *supplies = data;
+
+	regulator_bulk_disable(ARRAY_SIZE(supplies->rails), supplies->rails);
+}
+
+/* The fitted amplifier node owns its monitor supply votes. */
+static int aw882xx_enable_supplies(struct device *dev)
+{
+	struct aw882xx_supplies *supplies;
+	u32 microvolts[2];
+	int i, ret;
+
+	ret = of_property_read_u32_array(dev->of_node,
+			"awinic,monitor-supply-microvolt", microvolts, 2);
+	if (ret)
+		return ret;
+	supplies = devm_kzalloc(dev, sizeof(*supplies), GFP_KERNEL);
+	if (!supplies)
+		return -ENOMEM;
+	supplies->rails[0].supply = "pa-dvdd";
+	supplies->rails[1].supply = "pa-vddio";
+	ret = devm_regulator_bulk_get(dev, ARRAY_SIZE(supplies->rails),
+				     supplies->rails);
+	if (ret)
+		return ret;
+	for (i = 0; i < ARRAY_SIZE(supplies->rails); i++) {
+		ret = regulator_set_voltage(supplies->rails[i].consumer,
+					    microvolts[i], microvolts[i]);
+		if (ret)
+			return ret;
+	}
+	ret = regulator_bulk_enable(ARRAY_SIZE(supplies->rails), supplies->rails);
+	if (ret)
+		return ret;
+	return devm_add_action_or_reset(dev, aw882xx_disable_supplies, supplies);
+}
+
 #ifdef AW_KERNEL_VER_OVER_6_6_0
 static int aw882xx_i2c_probe(struct i2c_client *i2c)
 #else
@@ -2998,6 +3043,12 @@ static int aw882xx_i2c_probe(struct i2c_client *i2c, const struct i2c_device_id 
 	ret = aw882xx_gpio_request(aw882xx);
 	if (ret)
 		return ret;
+
+	if (of_property_read_bool(np, "awinic,monitor-supply-microvolt")) {
+		ret = aw882xx_enable_supplies(&i2c->dev);
+		if (ret)
+			return ret;
+	}
 
 	/* hardware reset */
 	aw882xx_hw_reset(aw882xx);
