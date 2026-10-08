@@ -15,3 +15,6 @@ LCD_MODULES = [
     "//vendor/lenovo/sm8850-modules/lenovo/fsa4480_sub:canoe_perf_fsa4480_sub",
     "//vendor/lenovo/sm8850-modules/lenovo/nvt_36xxx:canoe_perf_nvt_36xxx",
 ]
+
+PERIPHERAL_MODULES = [
+]

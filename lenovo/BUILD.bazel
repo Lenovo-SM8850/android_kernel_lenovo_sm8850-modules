@@ -1,13 +1,8 @@
 # SPDX-License-Identifier: GPL-2.0-only
-load(":profiles.bzl", "LCD_MODULES", "COMMON_MODULES")
+load(":profiles.bzl", "LCD_MODULES", "COMMON_MODULES", "PERIPHERAL_MODULES")
 load("//build/kernel/kleaf:kernel.bzl", "kernel_module_group")
 package(default_visibility = ["//visibility:public"])
 kernel_module_group(
-    name = "sm8850_common_modules",
-    srcs = COMMON_MODULES,
+    name = "canoe_perf_modules",
+    srcs = COMMON_MODULES + LCD_MODULES + PERIPHERAL_MODULES,
 )
-kernel_module_group(
-    name = "baldur_modules",
-    srcs = COMMON_MODULES + LCD_MODULES,
-)
-alias(name = "canoe_perf_modules", actual = ":baldur_modules")
