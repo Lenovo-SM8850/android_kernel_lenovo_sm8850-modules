@@ -943,14 +943,22 @@ static int32_t nvt_cmd_store_locked(uint8_t *command, uint8_t len)
 	lockdep_assert_held(&ts->lock);
 	if (len >= sizeof(buf))
 		return -EINVAL;
-	memcpy(buf + 1, command, len);
+	ret = nvt_set_page(ts->mmap->EVENT_BUF_ADDR | EVENT_MAP_HOST_CMD);
+	if (ret < 0)
+		return ret;
 	for (i = 0; i < 20; i++) {
+		/* The status read overwrites buf[1]; resend the original command. */
+		memcpy(buf + 1, command, len);
 		buf[0] = EVENT_MAP_HOST_CMD;
-		CTP_SPI_WRITE(ts->client, buf, len + 1);
+		ret = CTP_SPI_WRITE(ts->client, buf, len + 1);
+		if (ret < 0)
+			return ret;
 		msleep(1);
 		buf[0] = EVENT_MAP_HOST_CMD;
 		buf[1] = 0xff;
-		CTP_SPI_READ(ts->client, buf, 2);
+		ret = CTP_SPI_READ(ts->client, buf, 2);
+		if (ret < 0)
+			return ret;
 		if (buf[1] == 0)
 			break;
 	}
@@ -1293,6 +1301,9 @@ static int32_t nvt_get_fw_pen_state_open(struct inode *inode, struct file *file)
 #ifdef HAVE_PROC_OPS
 static const struct proc_ops nvt_get_fw_pen_state_fops = {
 	.proc_open = nvt_get_fw_pen_state_open,
+	.proc_read = seq_read,
+	.proc_lseek = seq_lseek,
+	.proc_release = single_release,
 };
 #else
 static const struct file_operations nvt_get_fw_pen_state_fops = {
@@ -1580,8 +1591,13 @@ int32_t nvt_pen_type_set(uint8_t status)
 void nvt_restore_pen_settings_locked(void)
 {
 	uint8_t type[] = {0x7b, 0x04, ts->pen_type};
+	uint8_t support[] = {SUPPORT_PEN_CMD,
+			ts->pen_state <= 3 ? ts->pen_state & 1 : 0};
 	uint8_t wake[] = {0x7d, ts->pen_wakeup_state};
 
+	/* Stock resumes pairing states 2/3 as the stable pen states 0/1. */
+	if (nvt_cmd_store_locked(support, sizeof(support)))
+		NVT_ERR("Failed to restore pen support\n");
 	if (nvt_cmd_store_locked(type, sizeof(type)))
 		NVT_ERR("Failed to restore pen type\n");
 	if (nvt_cmd_store_locked(wake, sizeof(wake)))

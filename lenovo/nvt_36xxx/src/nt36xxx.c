@@ -2104,7 +2104,11 @@ XFER_ERROR:
 		nvt_game_mode_set(ts->game_mode_state);
 #endif
 #if NVT_SUPPORT_PEN
+#ifdef BUILD_BALDUR_TOUCH
+		nvt_support_pen_set(ts->pen_state <= 3 ? ts->pen_state & 1 : 0);
+#else
 		nvt_support_pen_set(ts->pen_state);
+#endif
 #endif
 #ifdef BUILD_BALDUR_TOUCH
 		nvt_haptics_set(ts->haptics_state);
@@ -2345,7 +2349,11 @@ static void nvt_restore_cmd_func(struct work_struct *work)
 		nvt_game_mode_set(ts->game_mode_state);
 #endif
 #if NVT_SUPPORT_PEN
+#ifdef BUILD_BALDUR_TOUCH
+		nvt_support_pen_set(ts->pen_state <= 3 ? ts->pen_state & 1 : 0);
+#else
 		nvt_support_pen_set(ts->pen_state);
+#endif
 #endif
 #ifdef BUILD_BALDUR_TOUCH
 		nvt_haptics_set(ts->haptics_state);
