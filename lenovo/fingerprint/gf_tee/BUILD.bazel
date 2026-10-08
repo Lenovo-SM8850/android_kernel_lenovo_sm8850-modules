@@ -1,0 +1,19 @@
+# SPDX-License-Identifier: GPL-2.0-only
+load("//build/kernel/kleaf:kernel.bzl", "ddk_module")
+
+package(default_visibility = ["//visibility:public"])
+
+ddk_module(
+    name = "canoe_perf_gf_tee",
+    out = "gf_tee.ko",
+    srcs = [
+        "gf_tee.c",
+    ],
+    kernel_build = "//vendor/lenovo/sm8850:canoe_perf_base_kernel",
+    config = "//vendor/lenovo/sm8850:canoe_perf_config",
+    deps = [
+        "//vendor/lenovo/sm8850:all_headers",
+        "//vendor/lenovo/sm8850-modules/lenovo/panel:panel_notifier_headers",
+        "//vendor/lenovo/sm8850:canoe_perf/drivers/soc/qcom/panel_event_notifier",
+    ],
+)
