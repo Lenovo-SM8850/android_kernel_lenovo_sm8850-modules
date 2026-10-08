@@ -17,6 +17,7 @@ LCD_MODULES = [
 ]
 
 PERIPHERAL_MODULES = [
+    "//vendor/lenovo/sm8850-modules/lenovo/regulator/wl2868c:canoe_perf_wl2868c",
     "//vendor/lenovo/sm8850-modules/lenovo/radio/sar_swtp:canoe_perf_sar_swtp",
     "//vendor/lenovo/sm8850-modules/lenovo/regulator/sgm66075:canoe_perf_sgm",
 ]
