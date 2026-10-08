@@ -174,6 +174,8 @@ struct aw882xx_i2c_packet {
  * struct aw882xx
  *******************************************/
 struct aw882xx {
+	bool manage_supplies;
+	bool suspended;
 	int sysclk;
 	int rate;
 	int pstream;
