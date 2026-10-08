@@ -465,6 +465,123 @@ static int dsi_panel_set_pinctrl_state(struct dsi_panel *panel, bool enable, boo
 	return rc;
 }
 
+#ifdef CONFIG_DRM_MSM_LENOVO_DISPLAY
+static bool dsi_panel_is_oled(struct dsi_panel *panel)
+{
+	return of_property_read_bool(panel->panel_of_node, "lenovo,oled-power-sequence");
+}
+
+static int oled_panel_pin(struct dsi_panel *panel, struct pinctrl_state *state)
+{
+	if (IS_ERR_OR_NULL(panel->pinctrl.pinctrl) || IS_ERR_OR_NULL(state))
+		return 0;
+	return pinctrl_select_state(panel->pinctrl.pinctrl, state);
+}
+
+static int oled_panel_supply(struct dsi_panel *panel, const char *name, bool enable)
+{
+	struct dsi_regulator_info *regs = &panel->power_info;
+	struct dsi_regulator_info single = { .count = 1, .refcount = !enable };
+	int i;
+
+	for (i = 0; i < regs->count; i++) {
+		if (!strcmp(regs->vregs[i].vreg_name, name)) {
+			single.vregs = &regs->vregs[i];
+			return dsi_pwr_enable_regulator(&single, enable);
+		}
+	}
+	return -ENODEV;
+}
+
+/* Board GPIOs bracket VCI power transitions. */
+static int oled_panel_power_off(struct dsi_panel *panel)
+{
+	int rc, ret;
+
+	if (!panel->power_info.refcount)
+		return 0;
+	if (--panel->power_info.refcount)
+		return 0;
+	if (gpio_is_valid(panel->reset_config.disp_en_gpio))
+		gpio_set_value(panel->reset_config.disp_en_gpio, 0);
+	if (gpio_is_valid(panel->reset_config.reset_gpio) && !panel->reset_gpio_always_on)
+		gpio_set_value(panel->reset_config.reset_gpio, 0);
+	if (gpio_is_valid(panel->reset_config.lcd_mode_sel_gpio))
+		gpio_set_value(panel->reset_config.lcd_mode_sel_gpio, 0);
+	if (gpio_is_valid(panel->panel_test_gpio))
+		gpio_direction_input(panel->panel_test_gpio);
+	usleep_range(2000, 2100);
+	rc = oled_panel_supply(panel, "vci", false);
+	usleep_range(2000, 2100);
+	ret = oled_panel_pin(panel, panel->pinctrl.vo4_set[0]);
+	if (!rc)
+		rc = ret;
+	usleep_range(1000, 1100);
+	ret = oled_panel_pin(panel, panel->pinctrl.vo4_en[0]);
+	if (!rc)
+		rc = ret;
+	usleep_range(1000, 1100);
+	ret = oled_panel_pin(panel, panel->pinctrl.oled_nreset[0]);
+	if (!rc)
+		rc = ret;
+	usleep_range(1000, 1100);
+	ret = oled_panel_supply(panel, "vddio", false);
+	if (!rc)
+		rc = ret;
+	usleep_range(2000, 2100);
+	ret = dsi_panel_set_pinctrl_state(panel, false, false);
+	return rc ? rc : ret;
+}
+
+static int oled_panel_power_on(struct dsi_panel *panel, bool is_cont_splash)
+{
+	int rc;
+
+	if (panel->power_info.refcount) {
+		panel->power_info.refcount++;
+		return 0;
+	}
+	rc = oled_panel_supply(panel, "vddio", true);
+	if (rc)
+		return rc;
+	rc = dsi_panel_set_pinctrl_state(panel, true, is_cont_splash);
+	if (rc)
+		goto disable_io;
+	usleep_range(1000, 1100);
+	rc = oled_panel_pin(panel, panel->pinctrl.vo4_set[1]);
+	if (rc)
+		goto disable_pins;
+	rc = oled_panel_pin(panel, panel->pinctrl.oled_nreset[1]);
+	if (rc)
+		goto disable_pins;
+	usleep_range(1000, 1100);
+	rc = oled_panel_pin(panel, panel->pinctrl.vo4_en[1]);
+	if (rc)
+		goto disable_pins;
+	usleep_range(2000, 2100);
+	rc = oled_panel_supply(panel, "vci", true);
+	if (rc)
+		goto disable_pins;
+	panel->power_info.refcount = 1;
+	usleep_range(2000, 2100);
+	if (!(is_cont_splash && panel->disp_op == MSM_DISP_OP_HFI)) {
+		rc = dsi_panel_reset(panel);
+		if (rc)
+			oled_panel_power_off(panel);
+	}
+	return rc;
+
+disable_pins:
+	oled_panel_pin(panel, panel->pinctrl.vo4_set[0]);
+	oled_panel_pin(panel, panel->pinctrl.vo4_en[0]);
+	oled_panel_pin(panel, panel->pinctrl.oled_nreset[0]);
+	dsi_panel_set_pinctrl_state(panel, false, false);
+disable_io:
+	oled_panel_supply(panel, "vddio", false);
+	return rc;
+}
+#endif
+
 int dsi_panel_power_on(struct dsi_panel *panel, bool is_cont_splash)
 {
 	int rc = 0;
@@ -473,6 +590,11 @@ int dsi_panel_power_on(struct dsi_panel *panel, bool is_cont_splash)
 #ifdef CONFIG_DRM_MSM_LENOVO_DISPLAY
 	if (panel->lenovo_lcd)
 		power_ops = lenovo_panel_lcd_power_ops();
+#endif
+
+#ifdef CONFIG_DRM_MSM_LENOVO_DISPLAY
+	if (dsi_panel_is_oled(panel))
+		return oled_panel_power_on(panel, is_cont_splash);
 #endif
 
 	rc = dsi_pwr_enable_regulator(&panel->power_info, true);
@@ -536,6 +658,11 @@ int dsi_panel_power_off(struct dsi_panel *panel)
 		DSI_DEBUG("skip panel power off\n");
 		return rc;
 	}
+
+#ifdef CONFIG_DRM_MSM_LENOVO_DISPLAY
+	if (dsi_panel_is_oled(panel))
+		return oled_panel_power_off(panel);
+#endif
 
 	if (power_ops && power_ops->prepare_power_off &&
 	    power_ops->prepare_power_off(panel))
@@ -660,6 +787,23 @@ static int dsi_panel_pinctrl_init(struct dsi_panel *panel)
 		DSI_ERR("failed to get pinctrl, rc=%d\n", rc);
 		goto error;
 	}
+
+#ifdef CONFIG_DRM_MSM_LENOVO_DISPLAY
+	if (dsi_panel_is_oled(panel)) {
+		panel->pinctrl.vo4_set[0] = pinctrl_lookup_state(
+			panel->pinctrl.pinctrl, "vo4_set_sleep");
+		panel->pinctrl.vo4_set[1] = pinctrl_lookup_state(
+			panel->pinctrl.pinctrl, "vo4_set_active");
+		panel->pinctrl.vo4_en[0] = pinctrl_lookup_state(
+			panel->pinctrl.pinctrl, "vo4_en_sleep");
+		panel->pinctrl.vo4_en[1] = pinctrl_lookup_state(
+			panel->pinctrl.pinctrl, "vo4_en_active");
+		panel->pinctrl.oled_nreset[0] = pinctrl_lookup_state(
+			panel->pinctrl.pinctrl, "oled_nreset_sleep");
+		panel->pinctrl.oled_nreset[1] = pinctrl_lookup_state(
+			panel->pinctrl.pinctrl, "oled_nreset_active");
+	}
+#endif
 
 	panel->pinctrl.active =
 		pinctrl_lookup_state(panel->pinctrl.pinctrl, "panel_active");
