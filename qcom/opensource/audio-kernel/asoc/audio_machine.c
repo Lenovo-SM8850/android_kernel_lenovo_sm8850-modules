@@ -4,6 +4,7 @@
  * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
+#include <linux/of.h>
 #include <linux/clk.h>
 #include <linux/delay.h>
 #include <linux/gpio.h>
@@ -16,6 +17,8 @@
 #include <soc/qcom/socinfo.h>
 #include <linux/version.h>
 #include <linux/of_device.h>
+#include <linux/usb/typec_mux.h>
+#include <linux/usb/typec_altmode.h>
 #if IS_ENABLED(CONFIG_QCOM_WCD_USBSS_I2C)
 #include <linux/soc/qcom/wcd939x-i2c.h>
 #endif
@@ -98,7 +101,50 @@ struct msm_asoc_mach_data {
 	struct prm_earpa_hw_intf_config upd_config;
 	bool dedicated_wsa2; /* used to define how wsa2 slave devices are used */
 	int wcd_used;
+	struct typec_mux_dev *usbc_mux;
+	struct snd_soc_jack usbc_jack;
 };
+
+/* Preserve the audio HAL's USB_2_35 jack mask. */
+#define ACCESSORY_USBC_JACK_MASK (SND_JACK_HEADSET | SND_JACK_VIDEOOUT)
+static int analog_accessory_usbc_mux_set(struct typec_mux_dev *mux,
+				       struct typec_mux_state *state)
+{
+	struct msm_asoc_mach_data *pdata = typec_mux_get_drvdata(mux);
+
+	snd_soc_jack_report(&pdata->usbc_jack,
+		state->mode == TYPEC_MODE_AUDIO ? ACCESSORY_USBC_JACK_MASK : 0,
+		ACCESSORY_USBC_JACK_MASK);
+	return 0;
+}
+
+static int accessory_register_usbc_mux(struct snd_soc_card *card)
+{
+	struct msm_asoc_mach_data *pdata = snd_soc_card_get_drvdata(card);
+	struct typec_mux_desc desc = {
+		.fwnode = dev_fwnode(card->dev),
+		.set = analog_accessory_usbc_mux_set,
+		.drvdata = pdata,
+	};
+	int ret;
+
+	if (!of_property_read_bool(of_root, "lenovo,usb-c-accessory-mux") ||
+	    pdata->usbc_mux || !device_property_present(card->dev, "mode-switch"))
+		return 0;
+
+	ret = snd_soc_card_jack_new(card, "USB_2_35 Jack",
+				    ACCESSORY_USBC_JACK_MASK, &pdata->usbc_jack);
+	if (ret)
+		return ret;
+
+	pdata->usbc_mux = typec_mux_register(card->dev, &desc);
+	if (IS_ERR(pdata->usbc_mux)) {
+		ret = PTR_ERR(pdata->usbc_mux);
+		pdata->usbc_mux = NULL;
+		return ret;
+	}
+	return 0;
+}
 
 static bool is_initial_boot;
 static bool codec_reg_done;
@@ -2549,6 +2595,7 @@ static int msm_rx_tx_codec_init(struct snd_soc_pcm_runtime *rtd)
 done:
 	codec_reg_done = true;
 	msm_common_dai_link_init(rtd);
+	ret = accessory_register_usbc_mux(rtd->card);
 
 	return ret;
 }
@@ -2890,6 +2937,8 @@ static int msm_asoc_machine_probe(struct platform_device *pdev)
 
 	return 0;
 err:
+	typec_mux_unregister(pdata->usbc_mux);
+	pdata->usbc_mux = NULL;
 	devm_kfree(&pdev->dev, pdata);
 	return ret;
 }
@@ -2909,6 +2958,10 @@ static int msm_asoc_machine_remove(struct platform_device *pdev)
 	if (pdata)
 		common_pdata = pdata->common_pdata;
 
+	if (pdata) {
+		typec_mux_unregister(pdata->usbc_mux);
+		pdata->usbc_mux = NULL;
+	}
 	msm_common_snd_deinit(common_pdata);
 	snd_event_master_deregister(&pdev->dev);
 	snd_soc_unregister_card(card);
