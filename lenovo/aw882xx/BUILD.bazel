@@ -10,6 +10,5 @@ ddk_module(
     kernel_build = "//vendor/lenovo/sm8850:canoe_perf_base_kernel",
     config = "//vendor/lenovo/sm8850:canoe_perf_config",
     includes = ['inc'],
-    local_defines = [],
     deps = ["//vendor/lenovo/sm8850:all_headers"],
 )
