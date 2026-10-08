@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0
 #ifndef __REGULATOR_WL2868C_H_
 #define __REGULATOR_WL2868C_H_
 
@@ -44,7 +45,5 @@ struct wl2868c_regulator{
 	unsigned int chip_index;
 };
 
-int wl2868c_chip_init_module(void);
-void wl2868c_chip_exit_module(void);
 
 #endif
