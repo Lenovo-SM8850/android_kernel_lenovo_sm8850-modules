@@ -9,4 +9,5 @@ LCD_MODULES = [
 ]
 
 PERIPHERAL_MODULES = [
+    "//vendor/lenovo/sm8850-modules/lenovo/touch/gt9976n_thp:canoe_perf_gt9976n_thp_core",
 ]

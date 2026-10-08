@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: GPL-2.0-only
+load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
+package(default_visibility = ["//visibility:public"])
+ddk_headers(
+    name = "panel_notifier_headers",
+    hdrs = ["panel_notifier.h"],
+    includes = ["."],
+)
