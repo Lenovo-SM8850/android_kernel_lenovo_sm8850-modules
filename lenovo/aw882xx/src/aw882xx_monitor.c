@@ -28,6 +28,7 @@
 #include <linux/workqueue.h>
 #include <linux/power_supply.h>
 #include <linux/hrtimer.h>
+#include <linux/pm_wakeup.h>
 #include "aw882xx.h"
 #include "aw882xx_dsp.h"
 #include "aw882xx_monitor.h"
@@ -463,6 +464,21 @@ static void aw_monitor_work_func(struct work_struct *work)
 	struct aw_monitor_cfg *monitor_cfg = &aw_dev->monitor_desc.monitor_cfg;
 	struct aw_monitor_desc *monitor = &aw_dev->monitor_desc;
 
+	struct aw882xx *aw882xx = i2c_get_clientdata(aw_dev->i2c);
+
+	if (of_property_read_bool(of_root, "lenovo,amplifier-supply-control")) {
+		/* Stock holds the device wake vote across the monitor transaction. */
+		pm_stay_awake(aw_dev->dev);
+		if (READ_ONCE(aw882xx->suspended)) {
+			pm_relax(aw_dev->dev);
+			if (monitor_cfg->monitor_status == AW_MON_CFG_OK && aw_dev->monitor_start &&
+			    monitor_cfg->monitor_switch && monitor->monitor_mode == AW_MON_KERNEL_MODE)
+				queue_delayed_work(aw_dev->work_queue, &monitor->delay_work,
+					msecs_to_jiffies(monitor_cfg->monitor_time));
+			return;
+		}
+
+	}
 	aw_dev_dbg(aw_dev->dev, "monitor_start:%d, monitor_status:%d, monitor_switch:%d",
 			aw_dev->monitor_start, monitor_cfg->monitor_status,
 			monitor_cfg->monitor_switch);
@@ -478,6 +494,10 @@ static void aw_monitor_work_func(struct work_struct *work)
 			}
 		}
 	}
+	if (of_property_read_bool(of_root, "lenovo,amplifier-supply-control")) {
+		pm_relax(aw_dev->dev);
+	}
+
 }
 
 static void aw_monitor_check_bop_status(struct aw_device *aw_dev)
