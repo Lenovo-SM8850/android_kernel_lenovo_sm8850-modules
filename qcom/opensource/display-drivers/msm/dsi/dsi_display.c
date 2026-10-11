@@ -16,6 +16,10 @@
 #include "hfi_msm_drv.h"
 #include "sde_connector.h"
 #include "msm_mmu.h"
+#if defined(CONFIG_DRM_MSM_LENOVO_WUJI) || defined(CONFIG_DRM_MSM_LENOVO_BALDUR)
+#include <linux/hqsysfs.h>
+#endif
+
 #include "dsi_display.h"
 #include "dsi_panel.h"
 #include "dsi_lenovo.h"
@@ -6480,20 +6484,44 @@ end:
 	return rc;
 }
 
+#if defined(CONFIG_DRM_MSM_LENOVO_WUJI) || defined(CONFIG_DRM_MSM_LENOVO_BALDUR)
 static noinline void set_panel_id(const char *panel_name)
 {
-	if (strstr(panel_name, "baldur_nt36523_csot_3k_dsc_vid"))
-		DSI_INFO("panel_name = %s,vendor:CSOT, ic:NT36523N\n", panel_name);
-	else
-		DSI_INFO("Failed to add LCM!\n");
-	/* Stock hq_regiser_hw_info(32, panel_name) is intentionally omitted. */
+	static char lcm_name[64];
+
+	if (IS_ENABLED(CONFIG_DRM_MSM_LENOVO_WUJI)) {
+		if (strstr(panel_name, "dsi_wuji_rm693a0_tianma_dsc_cmd")) {
+			strscpy(lcm_name, "dsi_wuji_rm693a0_tianma_dsc_cmd",
+				sizeof(lcm_name));
+			DSI_INFO("panel_name = %s,vendor:tianma, ic:RM693A0\n", panel_name);
+		} else if (strstr(panel_name, "dsi_wuji_rm693a0_tianma_dvt2_cmd")) {
+			strscpy(lcm_name, "dsi_wuji_rm693a0_tianma_dvt2_cmd",
+				sizeof(lcm_name));
+			DSI_INFO("panel_name = %s,vendor:tianma, ic:RM693A0\n", panel_name);
+		} else {
+			DSI_INFO("Failed to add LCM!\n");
+		}
+	} else if (IS_ENABLED(CONFIG_DRM_MSM_LENOVO_BALDUR)) {
+		if (strstr(panel_name, "baldur_nt36523_csot_3k_dsc_vid")) {
+			strscpy(lcm_name, "baldur_nt36523_csot_3k_dsc_vid",
+				sizeof(lcm_name));
+			DSI_INFO("panel_name = %s,vendor:CSOT, ic:NT36523N\n", panel_name);
+		} else {
+			DSI_INFO("Failed to add LCM!\n");
+		}
+	}
+
+	if (IS_ENABLED(CONFIG_DRM_MSM_LENOVO_WUJI) ||
+	    IS_ENABLED(CONFIG_DRM_MSM_LENOVO_BALDUR))
+		hq_regiser_hw_info(HWID_LCM, lcm_name);
 }
+
+#endif
 
 int dsi_display_dev_probe(struct platform_device *pdev)
 {
 	struct dsi_display *display = NULL;
 	struct device_node *mdp_node = NULL;
-	struct device_node *panel_node;
 	int rc = 0, index = DSI_PRIMARY, mdp_count;
 	struct dsi_display_boot_param *boot_disp = NULL;
 
@@ -6553,11 +6581,9 @@ int dsi_display_dev_probe(struct platform_device *pdev)
 
 	display->pdev = pdev;
 	display->boot_disp = boot_disp;
-	panel_node = of_parse_phandle(pdev->dev.of_node, "qcom,dsi-default-panel", 0);
-	if (IS_ENABLED(CONFIG_DRM_MSM_LENOVO_BALDUR) &&
-	    of_property_read_bool(panel_node, "lenovo,lcd-power-sequence"))
-		set_panel_id(boot_disp->name);
-	of_node_put(panel_node);
+#if defined(CONFIG_DRM_MSM_LENOVO_WUJI) || defined(CONFIG_DRM_MSM_LENOVO_BALDUR)
+	set_panel_id(boot_disp->name);
+#endif
 
 	dsi_display_parse_cmdline_topology(display, index);
 

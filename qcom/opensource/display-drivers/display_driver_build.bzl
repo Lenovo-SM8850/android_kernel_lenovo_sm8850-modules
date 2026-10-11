@@ -122,6 +122,9 @@ def define_target_variant_modules(target, variant, registry, modules, config_opt
     build_print = lambda message: print("{}: {}".format(kernel_build_tv, message))
     formatter = lambda s: s.replace("%b", kernel_build_tv).replace("%t", target)
 
+    if target == "canoe" and variant == "perf" and not vm_target:
+        deps += [modules_label("lenovo/hqsysfs:canoe_perf_hqsysfs")]
+
     headers = deps + registry.hdrs
     all_module_rules = []
 
