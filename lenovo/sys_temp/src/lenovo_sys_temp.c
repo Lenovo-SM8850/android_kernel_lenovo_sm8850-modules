@@ -75,6 +75,38 @@ static const struct sys_temp_model lcd_sys_temp_model = {
 	.evaluate = lcd_model,
 };
 
+static const s32 oled_coefficients[5][INPUT_COUNT] = {
+	{ 146, -634, 240, 97, 587, -631, 456, 0, -28, -199, 579, 438, -303, 72, 0 },
+	{ 258, 735, 8, 77, -597, 282, -2, 0, -251, -41, -94, 377, -67, 162, 0 },
+	{ 192, 236, 400, -33, -544, 299, 122, 0, -158, 216, -122, 101, 4, 130, 0 },
+	{ 184, 699, 335, 146, -384, 183, -214, 0, -145, 45, -434, 393, -133, 162, 0 },
+	{ 226, -117, -403, 508, -191, 259, 395, 0, -195, 46, 73, 277, -65, 32, 0 },
+};
+static const s32 oled_intercepts[5] = { 6865000, 5521000, 5167000, 5282000, 6227000 };
+
+static void oled_model(const int input[INPUT_COUNT], int output[OUTPUT_COUNT])
+{
+	int model[5], i, j;
+
+	for (i = 0; i < 5; i++) {
+		u32 sum = (u32)oled_intercepts[i];
+
+		for (j = 0; j < INPUT_COUNT; j++)
+			sum += (u32)input[j] * (u32)oled_coefficients[i][j];
+		model[i] = (s32)sum / 1000;
+	}
+	output[0] = model[0];
+	output[2] = max(model[4], max(model[2], model[3]));
+	output[1] = max(max(model[0], model[1]), output[2]);
+	output[3] = model[4];
+	output[4] = max(model[2], model[3]) - 2500;
+}
+static const struct sys_temp_model oled_sys_temp_model = {
+	.input_names = input_names,
+	.output_names = output_names,
+	.evaluate = oled_model,
+};
+
 struct sys_temp;
 struct sys_temp_sensor {
 	struct sys_temp *owner;
@@ -255,7 +287,8 @@ static void lenovo_sys_temp_remove(struct platform_device *pdev)
 
 static const struct of_device_id lenovo_sys_temp_match_table[] = {
 	{ .compatible = "lenovo,sys-temp-lcd", .data = &lcd_sys_temp_model },
-	{ .compatible = "lenovo,sys-temp" },
+	{ .compatible = "lenovo,sys-temp-oled", .data = &oled_sys_temp_model },
+	{ .compatible = "lenovo,sys-temp", .data = &lcd_sys_temp_model },
 	{},
 };
 MODULE_DEVICE_TABLE(of, lenovo_sys_temp_match_table);
