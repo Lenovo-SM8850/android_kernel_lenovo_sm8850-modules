@@ -172,6 +172,7 @@ module_entry(
             "msm/dsi/dsi_bl.c",
             "msm/dsi/dsi_bias.c",
             "lenovo/SM8850/panel_lcd.c",
+            "lenovo/SM8850/panel_oled.c",
         ],
         "CONFIG_DRM_MSM_DSI": [
             "msm/dsi/dsi_phy.c",
