@@ -1,0 +1,17 @@
+# SPDX-License-Identifier: GPL-2.0-only
+package(default_visibility = ["//visibility:public"])
+
+exports_files([
+    "modules.load.vendor_boot",
+    "modules.load.recovery",
+    "modules.load.vendor_dlkm",
+])
+
+filegroup(
+    name = "load_lists",
+    srcs = [
+        "modules.load.vendor_boot",
+        "modules.load.recovery",
+        "modules.load.vendor_dlkm",
+    ],
+)
