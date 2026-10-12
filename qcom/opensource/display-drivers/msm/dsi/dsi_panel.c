@@ -14,6 +14,7 @@
 
 #include "dsi_panel.h"
 #include "dsi_lenovo.h"
+#include "../../lenovo/SM8850/panel_power.h"
 #include "dsi_ctrl_hw.h"
 #include "dsi_parser.h"
 #include "sde_dbg.h"
@@ -62,8 +63,6 @@ static int isl97900_led_event(struct device_node *node, enum isl_function event,
 #define MIN_PREFILL_LINES      40
 #define RSCC_MODE_THRESHOLD_TIME_US 40
 #define DCS_COMMAND_THRESHOLD_TIME_US 40
-
-static DECLARE_COMPLETION(load_fw_completion);
 
 static void dsi_dce_prepare_pps_header(char *buf, u32 pps_delay_ms)
 {
@@ -469,6 +468,12 @@ static int dsi_panel_set_pinctrl_state(struct dsi_panel *panel, bool enable, boo
 int dsi_panel_power_on(struct dsi_panel *panel, bool is_cont_splash)
 {
 	int rc = 0;
+	const struct lenovo_panel_power_ops *power_ops = NULL;
+
+#ifdef CONFIG_DRM_MSM_LENOVO_BALDUR
+	if (panel->lenovo_baldur)
+		power_ops = lenovo_panel_lcd_power_ops();
+#endif
 
 	rc = dsi_pwr_enable_regulator(&panel->power_info, true);
 	if (rc) {
@@ -483,13 +488,8 @@ int dsi_panel_power_on(struct dsi_panel *panel, bool is_cont_splash)
 		goto error_disable_vregs;
 	}
 
-	if (panel->lenovo_baldur) {
-		usleep_range(2000, 2100);
-		rc = bias_enable(true);
-		if (rc)
-			DSI_ERR("[%s] failed to set bias, rc=%d\n", panel->name, rc);
-		usleep_range(5000, 5100);
-	}
+	if (power_ops && power_ops->before_reset)
+		rc = power_ops->before_reset(panel);
 
 	/* For HFI continuous splash case - avoid panel-reset GPIO */
 	if (is_cont_splash && panel->disp_op == MSM_DISP_OP_HFI) {
@@ -502,8 +502,8 @@ int dsi_panel_power_on(struct dsi_panel *panel, bool is_cont_splash)
 		}
 	}
 
-	if (panel->lenovo_baldur)
-		nvt_update_firmware_work(&load_fw_completion);
+	if (power_ops && power_ops->after_reset)
+		power_ops->after_reset(panel);
 	goto exit;
 
 error_disable_gpio:
@@ -525,29 +525,32 @@ exit:
 int dsi_panel_power_off(struct dsi_panel *panel)
 {
 	int rc = 0;
+	const struct lenovo_panel_power_ops *power_ops = NULL;
+
+#ifdef CONFIG_DRM_MSM_LENOVO_BALDUR
+	if (panel->lenovo_baldur)
+		power_ops = lenovo_panel_lcd_power_ops();
+#endif
 
 	if (panel->skip_panel_off) {
 		DSI_DEBUG("skip panel power off\n");
 		return rc;
 	}
 
-	if (panel->lenovo_baldur) {
-		init_completion(&load_fw_completion);
-		usleep_range(10000, 10100);
-		if (nvt_gesture_flag)
-			return 0;
-	}
+	if (power_ops && power_ops->prepare_power_off &&
+	    power_ops->prepare_power_off(panel))
+		return 0;
 
 	if (gpio_is_valid(panel->reset_config.disp_en_gpio))
 		gpio_set_value(panel->reset_config.disp_en_gpio, 0);
-	if (panel->lenovo_baldur)
-		usleep_range(15000, 15100);
+	if (power_ops && power_ops->after_display_disable)
+		power_ops->after_display_disable(panel);
 
 	if (gpio_is_valid(panel->reset_config.reset_gpio) &&
 					!panel->reset_gpio_always_on)
 		gpio_set_value(panel->reset_config.reset_gpio, 0);
-	if (panel->lenovo_baldur)
-		usleep_range(5000, 5100);
+	if (power_ops && power_ops->after_reset_low)
+		power_ops->after_reset_low(panel);
 
 	if (gpio_is_valid(panel->reset_config.lcd_mode_sel_gpio))
 		gpio_set_value(panel->reset_config.lcd_mode_sel_gpio, 0);
@@ -559,11 +562,8 @@ int dsi_panel_power_off(struct dsi_panel *panel)
 				 rc);
 	}
 
-	if (panel->lenovo_baldur) {
-		rc = bias_enable(false);
-		if (rc)
-			DSI_ERR("[%s] failed to set bias, rc=%d\n", panel->name, rc);
-	}
+	if (power_ops && power_ops->disable_bias)
+		power_ops->disable_bias(panel);
 
 	rc = dsi_panel_set_pinctrl_state(panel, false, false);
 	if (rc) {
@@ -576,17 +576,8 @@ int dsi_panel_power_off(struct dsi_panel *panel)
 		DSI_ERR("[%s] failed to enable vregs, rc=%d\n",
 				panel->name, rc);
 
-	if (panel->lenovo_baldur) {
-		usleep_range(5000, 5100);
-		if (!IS_ERR_OR_NULL(panel->pinctrl.pinctrl) &&
-		    !IS_ERR_OR_NULL(panel->pinctrl.iovdd_disable)) {
-			rc = pinctrl_select_state(panel->pinctrl.pinctrl,
-				panel->pinctrl.iovdd_disable);
-			if (rc)
-				DSI_ERR("[%s] failed to set iovdd_disable pinctrl, rc=%d\n",
-					panel->name, rc);
-		}
-	}
+	if (power_ops && power_ops->after_regulators_off)
+		rc = power_ops->after_regulators_off(panel, rc);
 
 	return rc;
 }
@@ -6289,8 +6280,7 @@ int dsi_panel_enable(struct dsi_panel *panel)
 			goto error;
 		}
 	}
-	if (panel->lenovo_baldur &&
-	    !wait_for_completion_timeout(&load_fw_completion, msecs_to_jiffies(350)))
+	if (panel->lenovo_baldur && !lenovo_lcd_wait_for_firmware())
 		DSI_ERR("TP load fw flow is not finished!\n");
 	panel->panel_initialized = true;
 

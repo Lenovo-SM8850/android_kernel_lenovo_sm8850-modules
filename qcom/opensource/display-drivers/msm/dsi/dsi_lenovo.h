@@ -14,6 +14,7 @@ int bias_enable(bool enable);
 
 extern bool nvt_gesture_flag;
 extern void nvt_update_firmware_work(struct completion *load_fw_completion);
+bool lenovo_lcd_wait_for_firmware(void);
 #else
 static inline int register_bl(void) { return 0; }
 static inline int register_bias(void) { return 0; }
@@ -21,6 +22,7 @@ static inline int bl_set_level(int level) { return 0; }
 static inline int bias_enable(bool enable) { return 0; }
 static const bool nvt_gesture_flag;
 static inline void nvt_update_firmware_work(struct completion *completion) { }
+static inline bool lenovo_lcd_wait_for_firmware(void) { return false; }
 #endif
 
 #endif
