@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: GPL-2.0-only
+load(":profiles.bzl", "LCD_MODULES", "COMMON_MODULES", "PERIPHERAL_MODULES")
+load("//build/kernel/kleaf:kernel.bzl", "kernel_module_group")
+package(default_visibility = ["//visibility:public"])
+kernel_module_group(
+    name = "canoe_perf_modules",
+    srcs = COMMON_MODULES + LCD_MODULES + PERIPHERAL_MODULES,
+)
