@@ -1,17 +1,25 @@
 # SPDX-License-Identifier: GPL-2.0-only
 package(default_visibility = ["//visibility:public"])
 
-exports_files([
-    "modules.load.vendor_boot",
-    "modules.load.recovery",
-    "modules.load.vendor_dlkm",
-])
+# Preserve file labels while sourcing the canonical ordered lists from sm8850.
+filegroup(
+    name = "modules.load.vendor_boot",
+    srcs = ["//vendor/lenovo/sm8850:lenovo/baldur/modules.load.vendor_boot"],
+)
+filegroup(
+    name = "modules.load.recovery",
+    srcs = ["//vendor/lenovo/sm8850:lenovo/baldur/modules.load.recovery"],
+)
+filegroup(
+    name = "modules.load.vendor_dlkm",
+    srcs = ["//vendor/lenovo/sm8850:lenovo/baldur/modules.load.vendor_dlkm"],
+)
 
 filegroup(
     name = "load_lists",
     srcs = [
-        "modules.load.vendor_boot",
-        "modules.load.recovery",
-        "modules.load.vendor_dlkm",
+        ":modules.load.vendor_boot",
+        ":modules.load.recovery",
+        ":modules.load.vendor_dlkm",
     ],
 )
