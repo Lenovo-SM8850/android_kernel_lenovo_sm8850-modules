@@ -259,6 +259,7 @@ struct dsi_panel_ops {
 
 struct dsi_panel {
 	bool lenovo_lcd;
+	bool lenovo_oled;
 	const char *name;
 	const char *type;
 	struct device_node *panel_of_node;
@@ -499,6 +500,11 @@ int dsi_panel_send_cmd(struct dsi_panel *panel,
 
 int dsi_panel_parse_freq_step_table(struct dsi_display_mode *mode,
 				struct dsi_parser_utils *utils);
+
+int dsi_panel_reset(struct dsi_panel *panel);
+
+int dsi_panel_set_pinctrl_state(struct dsi_panel *panel, bool enable,
+				bool is_cont_splash);
 
 int dsi_panel_power_on(struct dsi_panel *panel, bool is_cont_splash);
 

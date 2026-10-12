@@ -16,4 +16,9 @@ struct lenovo_panel_power_ops {
 
 const struct lenovo_panel_power_ops *lenovo_panel_lcd_power_ops(void);
 
+#ifdef CONFIG_DRM_MSM_LENOVO_DISPLAY
+int lenovo_panel_oled_power_on(struct dsi_panel *panel, bool is_cont_splash);
+int lenovo_panel_oled_power_off(struct dsi_panel *panel);
+#endif
+
 #endif
