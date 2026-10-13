@@ -4,6 +4,8 @@
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
  */
 
+#include <linux/of.h>
+
 #include <linux/debugfs.h>
 #include <linux/slab.h>
 #include <linux/version.h>
@@ -60,7 +62,7 @@ struct dp_debug_private {
 	struct dp_aux_bridge *sim_bridge;
 };
 
-#if IS_ENABLED(CONFIG_DRM_MSM_LENOVO_BALDUR)
+#if IS_ENABLED(CONFIG_DRM_MSM_LENOVO_DISPLAY)
 static struct dp_debug_private *debug_priv_ptr;
 #endif
 
@@ -2067,7 +2069,7 @@ static const struct file_operations mmrm_clk_cb_fops = {
 	.write = dp_debug_mmrm_clk_cb_write,
 };
 
-#if IS_ENABLED(CONFIG_DRM_MSM_LENOVO_BALDUR)
+#if IS_ENABLED(CONFIG_DRM_MSM_LENOVO_DISPLAY)
 /* Lenovo mode-selection sysfs, retained from TB321FU GPL sources. */
 static ssize_t store_hpd_sim(struct device *dev,
                                 struct device_attribute *attr,
@@ -2609,10 +2611,11 @@ static int dp_debug_init(struct dp_debug *dp_debug)
 		struct dp_debug_private, dp_debug);
 	struct dentry *dir;
 
-#if IS_ENABLED(CONFIG_DRM_MSM_LENOVO_BALDUR)
-	debug_priv_ptr = debug;
-	if (debug->dev) {
+#if IS_ENABLED(CONFIG_DRM_MSM_LENOVO_DISPLAY)
+	if (of_property_read_bool(of_root, "lenovo,lcd-display") && debug->dev) {
 		int i;
+
+		debug_priv_ptr = debug;
 
 		for (i = 0; mode_switch_op_list[i]; i++) {
 			int ret = device_create_file(debug->dev, mode_switch_op_list[i]);

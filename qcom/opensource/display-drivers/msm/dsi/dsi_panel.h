@@ -253,7 +253,7 @@ struct dsi_panel_ops {
 };
 
 struct dsi_panel {
-	bool lenovo_baldur;
+	bool lenovo_lcd;
 	const char *name;
 	const char *type;
 	struct device_node *panel_of_node;

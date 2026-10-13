@@ -118,7 +118,7 @@ def define_target_variant_modules(target, variant, registry, modules, config_opt
     modules = [registry.get(module_name) for module_name in modules]
     options = _get_kernel_build_options(modules, config_options)
     if target == "canoe" and variant == "perf" and not vm_target:
-        options["CONFIG_DRM_MSM_LENOVO_BALDUR"] = True
+        options["CONFIG_DRM_MSM_LENOVO_DISPLAY"] = True
     build_print = lambda message: print("{}: {}".format(kernel_build_tv, message))
     formatter = lambda s: s.replace("%b", kernel_build_tv).replace("%t", target)
 

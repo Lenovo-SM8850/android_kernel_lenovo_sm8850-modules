@@ -46,6 +46,7 @@
 #endif
 
 #include <linux/jiffies.h>
+#include <linux/lenovo_lcd_touch.h>
 #include <linux/string.h>
 #include <linux/cdev.h>
 #include <linux/uaccess.h>
@@ -102,7 +103,7 @@ extern int32_t nvt_game_mode_set(uint8_t status);
 #if NVT_SUPPORT_PEN
 extern int32_t nvt_support_pen_set(uint8_t status);
 #endif
-#ifdef BUILD_BALDUR_TOUCH
+#ifdef BUILD_NOVATEK_TOUCH
 extern int32_t nvt_haptics_set(uint8_t status);
 #endif
 static struct work_struct ts_restore_cmd_work;
@@ -117,6 +118,13 @@ EXPORT_SYMBOL(tp_resume_flag);
 #if WAKEUP_GESTURE
 bool nvt_gesture_flag = false;
 EXPORT_SYMBOL(nvt_gesture_flag);
+
+void nvt_update_firmware_work(struct completion *load_fw_completion);
+static const struct lenovo_lcd_touch_ops nvt_lcd_touch_ops = {
+	.owner = THIS_MODULE,
+	.update_firmware = nvt_update_firmware_work,
+	.gesture_flag = &nvt_gesture_flag,
+};
 #endif
 struct nvt_ts_data *ts;
 static DEFINE_MUTEX(nvt_fw_lock);
@@ -1625,7 +1633,7 @@ static int32_t nvt_ts_point_data_checksum(uint8_t *buf, uint8_t length)
 
 #endif
 
-#ifdef BUILD_BALDUR_TOUCH
+#ifdef BUILD_NOVATEK_TOUCH
 uint8_t touch_info;
 static uint8_t touch_info_pre;
 #endif
@@ -1945,7 +1953,7 @@ static irqreturn_t nvt_ts_work_func(int irq, void *data)
 				pen_btn1 = (uint32_t)(point_data[77] & 0x01);
 				pen_btn2 = (uint32_t)((point_data[77] >> 1) &
 						      0x01);
-#ifdef BUILD_BALDUR_TOUCH
+#ifdef BUILD_NOVATEK_TOUCH
 				touch_info = (point_data[77] >> 2) & 0x3F;
 #endif
 				pen_battery = (uint32_t)point_data[78];
@@ -1999,7 +2007,7 @@ static irqreturn_t nvt_ts_work_func(int irq, void *data)
 				if(LENOVO_MAX_BUFFER == pen_buffer_wp) {
 					pen_buffer_wp = 0;
 				}
-#ifdef BUILD_BALDUR_TOUCH
+#ifdef BUILD_NOVATEK_TOUCH
 				//report Touch infomation
 				if(touch_info != touch_info_pre){
 					kobject_uevent(&nvt_ts_pdev->dev.kobj,KOBJ_CHANGE);
@@ -2104,13 +2112,13 @@ XFER_ERROR:
 		nvt_game_mode_set(ts->game_mode_state);
 #endif
 #if NVT_SUPPORT_PEN
-#ifdef BUILD_BALDUR_TOUCH
+#ifdef BUILD_NOVATEK_TOUCH
 		nvt_support_pen_set(ts->pen_state <= 3 ? ts->pen_state & 1 : 0);
 #else
 		nvt_support_pen_set(ts->pen_state);
 #endif
 #endif
-#ifdef BUILD_BALDUR_TOUCH
+#ifdef BUILD_NOVATEK_TOUCH
 		nvt_haptics_set(ts->haptics_state);
 		nvt_pen_type_set(ts->pen_type);
 		nvt_pen_wakeup_set(ts->pen_wakeup_state);
@@ -2349,13 +2357,13 @@ static void nvt_restore_cmd_func(struct work_struct *work)
 		nvt_game_mode_set(ts->game_mode_state);
 #endif
 #if NVT_SUPPORT_PEN
-#ifdef BUILD_BALDUR_TOUCH
+#ifdef BUILD_NOVATEK_TOUCH
 		nvt_support_pen_set(ts->pen_state <= 3 ? ts->pen_state & 1 : 0);
 #else
 		nvt_support_pen_set(ts->pen_state);
 #endif
 #endif
-#ifdef BUILD_BALDUR_TOUCH
+#ifdef BUILD_NOVATEK_TOUCH
 		nvt_haptics_set(ts->haptics_state);
 		nvt_pen_type_set(ts->pen_type);
 		nvt_pen_wakeup_set(ts->pen_wakeup_state);
@@ -2610,6 +2618,7 @@ return:
 static int32_t nvt_ts_probe(struct spi_device *client)
 {
 	int32_t ret = 0;
+	bool lcd_registered = false;
 #if IS_ENABLED(NVT_DRM_PANEL_NOTIFY) || IS_ENABLED(NVT_QCOM_PANEL_EVENT_NOTIFY)
 	struct device_node *dp = NULL;
 #endif
@@ -2999,7 +3008,7 @@ static int32_t nvt_ts_probe(struct spi_device *client)
 #if NVT_DPR_SWITCH
 	ts->fw_pen_state = 0;
 #endif
-#ifdef BUILD_BALDUR_TOUCH
+#ifdef BUILD_NOVATEK_TOUCH
 	ts->haptics_state = 0;
 	ts->pen_wakeup_state = 0;
 	ts->pen_type = 0;
@@ -3019,6 +3028,10 @@ static int32_t nvt_ts_probe(struct spi_device *client)
 #else
 	NVT_LOG("nt36532 probe end\n");
 #endif
+	ret = lenovo_lcd_register_touch(&nvt_lcd_touch_ops);
+	if (ret)
+		goto err_lcd_touch_register;
+	lcd_registered = true;
 #if IS_ENABLED(NVT_PLATFORM_DRIVER)
 	/* ts platform deivce */
 	ret = nvt_ts_platform_device_init();
@@ -3046,6 +3059,10 @@ err_platform_device_init_failed:
 	kfree(nvt_ts_pdev);
 	nvt_ts_pdev = NULL;
 #endif
+
+err_lcd_touch_register:
+	if (lcd_registered)
+		lenovo_lcd_unregister_touch(&nvt_lcd_touch_ops);
 
 #if IS_ENABLED(NVT_DRM_PANEL_NOTIFY)
 	if (active_panel) {
@@ -3179,6 +3196,7 @@ return:
 *******************************************************/
 static void nvt_ts_remove(struct spi_device *client)
 {
+	lenovo_lcd_unregister_touch(&nvt_lcd_touch_ops);
 	NVT_LOG("Removing driver...\n");
 
 #if IS_ENABLED(NVT_PLATFORM_DRIVER)
@@ -3277,6 +3295,7 @@ static void nvt_ts_remove(struct spi_device *client)
 
 static void nvt_ts_shutdown(struct spi_device *client)
 {
+	lenovo_lcd_unregister_touch(&nvt_lcd_touch_ops);
 	NVT_LOG("Shutdown driver...\n");
 
 	nvt_irq_enable(false);

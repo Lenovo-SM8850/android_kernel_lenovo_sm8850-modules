@@ -1,15 +1,24 @@
 # SPDX-License-Identifier: GPL-2.0-only
-load("//build/kernel/kleaf:kernel.bzl", "ddk_module")
+load("//build/kernel/kleaf:kernel.bzl", "ddk_config", "ddk_module")
 
 package(default_visibility = ["//visibility:public"])
+
+ddk_config(
+    name = "canoe_perf_supplier_config",
+    kernel_build = "//vendor/lenovo/sm8850:canoe_perf_base_kernel",
+    deps = [
+        "//vendor/lenovo/sm8850-modules/qcom/opensource/display-drivers:canoe_perf_msm_drm",
+        "//vendor/lenovo/sm8850:canoe_perf_config",
+    ],
+)
 
 ddk_module(
     name = "canoe_perf_nvt_36xxx",
     out = "nvt_36xxx.ko",
     srcs = glob(["src/*.c", "src/*.h", "inc/*.h"]),
     kernel_build = "//vendor/lenovo/sm8850:canoe_perf_base_kernel",
-    config = "//vendor/lenovo/sm8850:canoe_perf_config",
+    config = ":canoe_perf_supplier_config",
     includes = ['src'],
-    local_defines = ['BUILD_BALDUR_TOUCH'],
-    deps = ["//vendor/lenovo/sm8850:all_headers", "//vendor/lenovo/sm8850:canoe_perf/drivers/soc/qcom/panel_event_notifier"],
+    local_defines = ['BUILD_NOVATEK_TOUCH'],
+    deps = ["//vendor/lenovo/sm8850-modules/qcom/opensource/display-drivers:linux_includes", "//vendor/lenovo/sm8850-modules/qcom/opensource/display-drivers:canoe_perf_msm_drm", "//vendor/lenovo/sm8850:all_headers", "//vendor/lenovo/sm8850:canoe_perf/drivers/soc/qcom/panel_event_notifier"],
 )

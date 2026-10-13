@@ -16,7 +16,7 @@
 #include "hfi_msm_drv.h"
 #include "sde_connector.h"
 #include "msm_mmu.h"
-#if defined(CONFIG_DRM_MSM_LENOVO_WUJI) || defined(CONFIG_DRM_MSM_LENOVO_BALDUR)
+#if defined(CONFIG_DRM_MSM_LENOVO_DISPLAY)
 #include <linux/hqsysfs.h>
 #endif
 
@@ -1079,7 +1079,7 @@ int dsi_display_check_status(struct drm_connector *connector, void *display,
 
 	dsi_display_set_ctrl_esd_check_flag(dsi_display, true);
 
-	if (panel->lenovo_baldur && status_mode == ESD_MODE_PANEL_TE) {
+	if (panel->lenovo_lcd && status_mode == ESD_MODE_PANEL_TE) {
 		rc = dsi_display_status_te_check(dsi_display);
 		goto handle_status;
 	}
@@ -1120,7 +1120,7 @@ handle_status:
 		/* Enable error interrupts post an ESD success */
 		dsi_display_toggle_error_interrupt_status(dsi_display, true);
 
-	if (!panel->lenovo_baldur || status_mode != ESD_MODE_PANEL_TE)
+	if (!panel->lenovo_lcd || status_mode != ESD_MODE_PANEL_TE)
 		dsi_display_clk_ctrl(dsi_display->dsi_clk_handle, DSI_CORE_CLK | DSI_LINK_CLK, DSI_CLK_OFF);
 release_panel_lock:
 	dsi_panel_release_panel_lock(panel);
@@ -6484,36 +6484,24 @@ end:
 	return rc;
 }
 
-#if defined(CONFIG_DRM_MSM_LENOVO_WUJI) || defined(CONFIG_DRM_MSM_LENOVO_BALDUR)
+#if defined(CONFIG_DRM_MSM_LENOVO_DISPLAY)
 static noinline void set_panel_id(const char *panel_name)
 {
 	static char lcm_name[64];
 
-	if (IS_ENABLED(CONFIG_DRM_MSM_LENOVO_WUJI)) {
-		if (strstr(panel_name, "dsi_wuji_rm693a0_tianma_dsc_cmd")) {
-			strscpy(lcm_name, "dsi_wuji_rm693a0_tianma_dsc_cmd",
-				sizeof(lcm_name));
-			DSI_INFO("panel_name = %s,vendor:tianma, ic:RM693A0\n", panel_name);
-		} else if (strstr(panel_name, "dsi_wuji_rm693a0_tianma_dvt2_cmd")) {
-			strscpy(lcm_name, "dsi_wuji_rm693a0_tianma_dvt2_cmd",
-				sizeof(lcm_name));
-			DSI_INFO("panel_name = %s,vendor:tianma, ic:RM693A0\n", panel_name);
-		} else {
-			DSI_INFO("Failed to add LCM!\n");
-		}
-	} else if (IS_ENABLED(CONFIG_DRM_MSM_LENOVO_BALDUR)) {
-		if (strstr(panel_name, "baldur_nt36523_csot_3k_dsc_vid")) {
-			strscpy(lcm_name, "baldur_nt36523_csot_3k_dsc_vid",
-				sizeof(lcm_name));
-			DSI_INFO("panel_name = %s,vendor:CSOT, ic:NT36523N\n", panel_name);
-		} else {
-			DSI_INFO("Failed to add LCM!\n");
-		}
+	if (strstr(panel_name, "dsi_wuji_rm693a0_tianma_dsc_cmd")) {
+		strscpy(lcm_name, "dsi_wuji_rm693a0_tianma_dsc_cmd", sizeof(lcm_name));
+		DSI_INFO("panel_name = %s,vendor:tianma, ic:RM693A0\n", panel_name);
+	} else if (strstr(panel_name, "dsi_wuji_rm693a0_tianma_dvt2_cmd")) {
+		strscpy(lcm_name, "dsi_wuji_rm693a0_tianma_dvt2_cmd", sizeof(lcm_name));
+		DSI_INFO("panel_name = %s,vendor:tianma, ic:RM693A0\n", panel_name);
+	} else if (strstr(panel_name, "baldur_nt36523_csot_3k_dsc_vid")) {
+		strscpy(lcm_name, "baldur_nt36523_csot_3k_dsc_vid", sizeof(lcm_name));
+		DSI_INFO("panel_name = %s,vendor:CSOT, ic:NT36523N\n", panel_name);
+	} else {
+		DSI_INFO("Failed to add LCM!\n");
 	}
-
-	if (IS_ENABLED(CONFIG_DRM_MSM_LENOVO_WUJI) ||
-	    IS_ENABLED(CONFIG_DRM_MSM_LENOVO_BALDUR))
-		hq_regiser_hw_info(HWID_LCM, lcm_name);
+	hq_regiser_hw_info(HWID_LCM, lcm_name);
 }
 
 #endif
@@ -6581,7 +6569,7 @@ int dsi_display_dev_probe(struct platform_device *pdev)
 
 	display->pdev = pdev;
 	display->boot_disp = boot_disp;
-#if defined(CONFIG_DRM_MSM_LENOVO_WUJI) || defined(CONFIG_DRM_MSM_LENOVO_BALDUR)
+#if defined(CONFIG_DRM_MSM_LENOVO_DISPLAY)
 	set_panel_id(boot_disp->name);
 #endif
 
@@ -9180,7 +9168,7 @@ int dsi_display_prepare(struct dsi_display *display)
 		goto error_ctrl_deinit;
 	}
 
-	if (display->panel->lenovo_baldur) {
+	if (display->panel->lenovo_lcd) {
 		if (!IS_ERR_OR_NULL(display->panel->pinctrl.pinctrl) &&
 		    !IS_ERR_OR_NULL(display->panel->pinctrl.iovdd_enable)) {
 			rc = pinctrl_select_state(display->panel->pinctrl.pinctrl,
@@ -10268,8 +10256,10 @@ void __init dsi_display_register(void)
 {
 	dsi_phy_drv_register();
 	dsi_ctrl_drv_register();
-	register_bl();
-	register_bias();
+	if (of_property_read_bool(of_root, "lenovo,lcd-display")) {
+		register_bl();
+		register_bias();
+	}
 
 	dsi_display_parse_boot_display_selection();
 
@@ -10281,6 +10271,7 @@ void __exit dsi_display_unregister(void)
 	platform_driver_unregister(&dsi_display_driver);
 	dsi_ctrl_drv_unregister();
 	dsi_phy_drv_unregister();
+	lenovo_lcd_touch_supplier_put();
 }
 module_param_string(dsi_display0, dsi_display_primary, MAX_CMDLINE_PARAM_LEN,
 								0600);

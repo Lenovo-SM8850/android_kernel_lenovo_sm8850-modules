@@ -294,7 +294,7 @@ struct nvt_ts_data {
 	bool finger_event_flag;
 	bool stylus_event_flag;
 #endif
-#ifdef BUILD_BALDUR_TOUCH
+#ifdef BUILD_NOVATEK_TOUCH
 	uint8_t haptics_state;
 	uint8_t pen_wakeup_state;
 	uint8_t pen_type;
