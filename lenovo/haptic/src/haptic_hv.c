@@ -1264,14 +1264,17 @@ static void input_set_gain_live(struct input_dev *dev, uint16_t gain)
 {
 	struct aw_haptic *aw_haptic = input_get_drvdata(dev);
 	u32 waveform;
+	int i;
 
-	/* The board effect library owns the gain of this waveform. */
-	if (!of_property_read_u32(aw_haptic->dev->of_node,
-				  "lenovo,fixed-gain-waveform", &waveform) &&
-	    aw_haptic->index == waveform) {
-		aw_info("skip set gain for sougou!");
-		return;
+	/* The effect library owns the gain of the selected waveforms. */
+	for (i = 0; !of_property_read_u32_index(aw_haptic->dev->of_node,
+			"lenovo,fixed-gain-waveform", i, &waveform); i++) {
+		if (aw_haptic->index == waveform) {
+			aw_info("skip set gain for sougou!");
+			return;
+		}
 	}
+
 	if (gain > 0x7fff)
 		gain = 0x7fff;
 	aw_haptic->gain = gain * 0x80 / 0x7fff;
