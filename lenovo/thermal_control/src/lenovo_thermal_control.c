@@ -2,13 +2,13 @@
 #include <linux/cpu.h>
 #include <linux/device.h>
 #include <linux/kobject.h>
-#include <linux/kstrtox.h>
+#include <linux/string.h>
 #include <linux/module.h>
 #include <linux/mutex.h>
 #include <linux/sysfs.h>
 
 static DEFINE_MUTEX(control_lock);
-static unsigned int control;
+static char control[128];
 static struct kobject *thermal_kobj;
 
 static ssize_t control_show(struct kobject *kobj, struct kobj_attribute *attr,
@@ -17,7 +17,7 @@ static ssize_t control_show(struct kobject *kobj, struct kobj_attribute *attr,
 	ssize_t ret;
 
 	mutex_lock(&control_lock);
-	ret = sysfs_emit(buf, "%u\n", control);
+	ret = sysfs_emit(buf, "%s\n", control);
 	mutex_unlock(&control_lock);
 
 	return ret;
@@ -26,17 +26,13 @@ static ssize_t control_show(struct kobject *kobj, struct kobj_attribute *attr,
 static ssize_t control_store(struct kobject *kobj, struct kobj_attribute *attr,
 			     const char *buf, size_t count)
 {
-	unsigned int value;
-
-	if (kstrtouint(buf, 10, &value))
-		return -EINVAL;
+	size_t len = min(count, sizeof(control) - 1);
 
 	mutex_lock(&control_lock);
-	if (control != value) {
-		control = value;
-		sysfs_notify(kobj, NULL, "control");
-	}
+	memcpy(control, buf, len);
+	control[len] = '\0';
 	mutex_unlock(&control_lock);
+	sysfs_notify(kobj, NULL, "control");
 
 	return count;
 }
