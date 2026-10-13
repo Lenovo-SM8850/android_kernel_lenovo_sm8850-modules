@@ -168,7 +168,7 @@ module_entry(
             "msm/sde_cesta.c",
             "msm/sde_cesta_hw.c",
         ],
-        "CONFIG_DRM_MSM_LENOVO_BALDUR": [
+        "CONFIG_DRM_MSM_LENOVO_DISPLAY": [
             "msm/dsi/dsi_bl.c",
             "msm/dsi/dsi_bias.c",
             "lenovo/SM8850/panel_lcd.c",
@@ -240,9 +240,6 @@ module_entry(
 
     # Configs are handled by config_options = []
     config_deps = {
-        "CONFIG_DRM_MSM_LENOVO_BALDUR": [
-            modules_label("lenovo/nvt_36xxx:canoe_perf_nvt_36xxx"),
-        ],
         "CONFIG_QTI_HW_FENCE": [
             modules_label("qcom/opensource/mm-drivers/hw_fence:%b_msm_hw_fence"),
             modules_label("qcom/opensource/synx-kernel:%b_modules"),

@@ -37,7 +37,7 @@
 #define FW_PEN_STATE "fw_pen_state"
 #endif
 
-#ifdef BUILD_BALDUR_TOUCH
+#ifdef BUILD_NOVATEK_TOUCH
 #define HAPTICS "haptics"
 #define HAPTICS_CMD 0x7C
 #define HAPTICS_STEP1 0x00
@@ -93,7 +93,7 @@ static struct proc_dir_entry *NVT_proc_support_pen_entry;
 #if NVT_DPR_SWITCH
 static struct proc_dir_entry *NVT_proc_get_fw_pen_state;
 #endif
-#ifdef BUILD_BALDUR_TOUCH
+#ifdef BUILD_NOVATEK_TOUCH
 static struct proc_dir_entry *NVT_proc_haptics;
 #endif
 #endif
@@ -1316,7 +1316,7 @@ static const struct file_operations nvt_get_fw_pen_state_fops = {
 #endif
 #endif
 
-#ifdef BUILD_BALDUR_TOUCH
+#ifdef BUILD_NOVATEK_TOUCH
 /*
  *	/proc/haptics cmd_param
  *      [0], 0 : pen uplink = 372us
@@ -1853,7 +1853,7 @@ int32_t nvt_extra_proc_init(void)
 	}
 #endif
 
-#ifdef BUILD_BALDUR_TOUCH
+#ifdef BUILD_NOVATEK_TOUCH
 	NVT_proc_haptics = proc_create(HAPTICS, 0644, NULL, &nvt_haptics_mode_fops);
 	if (NVT_proc_haptics == NULL) {
 		NVT_ERR("create proc/%s Failed!\n", HAPTICS);
@@ -1990,7 +1990,7 @@ void nvt_extra_proc_deinit(void)
 	}
 #endif
 
-#ifdef BUILD_BALDUR_TOUCH
+#ifdef BUILD_NOVATEK_TOUCH
 	if (NVT_proc_haptics != NULL) {
 		remove_proc_entry(HAPTICS, NULL);
 		NVT_proc_haptics = NULL;

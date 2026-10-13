@@ -470,8 +470,8 @@ int dsi_panel_power_on(struct dsi_panel *panel, bool is_cont_splash)
 	int rc = 0;
 	const struct lenovo_panel_power_ops *power_ops = NULL;
 
-#ifdef CONFIG_DRM_MSM_LENOVO_BALDUR
-	if (panel->lenovo_baldur)
+#ifdef CONFIG_DRM_MSM_LENOVO_DISPLAY
+	if (panel->lenovo_lcd)
 		power_ops = lenovo_panel_lcd_power_ops();
 #endif
 
@@ -527,8 +527,8 @@ int dsi_panel_power_off(struct dsi_panel *panel)
 	int rc = 0;
 	const struct lenovo_panel_power_ops *power_ops = NULL;
 
-#ifdef CONFIG_DRM_MSM_LENOVO_BALDUR
-	if (panel->lenovo_baldur)
+#ifdef CONFIG_DRM_MSM_LENOVO_DISPLAY
+	if (panel->lenovo_lcd)
 		power_ops = lenovo_panel_lcd_power_ops();
 #endif
 
@@ -700,7 +700,7 @@ static int dsi_panel_pinctrl_init(struct dsi_panel *panel)
 		DSI_DEBUG("failed to get pinctrl pwm_pin");
 	}
 
-	if (panel->lenovo_baldur) {
+	if (panel->lenovo_lcd) {
 		panel->pinctrl.iovdd_enable =
 			pinctrl_lookup_state(panel->pinctrl.pinctrl, "iovdd_enable");
 		if (IS_ERR_OR_NULL(panel->pinctrl.iovdd_enable)) {
@@ -856,7 +856,7 @@ int dsi_panel_set_backlight(struct dsi_panel *panel, u32 bl_lvl)
 		break;
 	case DSI_BACKLIGHT_EXTERNAL:
 		/* Stock writes zero after OFF commands in dsi_panel_disable(). */
-		if (panel->lenovo_baldur && bl_lvl)
+		if (panel->lenovo_lcd && bl_lvl)
 			bl_set_level(bl_lvl);
 		break;
 	case DSI_BACKLIGHT_PWM:
@@ -2188,7 +2188,7 @@ static int dsi_panel_parse_dfps_caps(struct dsi_panel *panel)
 		dfps_caps->type = DSI_DFPS_IMMEDIATE_HFP;
 	} else if (!strcmp(type, "dfps_immediate_porch_mode_vfp")) {
 		dfps_caps->type = DSI_DFPS_IMMEDIATE_VFP;
-	} else if (panel->lenovo_baldur && !strcmp(type, "dfps_custom")) {
+	} else if (panel->lenovo_lcd && !strcmp(type, "dfps_custom")) {
 		dfps_caps->type = DSI_DFPS_CUSTOM;
 	} else {
 		DSI_ERR("[%s] dfps type is not recognized\n", name);
@@ -4409,7 +4409,7 @@ static int dsi_panel_parse_esd_config(struct dsi_panel *panel)
 		} else if (!strcmp(string, "reg_read")) {
 			esd_config->status_mode = ESD_MODE_REG_READ;
 		} else if (!strcmp(string, "te_signal_check")) {
-			if (panel->panel_mode != DSI_OP_CMD_MODE && !panel->lenovo_baldur) {
+			if (panel->panel_mode != DSI_OP_CMD_MODE && !panel->lenovo_lcd) {
 				DSI_ERR("TE-ESD not valid for video mode\n");
 				rc = -EINVAL;
 				goto error;
@@ -4602,10 +4602,11 @@ struct dsi_panel *dsi_panel_get(struct device *parent,
 	dsi_panel_setup_vm_ops(panel, trusted_vm_env);
 
 	panel->panel_of_node = of_node;
-	panel->lenovo_baldur = IS_ENABLED(CONFIG_DRM_MSM_LENOVO_BALDUR) &&
+	panel->lenovo_lcd = IS_ENABLED(CONFIG_DRM_MSM_LENOVO_DISPLAY) &&
+		of_property_read_bool(of_root, "lenovo,lcd-display") &&
 		of_property_read_bool(of_node, "lenovo,lcd-power-sequence");
-	panel->power_info.lenovo_baldur = panel->lenovo_baldur;
-	panel->post_power_info.lenovo_baldur = panel->lenovo_baldur;
+	panel->power_info.lenovo_lcd = panel->lenovo_lcd;
+	panel->post_power_info.lenovo_lcd = panel->lenovo_lcd;
 	panel->parent = parent;
 	panel->type = type;
 	panel->post_power_enable_status = false;
@@ -6280,7 +6281,7 @@ int dsi_panel_enable(struct dsi_panel *panel)
 			goto error;
 		}
 	}
-	if (panel->lenovo_baldur && !lenovo_lcd_wait_for_firmware())
+	if (panel->lenovo_lcd && !lenovo_lcd_wait_for_firmware())
 		DSI_ERR("TP load fw flow is not finished!\n");
 	panel->panel_initialized = true;
 
@@ -6380,7 +6381,7 @@ int dsi_panel_disable(struct dsi_panel *panel)
 					panel->name, rc);
 			rc = 0;
 		}
-		if (panel->lenovo_baldur) {
+		if (panel->lenovo_lcd) {
 			msleep(15);
 			bl_set_level(0);
 			msleep(85);

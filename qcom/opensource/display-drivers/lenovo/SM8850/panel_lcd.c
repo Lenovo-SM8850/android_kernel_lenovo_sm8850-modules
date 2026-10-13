@@ -1,11 +1,14 @@
 // SPDX-License-Identifier: GPL-2.0-only
-/*
- * Lenovo Baldur LCD panel power hooks.
- */
+/* Lenovo LCD panel power hooks. */
 
 #include <linux/completion.h>
 #include <linux/delay.h>
 #include <linux/jiffies.h>
+#include <linux/kmod.h>
+#include <linux/module.h>
+#include <linux/lenovo_lcd_touch.h>
+#include <linux/mutex.h>
+#include <linux/of.h>
 #include <linux/pinctrl/consumer.h>
 
 #include "../../msm/dsi/dsi_panel.h"
@@ -14,8 +17,79 @@
 #include "panel_power.h"
 
 static DECLARE_COMPLETION(load_fw_completion);
+static DEFINE_MUTEX(touch_supplier_lock);
+static const struct lenovo_lcd_touch_ops *registered_touch_ops;
+static const struct lenovo_lcd_touch_ops *active_touch_ops;
 
-#if IS_ENABLED(CONFIG_DRM_MSM_LENOVO_BALDUR)
+int lenovo_lcd_register_touch(const struct lenovo_lcd_touch_ops *ops)
+{
+	int ret = 0;
+
+	if (!ops || !ops->owner || !ops->update_firmware || !ops->gesture_flag)
+		return -EINVAL;
+	mutex_lock(&touch_supplier_lock);
+	if (registered_touch_ops)
+		ret = -EBUSY;
+	else
+		registered_touch_ops = ops;
+	mutex_unlock(&touch_supplier_lock);
+	return ret;
+}
+EXPORT_SYMBOL_GPL(lenovo_lcd_register_touch);
+
+void lenovo_lcd_unregister_touch(const struct lenovo_lcd_touch_ops *ops)
+{
+	mutex_lock(&touch_supplier_lock);
+	if (registered_touch_ops == ops)
+		registered_touch_ops = NULL;
+	if (active_touch_ops == ops) {
+		active_touch_ops = NULL;
+		module_put(ops->owner);
+	}
+	mutex_unlock(&touch_supplier_lock);
+}
+EXPORT_SYMBOL_GPL(lenovo_lcd_unregister_touch);
+
+bool lenovo_lcd_gesture_enabled(void)
+{
+	const struct lenovo_lcd_touch_ops *ops;
+	bool gesture;
+
+	mutex_lock(&touch_supplier_lock);
+	ops = active_touch_ops ?: registered_touch_ops;
+	gesture = ops && READ_ONCE(*ops->gesture_flag);
+	mutex_unlock(&touch_supplier_lock);
+	return gesture;
+}
+
+static bool lenovo_lcd_touch_supplier_get(void)
+{
+	bool ready;
+
+	mutex_lock(&touch_supplier_lock);
+	ready = active_touch_ops != NULL;
+	mutex_unlock(&touch_supplier_lock);
+	if (!ready)
+		request_module_nowait("nvt_36xxx");
+	mutex_lock(&touch_supplier_lock);
+	if (!active_touch_ops && registered_touch_ops &&
+	    try_module_get(registered_touch_ops->owner))
+		active_touch_ops = registered_touch_ops;
+	ready = active_touch_ops != NULL;
+	mutex_unlock(&touch_supplier_lock);
+	return ready;
+}
+
+void lenovo_lcd_touch_supplier_put(void)
+{
+	mutex_lock(&touch_supplier_lock);
+	if (active_touch_ops) {
+		module_put(active_touch_ops->owner);
+		active_touch_ops = NULL;
+	}
+	mutex_unlock(&touch_supplier_lock);
+}
+#if IS_ENABLED(CONFIG_DRM_MSM_LENOVO_DISPLAY)
 bool lenovo_lcd_wait_for_firmware(void)
 {
 	return wait_for_completion_timeout(&load_fw_completion,
@@ -27,6 +101,8 @@ static int lenovo_lcd_before_reset(struct dsi_panel *panel)
 {
 	int rc;
 
+	if (!lenovo_lcd_touch_supplier_get())
+		return -EPROBE_DEFER;
 	usleep_range(2000, 2100);
 	rc = bias_enable(true);
 	if (rc)
@@ -37,14 +113,21 @@ static int lenovo_lcd_before_reset(struct dsi_panel *panel)
 
 static void lenovo_lcd_after_reset(struct dsi_panel *panel)
 {
-	nvt_update_firmware_work(&load_fw_completion);
+	mutex_lock(&touch_supplier_lock);
+	if (active_touch_ops)
+		active_touch_ops->update_firmware(&load_fw_completion);
+	mutex_unlock(&touch_supplier_lock);
 }
 
 static bool lenovo_lcd_prepare_power_off(struct dsi_panel *panel)
 {
+	bool gesture;
 	init_completion(&load_fw_completion);
 	usleep_range(10000, 10100);
-	return nvt_gesture_flag;
+	mutex_lock(&touch_supplier_lock);
+	gesture = active_touch_ops && READ_ONCE(*active_touch_ops->gesture_flag);
+	mutex_unlock(&touch_supplier_lock);
+	return gesture;
 }
 
 static void lenovo_lcd_after_display_disable(struct dsi_panel *panel)

@@ -67,7 +67,7 @@ static HW_INFO(HWID_SC7603B_CHARGE, sc7603b_charge);
 static HW_INFO(HWID_VIBRATOR, vibrator);
 static HW_INFO(HWID_THERMAL_NTC, thermal_ntc);
 static HW_INFO(HWID_SDCARD_STATUS, sdcard_status);
-#ifdef CONFIG_LENOVO_WUJI_HQSYSFS
+#ifdef CONFIG_LENOVO_CELLULAR_HQSYSFS
 static HW_INFO(HWID_SIM_STATUS, sim_status);
 #endif
 static HW_INFO(HWID_SMARTPA, smartpa);
@@ -116,7 +116,7 @@ static struct attribute *huaqin_attrs[] = {
 	&hw_info_vibrator.attr,
 	&hw_info_thermal_ntc.attr,
 	&hw_info_sdcard_status.attr,
-#ifdef CONFIG_LENOVO_WUJI_HQSYSFS
+#ifdef CONFIG_LENOVO_CELLULAR_HQSYSFS
 	&hw_info_sim_status.attr,
 #endif
 	&hw_info_smartpa.attr,
@@ -149,7 +149,7 @@ static ssize_t huaqin_show(struct kobject *kobj, struct attribute *a, char *buf)
 			}
 		}
 	} else if (HWID_PCBA == hw->hw_id) {
-#ifdef CONFIG_LENOVO_WUJI_HQSYSFS
+#ifdef CONFIG_LENOVO_CELLULAR_HQSYSFS
 		if (!strcmp(pcba_config, "UNKNOW") ||
 		    !strcmp(pcba_stage, "UNKNOW") ||
 		    !strcmp(pcba_protocol, "UNKNOW"))
@@ -167,7 +167,7 @@ static ssize_t huaqin_show(struct kobject *kobj, struct attribute *a, char *buf)
 #endif
 	} else {
 		if (0 == hw->hw_exist) {
-			#ifdef CONFIG_LENOVO_WUJI_HQSYSFS
+			#ifdef CONFIG_LENOVO_CELLULAR_HQSYSFS
 			count = sprintf(buf, "Not support\n");
 #else
 			count = sprintf(buf, "Not support!\n");
@@ -196,7 +196,7 @@ static ssize_t huaqin_store(struct kobject *kobj, struct attribute *a, const cha
 	if (strstr(name, "Gyroscope"))
 		hq_regiser_hw_info(HWID_GYRO, imu);
 	if (strstr(name, "Magnetometer")) {
-#ifdef CONFIG_LENOVO_WUJI_HQSYSFS
+#ifdef CONFIG_LENOVO_CELLULAR_HQSYSFS
 		hq_regiser_hw_info(HWID_MSENSOR, "qmc630x");
 #else
 		hq_regiser_hw_info(HWID_MSENSOR,
@@ -204,7 +204,7 @@ static ssize_t huaqin_store(struct kobject *kobj, struct attribute *a, const cha
 #endif
 	}
 	if (strstr(name, "Alsps")) {
-#ifdef CONFIG_LENOVO_WUJI_HQSYSFS
+#ifdef CONFIG_LENOVO_CELLULAR_HQSYSFS
 		hq_regiser_hw_info(HWID_ALSPS, "stk3a5x");
 #else
 		hq_regiser_hw_info(HWID_ALSPS, "stk_stk3acx");

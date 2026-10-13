@@ -897,7 +897,7 @@ int32_t nvt_update_firmware(char *firmware_name)
 	if (ret) {
 		NVT_ERR("nvt_get_fw_info failed. (%d)\n", ret);
 	}
-#if NVT_CUST_PROC_CMD && defined(BUILD_BALDUR_TOUCH)
+#if NVT_CUST_PROC_CMD && defined(BUILD_NOVATEK_TOUCH)
 	/* All download callers hold ts->lock. Do not replay into MP firmware. */
 	if (!strcmp(firmware_name, BOOT_UPDATE_FIRMWARE_NAME))
 		nvt_restore_pen_settings_locked();
@@ -940,7 +940,7 @@ void Boot_Update_Firmware(struct work_struct *work)
 		NVT_LOG("load_fw_completion is NULL\n");
 #if NVT_SUPPORT_PEN
 	if(ts->probe_state == 1){
-#ifdef BUILD_BALDUR_TOUCH
+#ifdef BUILD_NOVATEK_TOUCH
 		/* Boot init may select pen support before this delayed download. */
 		nvt_support_pen_set(ts->pen_state <= 3 ? ts->pen_state & 1 : 0);
 #else

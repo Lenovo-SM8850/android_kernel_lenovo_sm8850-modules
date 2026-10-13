@@ -1,7 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-/* TB323FU (baldur) model recovered from Lenovo's stock 6.12 module.
- * Temperatures are millicelsius. Do not substitute another product's model.
- */
+/* Lenovo LCD and OLED tablet thermal models. */
 #include <linux/err.h>
 #include <linux/jiffies.h>
 #include <linux/module.h>
@@ -42,7 +40,7 @@ static const s32 intercepts[5] = {
 	7074889, 6913913, 7496443, 6847569, 1657885,
 };
 
-static void baldur_model(const int input[INPUT_COUNT], int output[OUTPUT_COUNT])
+static void lcd_model(const int input[INPUT_COUNT], int output[OUTPUT_COUNT])
 {
 	int model[5], i, j;
 
@@ -70,10 +68,10 @@ struct sys_temp_model {
 	void (*evaluate)(const int input[INPUT_COUNT], int output[OUTPUT_COUNT]);
 };
 
-static const struct sys_temp_model baldur_sys_temp_model = {
+static const struct sys_temp_model lcd_sys_temp_model = {
 	.input_names = input_names,
 	.output_names = output_names,
-	.evaluate = baldur_model,
+	.evaluate = lcd_model,
 };
 
 struct sys_temp;
@@ -185,9 +183,7 @@ static int lenovo_sys_temp_probe(struct platform_device *pdev)
 	model = device_get_match_data(parent);
 	if (!model)
 		return -ENODEV;
-	/* Coefficients are positional. Reject a different DT instead of silently
-	 * applying baldur's model to a different sensor ordering or product.
-	 */
+	/* Positional coefficients require the declared sensor order. */
 	ret = validate_names(parent->of_node, "lenovo,sensor-listener-names",
 			     model->input_names, INPUT_COUNT);
 	if (ret)
@@ -235,7 +231,7 @@ static void lenovo_sys_temp_remove(struct platform_device *pdev)
 }
 
 static const struct of_device_id lenovo_sys_temp_match_table[] = {
-	{ .compatible = "lenovo,baldur-sys-temp", .data = &baldur_sys_temp_model },
+	{ .compatible = "lenovo,sys-temp-lcd", .data = &lcd_sys_temp_model },
 	{ .compatible = "lenovo,sys-temp" },
 	{},
 };
