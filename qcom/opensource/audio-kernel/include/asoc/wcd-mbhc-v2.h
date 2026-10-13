@@ -633,6 +633,7 @@ struct wcd_mbhc {
 
 	/* Lenovo second Type-C analog switch, shared by all codec consumers. */
 	struct device_node *aatc_dev_sub_np;
+	const struct wcd_mbhc_sub_fsa_ops *sub_fsa_ops;
 	struct notifier_block aatc_dev_sub_nb;
 	struct input_dev *double_headset_input;
 	bool headset_detect_pending;

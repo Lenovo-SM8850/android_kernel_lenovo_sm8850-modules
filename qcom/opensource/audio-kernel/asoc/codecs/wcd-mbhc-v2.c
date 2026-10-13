@@ -3,6 +3,9 @@
  * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 #include <linux/module.h>
+#include <linux/kmod.h>
+#include <linux/mutex.h>
+#include <asoc/wcd-mbhc-supplier.h>
 #include <linux/init.h>
 #include <linux/slab.h>
 #include <linux/of_gpio.h>
@@ -1782,6 +1785,69 @@ static int wcd_mbhc_fsa_event(struct wcd_mbhc *mbhc, unsigned long mode)
 	return 0;
 }
 
+#if IS_ENABLED(CONFIG_QCOM_FSA4480_SUB_I2C)
+static DEFINE_MUTEX(sub_fsa_ops_lock);
+static const struct wcd_mbhc_sub_fsa_ops *sub_fsa_ops;
+
+int wcd_mbhc_register_sub_fsa(const struct wcd_mbhc_sub_fsa_ops *ops)
+{
+	int ret = 0;
+
+	if (!ops || !ops->owner || !ops->reg_notifier || !ops->unreg_notifier)
+		return -EINVAL;
+	mutex_lock(&sub_fsa_ops_lock);
+	if (sub_fsa_ops)
+		ret = -EBUSY;
+	else
+		sub_fsa_ops = ops;
+	mutex_unlock(&sub_fsa_ops_lock);
+	return ret;
+}
+EXPORT_SYMBOL_GPL(wcd_mbhc_register_sub_fsa);
+
+void wcd_mbhc_unregister_sub_fsa(const struct wcd_mbhc_sub_fsa_ops *ops)
+{
+	mutex_lock(&sub_fsa_ops_lock);
+	if (sub_fsa_ops == ops)
+		sub_fsa_ops = NULL;
+	mutex_unlock(&sub_fsa_ops_lock);
+}
+EXPORT_SYMBOL_GPL(wcd_mbhc_unregister_sub_fsa);
+
+static int wcd_mbhc_sub_fsa_register(struct wcd_mbhc *mbhc)
+{
+	const struct wcd_mbhc_sub_fsa_ops *ops;
+	int ret = -EPROBE_DEFER;
+
+	request_module_nowait("fsa4480_sub_i2c");
+	mutex_lock(&sub_fsa_ops_lock);
+	ops = sub_fsa_ops;
+	if (ops && try_module_get(ops->owner)) {
+		ret = ops->reg_notifier(&mbhc->aatc_dev_sub_nb,
+					mbhc->aatc_dev_sub_np);
+		if (ret)
+			module_put(ops->owner);
+		else
+			mbhc->sub_fsa_ops = ops;
+	}
+	mutex_unlock(&sub_fsa_ops_lock);
+	return ret;
+}
+
+static void wcd_mbhc_sub_fsa_unregister(struct wcd_mbhc *mbhc)
+{
+	const struct wcd_mbhc_sub_fsa_ops *ops = mbhc->sub_fsa_ops;
+
+	if (!ops)
+		return;
+	mutex_lock(&sub_fsa_ops_lock);
+	ops->unreg_notifier(&mbhc->aatc_dev_sub_nb, mbhc->aatc_dev_sub_np);
+	mbhc->sub_fsa_ops = NULL;
+	module_put(ops->owner);
+	mutex_unlock(&sub_fsa_ops_lock);
+}
+#endif
+
 static int wcd_mbhc_usbc_sub_ana_event_handler(struct notifier_block *nb,
 					   unsigned long mode, void *ptr)
 {
@@ -1989,7 +2055,7 @@ int wcd_mbhc_start(struct wcd_mbhc *mbhc, struct wcd_mbhc_config *mbhc_cfg)
 		if (mbhc->aatc_dev_sub_np) {
 			mbhc->aatc_dev_sub_nb.notifier_call = wcd_mbhc_usbc_sub_ana_event_handler;
 			mbhc->aatc_dev_sub_nb.priority = 0;
-			rc = fsa4480_sub_reg_notifier(&mbhc->aatc_dev_sub_nb, mbhc->aatc_dev_sub_np);
+			rc = wcd_mbhc_sub_fsa_register(mbhc);
 			if (rc) {
 #if IS_ENABLED(CONFIG_QCOM_FSA4480_I2C)
 				if (mbhc->fsa_aatc_dev_np)
@@ -2052,7 +2118,7 @@ void wcd_mbhc_stop(struct wcd_mbhc *mbhc)
 #endif
 #if IS_ENABLED(CONFIG_QCOM_FSA4480_SUB_I2C)
 	if (mbhc->mbhc_cfg->enable_usbc_analog && mbhc->aatc_dev_sub_np)
-		fsa4480_sub_unreg_notifier(&mbhc->aatc_dev_sub_nb, mbhc->aatc_dev_sub_np);
+		wcd_mbhc_sub_fsa_unregister(mbhc);
 #endif
 	if (mbhc->double_headset_input) {
 		input_unregister_device(mbhc->double_headset_input);

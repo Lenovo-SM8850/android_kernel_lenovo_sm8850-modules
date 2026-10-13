@@ -14,6 +14,7 @@
 #include <linux/usb/typec_altmode.h>
 #include <linux/usb/typec_mux.h>
 #include <linux/soc/qcom/fsa4480-i2c.h>
+#include <asoc/wcd-mbhc-supplier.h>
 #include <linux/delay.h>
 #include <linux/qti-regmap-debugfs.h>
 
@@ -524,6 +525,12 @@ static const struct attribute_group fsa4480_sub_attribute_group = {
 	.attrs = fsa4480_sub_attributes,
 };
 
+static const struct wcd_mbhc_sub_fsa_ops sub_fsa_supplier_ops = {
+	.owner = THIS_MODULE,
+	.reg_notifier = fsa4480_sub_reg_notifier,
+	.unreg_notifier = fsa4480_sub_unreg_notifier,
+};
+
 static int fsa4480_sub_probe(struct i2c_client *i2c)
 {
 	struct fsa4480_sub_priv *fsa_priv;
@@ -562,6 +569,18 @@ static int fsa4480_sub_probe(struct i2c_client *i2c)
 	mutex_lock(&fsa4480_state_lock);
 	audio_4480_priv2 = fsa_priv;
 	mutex_unlock(&fsa4480_state_lock);
+	rc = wcd_mbhc_register_sub_fsa(&sub_fsa_supplier_ops);
+	if (rc) {
+		mutex_lock(&fsa4480_state_lock);
+		audio_4480_priv2 = NULL;
+		i2c_set_clientdata(i2c, NULL);
+		mutex_unlock(&fsa4480_state_lock);
+		sysfs_remove_group(&i2c->dev.kobj, &fsa4480_sub_attribute_group);
+		typec_mux_unregister(fsa_priv->mux);
+		cancel_work_sync(&fsa_priv->usbc_analog_work);
+		pm_relax(fsa_priv->dev);
+		return rc;
+	}
 	return 0;
 }
 
@@ -571,6 +590,7 @@ static void fsa4480_sub_remove(struct i2c_client *i2c)
 
 	if (!fsa_priv)
 		return;
+	wcd_mbhc_unregister_sub_fsa(&sub_fsa_supplier_ops);
 	mutex_lock(&fsa4480_state_lock);
 	fsa_priv->removing = true;
 	audio_4480_priv2 = NULL;
