@@ -79,8 +79,6 @@ def _define_target_modules(target, variant, registry, modules, product = None, c
         deps = headers + [dep_formatter(dep) for dep in module.deps]
 
         secondary_fsa = target == "canoe" and variant == "perf" and module.name == "mbhc_dlkm"
-        if secondary_fsa:
-            deps.append("//vendor/lenovo/sm8850-modules/lenovo/fsa4480_sub:canoe_perf_fsa4480_sub")
 
         if not srcs:
             continue
