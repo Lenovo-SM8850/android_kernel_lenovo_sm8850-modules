@@ -64,7 +64,8 @@ static void gf_notify(struct goodix_gf *gf, u8 command)
 static ssize_t fp_nav_switch_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
-	struct goodix_gf *gf = dev_get_drvdata(dev);
+	struct goodix_gf *gf = container_of(dev_get_drvdata(dev),
+					 struct goodix_gf, misc);
 
 	return sysfs_emit(buf, "%s\n", READ_ONCE(gf->nav_enabled) ? "true" : "false");
 }
@@ -72,7 +73,8 @@ static ssize_t fp_nav_switch_show(struct device *dev,
 static ssize_t fp_nav_switch_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count)
 {
-	struct goodix_gf *gf = dev_get_drvdata(dev);
+	struct goodix_gf *gf = container_of(dev_get_drvdata(dev),
+					 struct goodix_gf, misc);
 
 	mutex_lock(&gf->lock);
 	if (!gf->dead && count && (buf[0] == '1' || buf[0] == '0')) {
@@ -87,7 +89,8 @@ static DEVICE_ATTR_RW(fp_nav_switch);
 static ssize_t fp_suspend_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
-	struct goodix_gf *gf = dev_get_drvdata(dev);
+	struct goodix_gf *gf = container_of(dev_get_drvdata(dev),
+					 struct goodix_gf, misc);
 
 	return sysfs_emit(buf, "%s\n", READ_ONCE(gf->suspended) ? "true" : "false");
 }
@@ -95,7 +98,8 @@ static ssize_t fp_suspend_show(struct device *dev,
 static ssize_t fp_suspend_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count)
 {
-	struct goodix_gf *gf = dev_get_drvdata(dev);
+	struct goodix_gf *gf = container_of(dev_get_drvdata(dev),
+					 struct goodix_gf, misc);
 
 	mutex_lock(&gf->lock);
 	if (!gf->dead && count && (buf[0] == '1' || buf[0] == '0')) {
@@ -112,7 +116,14 @@ static struct attribute *gf_attrs[] = {
 	&dev_attr_fp_suspend.attr,
 	NULL,
 };
-ATTRIBUTE_GROUPS(gf);
+static const struct attribute_group gf_group = {
+	.name = "goodix",
+	.attrs = gf_attrs,
+};
+static const struct attribute_group *gf_groups[] = {
+	&gf_group,
+	NULL,
+};
 
 static irqreturn_t gf_irq(int irq, void *data)
 {
@@ -399,7 +410,8 @@ static int gf_probe(struct platform_device *pdev)
 	if (ret)
 		goto power_off;
 	gf->misc = (struct miscdevice) { .minor = MISC_DYNAMIC_MINOR,
-		.name = "goodix_fp", .fops = &gf_fops, .parent = dev };
+		.name = "goodix_fp", .fops = &gf_fops, .parent = dev,
+		.groups = gf_groups };
 	ret = misc_register(&gf->misc);
 	if (ret) {
 		mutex_lock(&gf_netlink_lock);
@@ -441,7 +453,7 @@ static const struct of_device_id gf_of_match[] = {
 MODULE_DEVICE_TABLE(of, gf_of_match);
 static struct platform_driver gf_driver = {
 	.driver = { .name = "gf_tee", .of_match_table = gf_of_match,
-		.suppress_bind_attrs = true, .dev_groups = gf_groups }, .probe = gf_probe, .remove = gf_remove,
+		.suppress_bind_attrs = true }, .probe = gf_probe, .remove = gf_remove,
 };
 module_platform_driver(gf_driver);
 MODULE_DESCRIPTION("Lenovo Wuji Goodix fingerprint TEE GPIO transport");
