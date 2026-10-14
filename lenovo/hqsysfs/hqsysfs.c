@@ -263,6 +263,7 @@ int register_kboj_under_hqsysfs(struct kobject *kobj, struct kobj_type *ktype, c
 	va_end(args);
 	return ret;
 }
+EXPORT_SYMBOL_GPL(register_kboj_under_hqsysfs);
 
 
 static int __init create_sysfs(void)
