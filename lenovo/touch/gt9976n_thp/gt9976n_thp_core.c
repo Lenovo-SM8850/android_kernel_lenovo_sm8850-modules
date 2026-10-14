@@ -66,11 +66,12 @@ struct goodix_thp {
 	u8 *ring, *tx, *rx;
 	u32 read_slot, write_slot, count, frame_address, frame_length;
 	u32 command_address, gesture_address, status_address, gesture_mask;
+	char version_info[100];
 	u32 portid, sequence, state, state_changed;
 	int timeout_ms;
 	int irq;
 	bool dead, ready, irq_enabled, hal_ready, powered, wake_enabled;
-	bool iovdd_enabled, avdd_enabled, esd_enabled, irq_seen;
+	bool iovdd_enabled, avdd_enabled, esd_supported, esd_enabled, irq_seen;
 	bool restore_modes, pm_suspended, irq_pending, panel_blank;
 	int charger_sent;
 	struct notifier_block charger_notifier;
@@ -193,7 +194,75 @@ static ssize_t screen_state_store(struct device *dev,
 		return ret;
 	return count;
 }
-static DEVICE_ATTR_RW(screen_state);
+static DEVICE_ATTR(screen_state, 0664, screen_state_show, screen_state_store);
+
+static ssize_t version_info_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct goodix_thp *thp = dev_get_drvdata(dev);
+	ssize_t ret;
+
+	mutex_lock(&thp->bus_lock);
+	ret = sysfs_emit(buf, "%s\n", thp->version_info);
+	mutex_unlock(&thp->bus_lock);
+	return ret;
+}
+static DEVICE_ATTR_RO(version_info);
+
+static ssize_t gesture_enable_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct goodix_thp *thp = dev_get_drvdata(dev);
+
+	if (count >= sizeof(thp->gesture_mask)) {
+		mutex_lock(&thp->bus_lock);
+		thp->gesture_mask = get_unaligned_le32(buf);
+		mutex_unlock(&thp->bus_lock);
+	}
+	return count;
+}
+static DEVICE_ATTR(gesture_enable, 0220, NULL, gesture_enable_store);
+
+static ssize_t esd_info_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct goodix_thp *thp = dev_get_drvdata(dev);
+
+	return sysfs_emit(buf, "%s\n", READ_ONCE(thp->esd_enabled) ? "enable" : "disabled");
+}
+
+static ssize_t esd_info_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct goodix_thp *thp = dev_get_drvdata(dev);
+	bool enabled;
+
+	if (!count)
+		return -EINVAL;
+	enabled = buf[0] != '0' && buf[0] != '\0';
+	mutex_lock(&thp->control_lock);
+	mutex_lock(&thp->bus_lock);
+	if (thp->esd_supported && !thp->dead && enabled != thp->esd_enabled) {
+		thp->esd_enabled = enabled;
+		if (enabled)
+			mod_delayed_work(system_wq, &thp->esd_work, 3 * HZ);
+		else
+			cancel_delayed_work(&thp->esd_work);
+	}
+	mutex_unlock(&thp->bus_lock);
+	mutex_unlock(&thp->control_lock);
+	return count;
+}
+static DEVICE_ATTR(esd_info, 0664, esd_info_show, esd_info_store);
+
+static struct attribute *thp_attrs[] = {
+	&dev_attr_screen_state.attr,
+	&dev_attr_version_info.attr,
+	&dev_attr_gesture_enable.attr,
+	&dev_attr_esd_info.attr,
+	NULL,
+};
+ATTRIBUTE_GROUPS(thp);
 
 static int thp_control_send(struct thp_control *control, int value)
 {
@@ -1418,6 +1487,10 @@ static long thp_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 			}
 		} else if (message.command == 101) {
 			thp->hal_ready = true;
+			if (thp->esd_supported && !thp->esd_enabled) {
+				thp->esd_enabled = true;
+				mod_delayed_work(system_wq, &thp->esd_work, 3 * HZ);
+			}
 			thp->restore_modes = true;
 			mod_delayed_work(system_wq, &thp->mode_work, 0);
 		} else if (message.command == 102) {
@@ -1427,6 +1500,12 @@ static long thp_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 				memcpy(thp->pen_mac, message.data, sizeof(thp->pen_mac));
 				thp_pen_uevent(thp);
 			}
+		} else if (message.command == 104) {
+			size_t len = strnlen(message.data, min_t(size_t, message.size,
+						 sizeof(thp->version_info) - 2));
+
+			memcpy(thp->version_info, message.data, len);
+			thp->version_info[len] = '\0';
 		} else if (message.command == 105) {
 			if (message.size < 9)
 				ret = -EINVAL;
@@ -1687,7 +1766,7 @@ static int thp_probe(struct spi_device *spi)
 	INIT_DELAYED_WORK(&thp->mode_work, thp_mode_work);
 	thp->charger_sent = -1;
 	thp->charger_notifier.notifier_call = thp_charger_event;
-	thp->esd_enabled = of_property_read_bool(spi->dev.of_node, "goodix,esd-enable");
+	thp->esd_supported = of_property_read_bool(spi->dev.of_node, "goodix,esd-enable");
 	gpio = of_get_named_gpio(spi->dev.of_node, "goodix,reset-gpio", 0);
 	if (gpio < 0) {
 		ret = gpio;
@@ -1796,7 +1875,7 @@ static int thp_probe(struct spi_device *spi)
 		goto controls_free;
 	}
 	platform_set_drvdata(thp->pen_info, thp);
-	ret = device_create_file(&thp->pen_info->dev, &dev_attr_screen_state);
+	ret = sysfs_create_groups(&thp->pen_info->dev.kobj, thp_groups);
 	if (ret) {
 		platform_device_unregister(thp->pen_info);
 		goto controls_free;
@@ -1805,14 +1884,14 @@ static int thp_probe(struct spi_device *spi)
 		.name = "lenovo_penraw", .fops = &thp_penraw_fops, .parent = &spi->dev };
 	ret = misc_register(&thp->penraw);
 	if (ret) {
-		device_remove_file(&thp->pen_info->dev, &dev_attr_screen_state);
+		sysfs_remove_groups(&thp->pen_info->dev.kobj, thp_groups);
 		platform_device_unregister(thp->pen_info);
 		goto controls_free;
 	}
 	ret = power_supply_reg_notifier(&thp->charger_notifier);
 	if (ret) {
 		misc_deregister(&thp->penraw);
-		device_remove_file(&thp->pen_info->dev, &dev_attr_screen_state);
+		sysfs_remove_groups(&thp->pen_info->dev.kobj, thp_groups);
 		platform_device_unregister(thp->pen_info);
 		goto controls_free;
 	}
@@ -1850,7 +1929,7 @@ static void thp_remove(struct spi_device *spi)
 	WRITE_ONCE(thp->dead, true);
 	mutex_unlock(&thp->bus_lock);
 	mutex_unlock(&thp->control_lock);
-	device_remove_file(&thp->pen_info->dev, &dev_attr_screen_state);
+	sysfs_remove_groups(&thp->pen_info->dev.kobj, thp_groups);
 	power_supply_unreg_notifier(&thp->charger_notifier);
 	cancel_delayed_work_sync(&thp->panel_work);
 	panel_event_notifier_unregister(thp->panel_cookie);
