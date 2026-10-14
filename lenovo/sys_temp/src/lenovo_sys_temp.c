@@ -3,6 +3,7 @@
 #include <linux/err.h>
 #include <linux/jiffies.h>
 #include <linux/module.h>
+#include <linux/hqsysfs.h>
 #include <linux/mutex.h>
 #include <linux/of.h>
 #include <linux/platform_device.h>
@@ -113,6 +114,7 @@ struct sys_temp_sensor {
 	int temp;
 };
 struct sys_temp {
+	char ntc_summary[1024];
 	struct device *dev;
 	const struct sys_temp_model *model;
 	struct sys_temp_sensor input[INPUT_COUNT];
@@ -203,6 +205,25 @@ static int validate_names(struct device_node *node, const char *property,
 	return 0;
 }
 
+static void register_ntc_info(struct sys_temp *dev, struct device_node *node)
+{
+	const char *name;
+	int i, count;
+	size_t len = 0;
+
+	for (i = 0; i < OUTPUT_COUNT; i++)
+		len += scnprintf(dev->ntc_summary + len, sizeof(dev->ntc_summary) - len,
+				 "%s ", dev->model->output_names[i]);
+	count = of_property_count_strings(node, "cust,all-ntc-names");
+	for (i = 0; i < count; i++) {
+		if (of_property_read_string_index(node, "cust,all-ntc-names", i, &name))
+			break;
+		len += scnprintf(dev->ntc_summary + len, sizeof(dev->ntc_summary) - len,
+				 "%s ", name);
+	}
+	hq_regiser_hw_info(HWID_THERMAL_NTC, dev->ntc_summary);
+}
+
 static int lenovo_sys_temp_probe(struct platform_device *pdev)
 {
 	struct device *parent = &pdev->dev;
@@ -242,6 +263,7 @@ static int lenovo_sys_temp_probe(struct platform_device *pdev)
 		}
 	}
 	platform_set_drvdata(pdev, dev);
+	register_ntc_info(dev, parent->of_node);
 	schedule_delayed_work(&dev->work, msecs_to_jiffies(UPDATE_MS));
 	return 0;
 unregister:
@@ -255,6 +277,7 @@ static void lenovo_sys_temp_remove(struct platform_device *pdev)
 	struct sys_temp *dev = platform_get_drvdata(pdev);
 	int i;
 
+	hq_deregister_hw_info(HWID_THERMAL_NTC, dev->ntc_summary);
 	WRITE_ONCE(dev->stopping, true);
 	cancel_delayed_work_sync(&dev->work);
 	for (i = 0; i < OUTPUT_COUNT; i++)

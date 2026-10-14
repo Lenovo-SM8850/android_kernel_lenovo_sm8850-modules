@@ -9,5 +9,8 @@ ddk_module(
     srcs = ["src/lenovo_sys_temp.c"],
     kernel_build = "//vendor/lenovo/sm8850:canoe_perf_base_kernel",
     config = "//vendor/lenovo/sm8850:canoe_perf_config",
-    deps = ["//vendor/lenovo/sm8850:all_headers"],
+    deps = [
+        "//vendor/lenovo/sm8850:all_headers",
+        "//vendor/lenovo/sm8850-modules/lenovo/hqsysfs:canoe_perf_hqsysfs",
+    ],
 )
