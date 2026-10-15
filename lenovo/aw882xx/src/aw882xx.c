@@ -16,6 +16,7 @@
 #include <linux/of.h>
 #include <linux/module.h>
 #include <linux/regulator/consumer.h>
+#include <linux/pm_wakeup.h>
 #include <linux/i2c.h>
 #include <sound/core.h>
 #include <sound/pcm.h>
@@ -2994,6 +2995,26 @@ static int aw882xx_enable_supplies(struct device *dev)
 	return 0;
 }
 
+static void aw882xx_disable_wakeup(void *dev)
+{
+	device_wakeup_disable(dev);
+	device_set_wakeup_capable(dev, false);
+}
+
+/* The monitor wake vote needs a registered wakeup source, as on stock. */
+static int aw882xx_enable_wakeup(struct device *dev)
+{
+	int ret;
+
+	device_set_wakeup_capable(dev, true);
+	ret = device_wakeup_enable(dev);
+	if (ret) {
+		device_set_wakeup_capable(dev, false);
+		return ret;
+	}
+	return devm_add_action_or_reset(dev, aw882xx_disable_wakeup, dev);
+}
+
 static int aw882xx_i2c_suspend(struct device *dev)
 {
 	struct aw882xx *aw882xx = dev_get_drvdata(dev);
@@ -3056,6 +3077,9 @@ static int aw882xx_i2c_probe(struct i2c_client *i2c, const struct i2c_device_id 
 
 	if (aw882xx->manage_supplies) {
 		ret = aw882xx_enable_supplies(&i2c->dev);
+		if (ret)
+			return ret;
+		ret = aw882xx_enable_wakeup(&i2c->dev);
 		if (ret)
 			return ret;
 	}
