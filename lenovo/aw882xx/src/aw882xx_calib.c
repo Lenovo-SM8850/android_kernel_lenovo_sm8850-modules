@@ -2219,7 +2219,7 @@ static int aw_cali_misc_switch_dev(struct file *filp, struct aw_device *aw_dev, 
 	struct aw_device *local_dev = NULL;
 
 	/* get sel dev str */
-	ret = sscanf(cmd_buf, "dev_sel:%s", dev_select);
+	ret = sscanf(cmd_buf, "dev_sel:%49s", dev_select);
 	if (ret <= 0)
 		return -EINVAL;
 
