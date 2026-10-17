@@ -121,13 +121,10 @@ static void lenovo_lcd_after_reset(struct dsi_panel *panel)
 
 static bool lenovo_lcd_prepare_power_off(struct dsi_panel *panel)
 {
-	bool gesture;
 	init_completion(&load_fw_completion);
 	usleep_range(10000, 10100);
-	mutex_lock(&touch_supplier_lock);
-	gesture = active_touch_ops && READ_ONCE(*active_touch_ops->gesture_flag);
-	mutex_unlock(&touch_supplier_lock);
-	return gesture;
+	/* The first power-off after a bootloader splash precedes any kernel panel reset. */
+	return lenovo_lcd_gesture_enabled();
 }
 
 static void lenovo_lcd_after_display_disable(struct dsi_panel *panel)
