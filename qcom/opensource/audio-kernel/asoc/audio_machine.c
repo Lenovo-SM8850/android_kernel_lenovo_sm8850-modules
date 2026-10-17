@@ -10,6 +10,7 @@
 #include <linux/gpio.h>
 #include <linux/of_gpio.h>
 #include <linux/platform_device.h>
+#include <linux/regulator/consumer.h>
 #include <linux/slab.h>
 #include <linux/io.h>
 #include <linux/module.h>
@@ -101,6 +102,10 @@ struct msm_asoc_mach_data {
 	struct prm_earpa_hw_intf_config upd_config;
 	bool dedicated_wsa2; /* used to define how wsa2 slave devices are used */
 	int wcd_used;
+	struct regulator *dmic_avdd_supply;
+	struct regulator *dmic_dvdd_supply;
+	u32 dmic_avdd_voltage[2];
+	u32 dmic_dvdd_voltage[2];
 	struct typec_mux_dev *usbc_mux;
 	struct snd_soc_jack usbc_jack;
 };
@@ -153,6 +158,8 @@ static int dmic_0_1_gpio_cnt;
 static int dmic_2_3_gpio_cnt;
 static int dmic_4_5_gpio_cnt;
 static int dmic_6_7_gpio_cnt;
+static bool g_is_avdd_on;
+static bool g_is_dvdd_on;
 
 static void *def_wcd_mbhc_cal(void);
 
@@ -380,13 +387,89 @@ static struct snd_soc_ops msm_common_be_ops = {
 	.shutdown = msm_common_snd_shutdown,
 };
 
+static void dmic_power_enable(struct snd_soc_component *component)
+{
+	struct msm_asoc_mach_data *pdata =
+		snd_soc_card_get_drvdata(component->card);
+	int ret;
+
+	if (!pdata->dmic_avdd_supply)
+		return;
+
+	if (!g_is_avdd_on) {
+		dev_info(component->dev, "%s: Enabling AVDD regulator\n", __func__);
+		ret = regulator_enable(pdata->dmic_avdd_supply);
+		if (ret) {
+			dev_err_ratelimited(component->dev,
+				"%s: dmic regulator avdd enable failed %d\n",
+				__func__, ret);
+			return;
+		}
+		g_is_avdd_on = true;
+	}
+
+	if (!g_is_dvdd_on) {
+		dev_info(component->dev, "%s: Enabling DVDD regulator\n", __func__);
+		ret = regulator_enable(pdata->dmic_dvdd_supply);
+		if (ret) {
+			dev_err_ratelimited(component->dev,
+				"%s: dmic regulator dvdd enable failed %d\n",
+				__func__, ret);
+			return;
+		}
+		g_is_dvdd_on = true;
+	}
+
+	dev_info(component->dev,
+		"%s: dmic regulator power enabled (Status: AVDD=%d, DVDD=%d)\n",
+		__func__, g_is_avdd_on, g_is_dvdd_on);
+}
+
+static void dmic_power_disable(struct snd_soc_component *component)
+{
+	struct msm_asoc_mach_data *pdata =
+		snd_soc_card_get_drvdata(component->card);
+	int ret;
+
+	if (!pdata->dmic_avdd_supply)
+		return;
+
+	if (g_is_avdd_on) {
+		dev_info(component->dev, "%s: Disabling AVDD regulator\n", __func__);
+		ret = regulator_disable(pdata->dmic_avdd_supply);
+		if (ret) {
+			dev_err_ratelimited(component->dev,
+				"%s: dmic regulator avdd disable failed %d\n",
+				__func__, ret);
+			return;
+		}
+		g_is_avdd_on = false;
+	}
+
+	if (g_is_dvdd_on) {
+		dev_info(component->dev, "%s: Disabling DVDD regulator\n", __func__);
+		ret = regulator_disable(pdata->dmic_dvdd_supply);
+		if (ret) {
+			dev_err_ratelimited(component->dev,
+				"%s: dmic regulator dvdd disable failed %d\n",
+				__func__, ret);
+			return;
+		}
+		g_is_dvdd_on = false;
+	}
+
+	dev_info(component->dev,
+		"%s: dmic regulator power disabled (Status: AVDD=%d, DVDD=%d)\n",
+		__func__, g_is_avdd_on, g_is_dvdd_on);
+}
+
 static int msm_dmic_event(struct snd_soc_dapm_widget *w,
 			  struct snd_kcontrol *kcontrol, int event)
 {
 	struct msm_asoc_mach_data *pdata = NULL;
 	struct snd_soc_component *component = snd_soc_dapm_to_component(w->dapm);
 	int ret = 0;
-	u32 dmic_idx;
+	u32 dmic_idx = 0;
 	int *dmic_gpio_cnt;
 	struct device_node *dmic_gpio;
 	char  *wname;
@@ -440,6 +523,7 @@ static int msm_dmic_event(struct snd_soc_dapm_widget *w,
 	case SND_SOC_DAPM_PRE_PMU:
 		(*dmic_gpio_cnt)++;
 		if (*dmic_gpio_cnt == 1) {
+			dmic_power_enable(component);
 			ret = msm_cdc_pinctrl_select_active_state(
 						dmic_gpio);
 			if (ret < 0) {
@@ -460,6 +544,10 @@ static int msm_dmic_event(struct snd_soc_dapm_widget *w,
 					__func__, "dmic_gpio");
 				return ret;
 			}
+			/* The rails are shared by every DMIC pair */
+			if (!dmic_0_1_gpio_cnt && !dmic_2_3_gpio_cnt &&
+			    !dmic_4_5_gpio_cnt && !dmic_6_7_gpio_cnt)
+				dmic_power_disable(component);
 		}
 		break;
 	default:
@@ -2909,6 +2997,51 @@ static int msm_asoc_machine_probe(struct platform_device *pdev)
 		msm_cdc_pinctrl_set_wakeup_capable(pdata->dmic45_gpio_p, false);
 	if (pdata->dmic67_gpio_p)
 		msm_cdc_pinctrl_set_wakeup_capable(pdata->dmic67_gpio_p, false);
+
+	/* Configure the DMIC rails only when both supplies are described */
+	if (of_find_property(pdev->dev.of_node, "dmic-avdd-supply", NULL) &&
+	    of_find_property(pdev->dev.of_node, "dmic-dvdd-supply", NULL)) {
+		ret = of_property_read_u32_array(pdev->dev.of_node,
+			"qcom,dmic-avdd-voltage-level", pdata->dmic_avdd_voltage, 2);
+		if (ret < 0)
+			dev_err(&pdev->dev,
+				"%s: parse qcom,dmic-avdd-voltage-level failed\n",
+				__func__);
+
+		ret = of_property_read_u32_array(pdev->dev.of_node,
+			"qcom,dmic-dvdd-voltage-level", pdata->dmic_dvdd_voltage, 2);
+		if (ret < 0)
+			dev_err(&pdev->dev,
+				"%s: parse qcom,dmic-dvdd-voltage-level failed\n",
+				__func__);
+
+		pdata->dmic_avdd_supply = devm_regulator_get(&pdev->dev, "dmic-avdd");
+		pdata->dmic_dvdd_supply = devm_regulator_get(&pdev->dev, "dmic-dvdd");
+		if (IS_ERR(pdata->dmic_avdd_supply) ||
+		    IS_ERR(pdata->dmic_dvdd_supply)) {
+			dev_err(&pdev->dev, "%s: regulator get dmic-avdd/dvdd failed (%d/%d)\n",
+				__func__, PTR_ERR_OR_ZERO(pdata->dmic_avdd_supply),
+				PTR_ERR_OR_ZERO(pdata->dmic_dvdd_supply));
+			/* The card is registered already, so run without the rails */
+			pdata->dmic_avdd_supply = NULL;
+			pdata->dmic_dvdd_supply = NULL;
+		} else {
+			ret = regulator_set_voltage(pdata->dmic_avdd_supply,
+				pdata->dmic_avdd_voltage[0], pdata->dmic_avdd_voltage[1]);
+			if (ret)
+				dev_err(&pdev->dev,
+					"Unable to set voltage[%uuv-%uuv] for dmic-avdd-supply, ret: %d\n",
+					pdata->dmic_avdd_voltage[0], pdata->dmic_avdd_voltage[1], ret);
+
+			ret = regulator_set_voltage(pdata->dmic_dvdd_supply,
+				pdata->dmic_dvdd_voltage[0], pdata->dmic_dvdd_voltage[1]);
+			if (ret)
+				dev_err(&pdev->dev,
+					"Unable to set voltage[%uuv-%uuv] for dmic-dvdd-supply, ret: %d\n",
+					pdata->dmic_dvdd_voltage[0], pdata->dmic_dvdd_voltage[1], ret);
+			ret = 0;
+		}
+	}
 
 	msm_common_snd_init(pdev, card);
 
