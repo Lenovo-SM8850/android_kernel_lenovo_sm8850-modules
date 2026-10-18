@@ -1741,6 +1741,15 @@ static irqreturn_t nvt_ts_work_func(int irq, void *data)
 		nvt_update_firmware(BOOT_UPDATE_FIRMWARE_NAME);
 		ts->nvt_ts_load_state_check = 2;
 		nvt_read_fw_history_all();
+#if WAKEUP_GESTURE
+		/* A reset while suspended leaves the new firmware out of wakeup gesture mode. */
+		if (!bTouchIsAwake && nvt_gesture_flag) {
+			uint8_t gesture_cmd[2] = {EVENT_MAP_HOST_CMD, 0x13};
+
+			CTP_SPI_WRITE(ts->client, gesture_cmd, 2);
+			NVT_LOG("Re-entered wakeup gesture mode after firmware reset\n");
+		}
+#endif
 #if NVT_CUST_PROC_CMD
 		wdt_recovery = true;
 #endif
