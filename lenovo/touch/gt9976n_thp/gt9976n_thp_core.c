@@ -73,6 +73,11 @@ struct goodix_thp {
 	bool dead, ready, irq_enabled, hal_ready, powered, wake_enabled;
 	bool iovdd_enabled, avdd_enabled, esd_supported, esd_enabled, irq_seen;
 	bool restore_modes, pm_suspended, irq_pending, panel_blank;
+	struct proc_dir_entry *haptics_entry;
+	bool haptics_desired, haptics_valid;
+	int haptics_submitted, haptics_status;
+	u64 haptics_generation;
+	u32 pen_haptic_status;
 	int charger_sent;
 	struct notifier_block charger_notifier;
 	struct delayed_work panel_work, esd_work, mode_work;
@@ -87,6 +92,8 @@ struct thp_control {
 	int value;
 	bool valid;
 };
+static void thp_pen_uevent(struct goodix_thp *thp);
+static void thp_haptics_invalidate(struct goodix_thp *thp);
 static int thp_send_command(struct goodix_thp *thp, u8 cmd, u16 data);
 static int thp_sleep(struct goodix_thp *thp, bool suspend);
 static struct thp_control thp_controls[] = {
@@ -113,7 +120,12 @@ static int thp_enter(struct sk_buff *skb, struct genl_info *info)
 
 	mutex_lock(&thp_netlink_lock);
 	if (thp_device) {
+		mutex_lock(&thp_device->bus_lock);
 		WRITE_ONCE(thp_device->portid, info->snd_portid);
+		thp_device->hal_ready = false;
+		thp_device->restore_modes = true;
+		thp_haptics_invalidate(thp_device);
+		mutex_unlock(&thp_device->bus_lock);
 		ret = 0;
 	}
 	mutex_unlock(&thp_netlink_lock);
@@ -154,6 +166,109 @@ static int thp_notify(struct goodix_thp *thp, u8 type, const void *data, int siz
 	genlmsg_end(skb, header);
 	return genlmsg_unicast(&init_net, skb, portid);
 }
+/* Status-only events must not look like new pen identity/input activity. */
+static void thp_haptics_uevent(struct goodix_thp *thp)
+{
+	char status[64];
+	char *env[4] = { "UEVENT_TO=PEN_FRAMEWORK TYPE=TP", status, NULL, NULL };
+
+	if (!thp->pen_info)
+		return;
+	snprintf(status, sizeof(status), "HAPTICS_SUBMITTED=%d",
+		 thp->haptics_submitted);
+	if (thp->haptics_submitted == 1)
+		env[2] = "TOUCH_INFORMATION=08";
+	kobject_uevent_env(&thp->pen_info->dev.kobj, KOBJ_CHANGE, env);
+}
+
+/* The bus_lock is held. Status records host submission, never TSA acceptance. */
+static void thp_haptics_invalidate(struct goodix_thp *thp)
+{
+	thp->haptics_submitted = -1;
+	thp->haptics_status = -EAGAIN;
+	thp->pen_haptic_status = 0;
+	thp->haptics_generation++;
+	thp_haptics_uevent(thp);
+}
+
+static int thp_haptics_send(struct goodix_thp *thp)
+{
+	u8 packet[8] = { 0, 0, 6, 0xce, 0x14, 0, 0, 0 };
+	int ret;
+
+	packet[5] = thp->haptics_desired;
+	put_unaligned_le16(0xe8 + packet[5], packet + 6);
+	ret = thp_notify(thp, 1, packet, sizeof(packet));
+	thp->haptics_status = ret;
+	thp->haptics_submitted = ret ? -1 : thp->haptics_desired;
+	thp->pen_haptic_status = ret ? 0 :
+		(thp->haptics_desired ? 0x2000 : 0x1000);
+	thp->haptics_generation++;
+	dev_dbg(&thp->spi->dev, "haptics CE/14 desired=%d submit=%d generation=%llu\n",
+		thp->haptics_desired, ret, thp->haptics_generation);
+	thp_haptics_uevent(thp);
+	return ret;
+}
+
+static int thp_haptics_show(struct seq_file *seq, void *unused)
+{
+	struct goodix_thp *thp = seq->private;
+
+	mutex_lock(&thp->bus_lock);
+	seq_printf(seq,
+		   "desired=%d submitted=%d status=%d timing=%s generation=%llu mask=%#x\n",
+		   thp->haptics_desired, thp->haptics_submitted,
+		   thp->haptics_status,
+		   thp->haptics_submitted == 1 ? "08" : "unknown",
+		   thp->haptics_generation, thp->pen_haptic_status);
+	mutex_unlock(&thp->bus_lock);
+	return 0;
+}
+
+static int thp_haptics_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, thp_haptics_show, pde_data(inode));
+}
+
+static ssize_t thp_haptics_write(struct file *file, const char __user *buffer,
+				 size_t count, loff_t *offset)
+{
+	struct goodix_thp *thp = pde_data(file_inode(file));
+	bool value;
+	int ret;
+
+	ret = kstrtobool_from_user(buffer, count, &value);
+	if (ret)
+		return ret;
+	mutex_lock(&thp->bus_lock);
+	if (thp->dead) {
+		ret = -ENODEV;
+		goto unlock;
+	}
+	/* Retain intent through sleep/host restart, but report EAGAIN until sent. */
+	thp->haptics_valid = true;
+	thp->haptics_desired = value;
+	thp_haptics_invalidate(thp);
+	if (!thp->ready || !thp->hal_ready || thp->pm_suspended || thp->state) {
+		ret = -EAGAIN;
+	} else {
+		ret = thp_haptics_send(thp);
+		if (ret)
+			mod_delayed_work(system_wq, &thp->mode_work, HZ);
+	}
+unlock:
+	mutex_unlock(&thp->bus_lock);
+	return ret ?: count;
+}
+
+static const struct proc_ops thp_haptics_ops = {
+	.proc_open = thp_haptics_open,
+	.proc_read = seq_read,
+	.proc_lseek = seq_lseek,
+	.proc_release = single_release,
+	.proc_write = thp_haptics_write,
+};
+
 /* Stock screen_show reads the physical driver state, not the last request. */
 static ssize_t screen_state_show(struct device *dev,
 				struct device_attribute *attr, char *buf)
@@ -312,6 +427,9 @@ static void thp_mode_work(struct work_struct *work)
 		thp->restore_modes = retry;
 		thp->charger_sent = -1;
 	}
+	if (thp->haptics_valid && thp->haptics_submitted < 0 &&
+	    thp_haptics_send(thp))
+		retry = true;
 	usb = power_supply_get_by_name("usb");
 	if (!usb) {
 		retry = true;
@@ -409,10 +527,12 @@ static const struct proc_ops thp_control_ops = {
 	.proc_lseek = seq_lseek, .proc_release = single_release,
 	.proc_write = thp_control_write,
 };
-static void thp_controls_remove(void)
+static void thp_controls_remove(struct goodix_thp *thp)
 {
 	int i;
 
+	proc_remove(thp->haptics_entry);
+	thp->haptics_entry = NULL;
 	for (i = 0; i < ARRAY_SIZE(thp_controls); i++) {
 		proc_remove(thp_controls[i].entry);
 		thp_controls[i].entry = NULL;
@@ -422,6 +542,13 @@ static int thp_controls_create(struct goodix_thp *thp)
 {
 	int i;
 
+	thp->haptics_submitted = -1;
+	thp->haptics_status = -EAGAIN;
+	thp->haptics_entry = proc_create_data("haptics", 0640, NULL,
+					    &thp_haptics_ops, thp);
+	if (!thp->haptics_entry)
+		return -ENOMEM;
+
 	for (i = 0; i < ARRAY_SIZE(thp_controls); i++) {
 		thp_controls[i].thp = thp;
 		thp_controls[i].valid = false;
@@ -429,7 +556,7 @@ static int thp_controls_create(struct goodix_thp *thp)
 		thp_controls[i].entry = proc_create_data(thp_controls[i].name,
 			0660, NULL, &thp_control_ops, &thp_controls[i]);
 		if (!thp_controls[i].entry) {
-			thp_controls_remove();
+			thp_controls_remove(thp);
 			return -ENOMEM;
 		}
 	}
@@ -1083,9 +1210,19 @@ static long thp_penraw_ioctl(struct file *file, unsigned int cmd, unsigned long 
 /* Caller holds bus_lock. Preserve the stock framework's exact DEVPATH/env ABI. */
 static void thp_pen_uevent(struct goodix_thp *thp)
 {
-	char info[64], mac[32];
-	char *env[5] = { "TOUCH_INFORMATION=08", "UEVENT_TO=PEN_FRAMEWORK TYPE=TP",
-		info, mac, NULL };
+	char info[64], mac[32], status[64];
+	/* Stock goodix_ts_uevent uses literal 08, not a guessed mode mapping.
+	 * Publish it only for the current successful CE/14 host submission.
+	 */
+	char *env[6] = { "UEVENT_TO=PEN_FRAMEWORK TYPE=TP", info, mac,
+		status, NULL, NULL };
+
+	if (!thp->pen_info)
+		return;
+	snprintf(status, sizeof(status), "HAPTICS_SUBMITTED=%d",
+		 thp->haptics_submitted);
+	if (thp->haptics_submitted == 1)
+		env[4] = "TOUCH_INFORMATION=08";
 
 	snprintf(info, sizeof(info), "INFO=%d;%d;0xffff;0xffff;0x3fffff",
 		 thp->pen_identity[0], thp->pen_identity[1]);
@@ -1204,6 +1341,7 @@ static int thp_reinit(struct goodix_thp *thp)
 		gpiod_set_raw_value_cansleep(thp->reset, 1);
 		msleep(200);
 		thp->hal_ready = false;
+		thp_haptics_invalidate(thp);
 		thp->restore_modes = true;
 		thp->state = thp->state_changed = 0;
 		thp_clear_frames(thp);
@@ -1234,6 +1372,7 @@ static int thp_sleep_locked(struct goodix_thp *thp, bool suspend)
 		thp->irq_enabled = false;
 	}
 	mutex_lock(&thp->bus_lock);
+	thp_haptics_invalidate(thp);
 	if (suspend && thp->gesture_mask) {
 		ret = thp_send_command(thp, 0xa6, ~thp->gesture_mask);
 		if (!ret) {
@@ -1365,6 +1504,7 @@ static void thp_esd_work(struct work_struct *work)
 		thp_write_register(thp, thp->status_address, &feed, 1);
 		goto unlock;
 	}
+	thp_haptics_invalidate(thp);
 	/* A stale feed byte means firmware stopped consuming the watchdog. */
 	restart_irq = thp->irq_enabled;
 	mutex_unlock(&thp->bus_lock);
@@ -1487,6 +1627,7 @@ static long thp_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 			}
 		} else if (message.command == 101) {
 			thp->hal_ready = true;
+			thp_haptics_invalidate(thp);
 			if (thp->esd_supported && !thp->esd_enabled) {
 				thp->esd_enabled = true;
 				mod_delayed_work(system_wq, &thp->esd_work, 3 * HZ);
@@ -1903,7 +2044,7 @@ static int thp_probe(struct spi_device *spi)
 		schedule_delayed_work(&thp->esd_work, 3 * HZ);
 	return 0;
 controls_free:
-	thp_controls_remove();
+	thp_controls_remove(thp);
 	mutex_lock(&thp_netlink_lock);
 	thp_device = NULL;
 	mutex_unlock(&thp_netlink_lock);
@@ -1939,7 +2080,7 @@ static void thp_remove(struct spi_device *spi)
 	cancel_delayed_work_sync(&thp->esd_work);
 	mutex_lock(&thp->control_lock);
 	wake_up_interruptible(&thp->frames);
-	thp_controls_remove();
+	thp_controls_remove(thp);
 	misc_deregister(&thp->penraw);
 	misc_deregister(&thp->agent);
 	misc_deregister(&thp->touch);
