@@ -90,22 +90,27 @@ static const struct regmap_config eusb2_i2c_regmap = {
 	.max_register = 0xff,
 };
 
-static void eusb2_i2c_write_reg(struct eusb2_repeater *er, u8 reg, u8 val)
+static int eusb2_i2c_write_reg(struct eusb2_repeater *er, u8 reg, u8 val)
 {
 	int ret;
 
 	ret = regmap_write(er->regmap, reg, val);
 	if (ret < 0)
 		dev_err(er->dev, "failed to write 0x%02x to reg: 0x%02x ret=%d\n", val, reg, ret);
+	return ret;
 }
 
 /* the sequence is (value, register) pairs */
-static void eusb2_repeater_update_seq(struct eusb2_repeater *er, const u32 *seq, u8 cnt)
+static int eusb2_repeater_update_seq(struct eusb2_repeater *er, const u32 *seq, u8 cnt)
 {
-	int i;
+	int i, ret;
 
-	for (i = 0; i < cnt; i += 2)
-		eusb2_i2c_write_reg(er, seq[i + 1], seq[i]);
+	for (i = 0; i < cnt; i += 2) {
+		ret = eusb2_i2c_write_reg(er, seq[i + 1], seq[i]);
+		if (ret)
+			return ret;
+	}
+	return 0;
 }
 
 static int eusb2_repeater_power(struct eusb2_repeater *er, bool on)
@@ -130,12 +135,15 @@ static int eusb2_repeater_power(struct eusb2_repeater *er, bool on)
 			for (reg = 0; reg < EUSB2_NUM_SAVED_REGS; reg++) {
 				val = 0;
 				ret = regmap_read(er->regmap, reg, &val);
-				if (ret < 0)
+				if (ret < 0) {
 					dev_err(er->dev, "Failed to read reg:0x%02x ret=%d\n", reg, ret);
-				else
-					er->saved_regs[port][reg] = val;
+					break;
+				}
+				er->saved_regs[port][reg] = val;
 			}
-			er->regs_saved[port] = true;
+			er->regs_saved[port] = (reg == EUSB2_NUM_SAVED_REGS);
+			if (!er->regs_saved[port])
+				er->seq_written[port] = false;
 		}
 
 		if (!er->power_enabled)
@@ -243,18 +251,22 @@ do {												\
 	if ((er)->param_override_seq_cnt_c##n) {						\
 		if (!(er)->seq_written[(n) - 1]) {						\
 			dev_info((er)->ur.dev, "write " cn " sequence from dtsi\n");		\
-			eusb2_repeater_update_seq((er), (er)->param_override_seq_c##n,		\
-						  (er)->param_override_seq_cnt_c##n);		\
-			(er)->seq_written[(n) - 1] = true;					\
+			/* On a bus error leave the flag clear so the next init retries. */	\
+			if (!eusb2_repeater_update_seq((er), (er)->param_override_seq_c##n,	\
+						       (er)->param_override_seq_cnt_c##n))	\
+				(er)->seq_written[(n) - 1] = true;				\
 		} else if ((er)->regs_saved[(n) - 1]) {						\
 			dev_info((er)->ur.dev, "write " cn " sequence from reg save value\n");	\
 			for (reg = 0; reg < EUSB2_NUM_SAVED_REGS; reg++) {			\
 				if (reg == LINK_CONTROL1 || reg == LINK_CONTROL2)		\
 					continue;						\
-				eusb2_i2c_write_reg((er), reg,					\
-						    (er)->saved_regs[(n) - 1][reg]);		\
+				if (eusb2_i2c_write_reg((er), reg,				\
+							(er)->saved_regs[(n) - 1][reg]))	\
+					break;							\
 			}									\
-			(er)->regs_saved[(n) - 1] = false;					\
+			/* Keep the saved values for a retry unless every write succeeded. */	\
+			if (reg == EUSB2_NUM_SAVED_REGS)					\
+				(er)->regs_saved[(n) - 1] = false;				\
 		} else {									\
 			dev_info((er)->ur.dev, "no need to write " cn " sequence\n");		\
 		}										\
