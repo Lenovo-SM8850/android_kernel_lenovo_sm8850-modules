@@ -3106,7 +3106,7 @@ static int aw882xx_i2c_probe(struct i2c_client *i2c, const struct i2c_device_id 
 	ret = aw_componet_codec_register(aw882xx);
 	if (ret) {
 		aw_dev_err(&i2c->dev, "codec register failde");
-		goto EXIT;
+		goto err_dev_remove;
 	}
 
 	/*create attr*/
@@ -3114,7 +3114,7 @@ static int aw882xx_i2c_probe(struct i2c_client *i2c, const struct i2c_device_id 
 	if (ret < 0) {
 		aw_dev_err(aw882xx->dev, "error creating sysfs attr files");
 		aw_componet_codec_ops.unregister_codec(&i2c->dev);
-		goto EXIT;
+		goto err_dev_remove;
 	}
 
 	/*set aw882xx to dev private*/
@@ -3132,6 +3132,10 @@ static int aw882xx_i2c_probe(struct i2c_client *i2c, const struct i2c_device_id 
 	mutex_unlock(&g_aw882xx_lock);
 	aw_dev_info(&i2c->dev, "dev_cnt %d", g_aw882xx_dev_cnt);
 
+	return 0;
+
+err_dev_remove:
+	aw882xx_dev_remove(aw882xx->aw_pa);
 EXIT:
 	return ret;
 }
