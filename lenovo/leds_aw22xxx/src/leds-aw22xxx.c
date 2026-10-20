@@ -188,6 +188,8 @@ static void aw22xxx_brightness_work(struct work_struct *work)
 {
 	struct aw22xxx *aw = container_of(work, struct aw22xxx, brightness_work);
 
+	mutex_lock(&aw->cfg_lock);
+	aw22xxx_i2c_write(aw, REG_PAGE, 0);
 	aw22xxx_i2c_write(aw, REG_TASK0, 0xff);
 	aw22xxx_write_bits(aw, REG_MCUCTR, ~2, 0);
 	aw22xxx_chip_enable(aw, false);
@@ -200,12 +202,15 @@ static void aw22xxx_brightness_work(struct work_struct *work)
 		aw22xxx_i2c_write(aw, REG_TASK0, 0x82);
 		aw22xxx_write_bits(aw, REG_MCUCTR, ~2, 2);
 	}
+	mutex_unlock(&aw->cfg_lock);
 }
 
 static void aw22xxx_task_work(struct work_struct *work)
 {
 	struct aw22xxx *aw = container_of(work, struct aw22xxx, task_work);
 
+	mutex_lock(&aw->cfg_lock);
+	aw22xxx_i2c_write(aw, REG_PAGE, 0);
 	aw22xxx_i2c_write(aw, REG_TASK0, 0xff);
 	aw22xxx_write_bits(aw, REG_MCUCTR, ~2, 0);
 	aw22xxx_chip_enable(aw, false);
@@ -218,6 +223,7 @@ static void aw22xxx_task_work(struct work_struct *work)
 		aw22xxx_i2c_write(aw, REG_TASK1, aw->task1);
 		aw22xxx_write_bits(aw, REG_MCUCTR, ~2, 2);
 	}
+	mutex_unlock(&aw->cfg_lock);
 }
 
 static void aw22xxx_set_brightness(struct led_classdev *cdev,
@@ -255,6 +261,7 @@ static void aw22xxx_cfg_loaded(const struct firmware *cont, void *context)
 		aw22xxx_cfg_name[min_t(u8, aw->effect, 19)], cont->size);
 	if (READ_ONCE(aw->stopping) || (cont->size & 1))
 		goto out;
+	aw22xxx_i2c_write(aw, REG_PAGE, 0);
 	for (i = 0; i < cont->size; i += 2) {
 		reg = cont->data[i];
 		val = cont->data[i + 1];
@@ -309,6 +316,7 @@ static bool aw22xxx_bist(struct aw22xxx *aw, unsigned int len,
 {
 	u8 val = 0;
 
+	aw22xxx_i2c_write(aw, REG_PAGE, 0);
 	aw22xxx_sw_reset(aw);
 	aw22xxx_chip_enable(aw, true);
 	aw22xxx_write_bits(aw, REG_MCUCTR, ~1, 1);
@@ -391,6 +399,7 @@ static int aw22xxx_fw_loaded(const struct firmware *cont, struct aw22xxx *aw)
 	u8 status = 0;
 	char tmp_buf[32] = { 0 };
 	int ret;
+	bool bist_done;
 
 	if (!cont) {
 		pr_err("%s: cjf17 failed to read %s\n", __func__, "aw22xxx_fw.bin");
@@ -433,17 +442,16 @@ static int aw22xxx_fw_loaded(const struct firmware *cont, struct aw22xxx *aw)
 	pr_info("%s: cjf27 fw len : 0x%04x\n", __func__, fw->len);
 	memcpy(fw->data, cont->data + 40, fw->len);
 	release_firmware(cont);
-	if (aw22xxx_bist(aw, fw->len, &bist, &status)) {
+	bist_done = aw22xxx_bist(aw, fw->len, &bist, &status);
+	if (!aw->fw_update && (!bist_done || bist != fw->bist)) {
+		dev_info(aw->dev, "Firmware BIST mismatch or incomplete; skipping flash update\n");
+		goto skip_update;
+	}
+	if (bist_done) {
 		if (bist == fw->bist) {
 			pr_info("%s: bist check pass, bist=0x%04x\n", __func__, bist);
-			if (!aw->fw_update) {
-				kfree(fw);
-				aw22xxx_i2c_write(aw, REG_BSTCTR, 0);
-				aw22xxx_led_init(aw);
-				aw->fw_flags = FW_OK;
-				aw22xxx_i2c_write(aw, REG_BSTCTR, 0);
-				return 0;
-			}
+			if (!aw->fw_update)
+				goto skip_update;
 			pr_info("%s: fw version: 0x%04x, force update fw\n", __func__, fw->version);
 		} else {
 			pr_info("%s: bist check fail, fw bist=0x%04x, flash bist=0x%04x\n", __func__, fw->bist, bist);
@@ -461,6 +469,13 @@ static int aw22xxx_fw_loaded(const struct firmware *cont, struct aw22xxx *aw)
 	aw->fw_update = 0;
 	aw22xxx_led_init(aw);
 	/* Stock reports a parsed firmware as loaded even if post-flash BIST fails. */
+	return 0;
+skip_update:
+	kfree(fw);
+	aw22xxx_i2c_write(aw, REG_BSTCTR, 0);
+	aw22xxx_led_init(aw);
+	aw->fw_flags = FW_OK;
+	aw22xxx_i2c_write(aw, REG_BSTCTR, 0);
 	return 0;
 invalid:
 	release_firmware(cont);
@@ -488,8 +503,10 @@ static void aw22xxx_fw_work_routine(struct work_struct *work)
 		return;
 	pr_info("%s load %s file success fw_retry_cnt:%d",
 		"aw22xxx_fw_update", "aw22xxx_fw.bin", cnt);
+	mutex_lock(&aw->cfg_lock);
 	if (aw22xxx_fw_loaded(cont, aw))
 		pr_err("%s aw22xxx_fw_loaded fail fw_retry_cnt:%d", "aw22xxx_fw_update", cnt);
+	mutex_unlock(&aw->cfg_lock);
 }
 
 static void aw22xxx_fw_init(struct aw22xxx *aw)
@@ -514,6 +531,8 @@ static irqreturn_t aw22xxx_irq(int irq, void *data)
 
 	if (READ_ONCE(aw->stopping))
 		return IRQ_HANDLED;
+	mutex_lock(&aw->cfg_lock);
+	aw22xxx_i2c_write(aw, REG_PAGE, 0);
 	aw22xxx_i2c_read(aw, REG_INTST, &status);
 	pr_info("%s: cjf32 reg INTST=0x%x\n", __func__, status);
 	if (status & 1) {
@@ -530,6 +549,7 @@ static irqreturn_t aw22xxx_irq(int irq, void *data)
 		if (aw->effect)
 			schedule_work(&aw->cfg_work);
 	}
+	mutex_unlock(&aw->cfg_lock);
 	return IRQ_HANDLED;
 }
 
@@ -545,6 +565,7 @@ static ssize_t reg_show(struct device *dev, struct device_attribute *attr, char 
 	ssize_t len = 0;
 	unsigned int i;
 
+	mutex_lock(&aw->cfg_lock);
 	aw22xxx_i2c_read(aw, REG_PAGE, &page);
 	for (i = 0; i < 256 && len < PAGE_SIZE - 1; i++) {
 		if (!page && !(aw22xxx_reg_access[i] & 1))
@@ -553,16 +574,20 @@ static ssize_t reg_show(struct device *dev, struct device_attribute *attr, char 
 		len += scnprintf(buf + len, PAGE_SIZE - len,
 				 "cjf44 reg:0x%02x=0x%02x\n", i, val);
 	}
+	mutex_unlock(&aw->cfg_lock);
 	return len;
 }
 
 static ssize_t reg_store(struct device *dev, struct device_attribute *attr,
 			 const char *buf, size_t count)
 {
+	struct aw22xxx *aw = aw22xxx_from_dev(dev);
 	unsigned int reg = 0, val = 0;
 
+	mutex_lock(&aw->cfg_lock);
 	if (sscanf(buf, "%x %x", &reg, &val) == 2)
-		aw22xxx_i2c_write(aw22xxx_from_dev(dev), reg, val);
+		aw22xxx_i2c_write(aw, reg, val);
+	mutex_unlock(&aw->cfg_lock);
 	return count;
 }
 
@@ -592,12 +617,14 @@ static ssize_t hwen_store(struct device *dev, struct device_attribute *attr,
 			pr_err("%s: cjf37 failed\n", "aw22xxx_hw_off");
 		return count;
 	}
+	mutex_lock(&aw->cfg_lock);
 	gpio_set_value_cansleep(aw->reset_gpio, 0);
 	usleep_range(1000, 1500);
 	if (val == 1) {
 		gpio_set_value_cansleep(aw->reset_gpio, 1);
 		usleep_range(1000, 1500);
 	}
+	mutex_unlock(&aw->cfg_lock);
 	return count;
 }
 
@@ -617,7 +644,9 @@ static ssize_t fw_store(struct device *dev, struct device_attribute *attr,
 		dev_err(aw->dev, "%s: cjf46 input data invalid!", __func__);
 		return ret;
 	}
+	mutex_lock(&aw->cfg_lock);
 	aw->fw_update = val;
+	mutex_unlock(&aw->cfg_lock);
 	if (val == 1)
 		schedule_work(&aw->fw_work);
 	return count;
@@ -705,8 +734,10 @@ static ssize_t imax_store(struct device *dev, struct device_attribute *attr,
 		dev_err(aw->dev, "%s: imax access violation！ value=%u", __func__, val);
 		return -EINVAL;
 	}
+	mutex_lock(&aw->cfg_lock);
 	aw->imax = val;
 	aw22xxx_imax_cfg(aw, aw22xxx_imax_code[val]);
+	mutex_unlock(&aw->cfg_lock);
 	return count;
 }
 
@@ -815,13 +846,16 @@ static ssize_t signal_led_store(struct device *dev, struct device_attribute *att
 	regs[5][0] = REG_TASK0; regs[5][1] = 0xc0 + idx * 3 + channel;
 	regs[6][0] = REG_TASK1; regs[6][1] = brightness;
 	regs[7][0] = REG_MCUCTR; regs[7][1] = 7;
+	mutex_lock(&aw->cfg_lock);
 	for (i = 0; i < ARRAY_SIZE(regs); i++) {
 		ret = aw22xxx_i2c_write(aw, regs[i][0], regs[i][1]);
 		if (ret < 0) {
 			dev_err(aw->dev, "%s", errors[i]);
+			mutex_unlock(&aw->cfg_lock);
 			return ret;
 		}
 	}
+	mutex_unlock(&aw->cfg_lock);
 	return count;
 }
 
