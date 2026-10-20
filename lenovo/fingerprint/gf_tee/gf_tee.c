@@ -138,7 +138,7 @@ static void gf_panel_event(enum panel_event_notifier_tag tag,
 {
 	struct goodix_gf *gf = data;
 
-	if (READ_ONCE(gf->dead) || event->notif_data.early_trigger)
+	if (READ_ONCE(gf->dead) || !event->notif_data.early_trigger)
 		return;
 	if (event->notif_type == DRM_PANEL_EVENT_BLANK)
 		gf_notify(gf, 2);
