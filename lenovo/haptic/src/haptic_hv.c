@@ -2040,7 +2040,14 @@ static void ram_load(const struct firmware *cont, void *context)
 		goto done;
 	}
 	aw_info("loaded %s - size: %zu", aw_ram_name, cont ? cont->size : 0);
-	/* check sum */
+	if (cont->size < 4 ||
+	    cont->size < aw_haptic->ram.baseaddr_shift + 2 ||
+	    cont->size < aw_haptic->ram.ram_shift) {
+		aw_err("ram firmware header is too short");
+		release_firmware(cont);
+		goto done;
+	}
+	/* Check sum */
 	for (i = 2; i < cont->size; i++)
 		check_sum += cont->data[i];
 	if (check_sum != (uint16_t)((cont->data[0] << 8) | (cont->data[1]))) {
