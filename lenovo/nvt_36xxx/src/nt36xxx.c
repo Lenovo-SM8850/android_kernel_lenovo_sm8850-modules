@@ -905,6 +905,7 @@ static ssize_t nvt_flash_read(struct file *file, char __user *buff,
 	int32_t retries = 0;
 	int8_t spi_wr = 0;
 	uint8_t *buf;
+	size_t len;
 
 	if ((count > NVT_TRANSFER_LEN + 3) || (count < 3)) {
 		NVT_ERR("invalid transfer len!\n");
@@ -934,6 +935,12 @@ static ssize_t nvt_flash_read(struct file *file, char __user *buff,
 		goto out;
 	}
 
+	len = ((str[0] & 0x7F) << 8) | str[1];
+	if (len > count - 2) {
+		ret = -EINVAL;
+		goto out;
+	}
+
 #if NVT_TOUCH_ESD_PROTECT
 	/*
 	 * stop esd check work to avoid case that 0x77 report righ after here to enable esd check again
@@ -944,12 +951,11 @@ static ssize_t nvt_flash_read(struct file *file, char __user *buff,
 #endif /* #if NVT_TOUCH_ESD_PROTECT */
 
 	spi_wr = str[0] >> 7;
-	memcpy(buf, str + 2, ((str[0] & 0x7F) << 8) | str[1]);
+	memcpy(buf, str + 2, len);
 
 	if (spi_wr == NVTWRITE) { //SPI write
 		while (retries < 20) {
-			ret = CTP_SPI_WRITE(ts->client, buf,
-					    ((str[0] & 0x7F) << 8) | str[1]);
+			ret = CTP_SPI_WRITE(ts->client, buf, len);
 			if (!ret)
 				break;
 			else
@@ -966,8 +972,7 @@ static ssize_t nvt_flash_read(struct file *file, char __user *buff,
 		}
 	} else if (spi_wr == NVTREAD) { //SPI read
 		while (retries < 20) {
-			ret = CTP_SPI_READ(ts->client, buf,
-					   ((str[0] & 0x7F) << 8) | str[1]);
+			ret = CTP_SPI_READ(ts->client, buf, len);
 			if (!ret)
 				break;
 			else
@@ -977,7 +982,7 @@ static ssize_t nvt_flash_read(struct file *file, char __user *buff,
 			retries++;
 		}
 
-		memcpy(str + 2, buf, ((str[0] & 0x7F) << 8) | str[1]);
+		memcpy(str + 2, buf, len);
 		// copy buff to user if spi transfer
 		if (retries < 20) {
 			if (copy_to_user(buff, str, count)) {
@@ -3271,6 +3276,14 @@ static void nvt_ts_remove(struct spi_device *client)
 
 	nvt_irq_enable(false);
 	free_irq(client->irq, ts);
+
+#if NVT_SET_CHARGER
+	if (ts->nvt_charger_notify_wq) {
+		cancel_work_sync(&ts->charger_notify_work);
+		destroy_workqueue(ts->nvt_charger_notify_wq);
+		ts->nvt_charger_notify_wq = NULL;
+	}
+#endif
 
 	mutex_destroy(&ts->xbuf_lock);
 	mutex_destroy(&ts->lock);
