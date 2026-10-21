@@ -453,6 +453,10 @@ static int fsa4480_sub_usbc_event_changed(struct typec_mux_dev *mux,
 	       TYPEC_ACCESSORY_AUDIO, cc_port_num);
 	if (acc > TYPEC_ACCESSORY_AUDIO || cc_port_num != 2)
 		goto out;
+	if (mode < TYPEC_MODE_AUDIO || mode > TYPEC_MODE_DEBUG) {
+		regmap_write(fsa_priv->regmap, FSA4480_SUB_RESET, 0x01);
+		dev_info(fsa_priv->dev, "%s: reset to usb\n", __func__);
+	}
 	if (atomic_read(&fsa_priv->usbc_mode) == acc)
 		goto out;
 	atomic_set(&fsa_priv->usbc_mode, acc);
