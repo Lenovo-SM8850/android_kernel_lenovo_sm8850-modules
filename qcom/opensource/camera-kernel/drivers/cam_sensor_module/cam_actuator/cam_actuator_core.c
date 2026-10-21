@@ -1528,11 +1528,14 @@ static int cam_actuator_haptic_callback(struct notifier_block *nb,
 
 	if (!data)
 		return NOTIFY_OK;
-	/* Keep a pending release or move while the shared rails are on. */
+	/* Cancel a pending release before checking the shared rails. */
 	if (action == 1 && (data->duration >= 200 ||
 	    (data->mode == 2 && data->duration == 0))) {
 		bool rails_enabled = false;
 
+		spin_lock_irqsave(&haptic_event_lock, flags);
+		cancel_delayed_work(&haptic_poweroff_work);
+		spin_unlock_irqrestore(&haptic_event_lock, flags);
 		/* The haptic notifier is SRCU; keep regulator reads outside the spinlock. */
 		mutex_lock(&haptic_camera_lock);
 		if (haptic_actuator) {
@@ -1552,7 +1555,6 @@ static int cam_actuator_haptic_callback(struct notifier_block *nb,
 		haptic_right_used = true;
 	if (action == 1 && (data->duration >= 200 ||
 	    (data->mode == 2 && data->duration == 0))) {
-		cancel_delayed_work(&haptic_poweroff_work);
 		if (!haptic_moving) {
 			haptic_moving = true;
 			start = delay = true;
