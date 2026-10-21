@@ -177,6 +177,12 @@ static int fsa4480_sub_usbc_analog_setup_switches(
 		    fsa4480_sub_usbc_update_settings(fsa_priv, 0x00, 0x9F);
 		    msleep(5);
 		}
+		regmap_read(fsa_priv->regmap, FSA4480_SUB_SLOW_MIC, &value);
+		if (reg17 == 0x01 && reg6 == 0x00 && value == 0x01) {
+			regmap_write(fsa_priv->regmap, FSA4480_SUB_RESET, 0x01);
+			fsa4480_sub_usbc_update_settings(fsa_priv, 0x07, 0x9f);
+			msleep(5);
+		}
 		if(reg17 == 0x02){
 		    regmap_write(fsa_priv->regmap, FSA4480_SUB_SWITCH_SETTINGS, 0x87);
 			msleep(1);
