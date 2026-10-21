@@ -387,7 +387,7 @@ static int thp_control_send(struct thp_control *control, int value)
 
 	if (control->command == 0xa4) {
 		size = 7;
-		command[2] = 4;
+		command[2] = 5;
 		command[3] = 0xa4;
 		command[4] = !value;
 		command[5] = 0xa9 + !value;
