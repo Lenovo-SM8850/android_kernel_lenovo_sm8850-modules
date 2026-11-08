@@ -1746,7 +1746,7 @@ static int thp_inputs(struct goodix_thp *thp)
 	if (!thp->fingers || !thp->pen)
 		return -ENOMEM;
 	thp->fingers->name = "goodix_ts_0";
-	thp->pen->name = "goodix_ts_0_pen";
+	thp->pen->name = "lenovo-stylus";
 	thp->fingers->id.bustype = thp->pen->id.bustype = BUS_SPI;
 	input_set_capability(thp->fingers, EV_KEY, KEY_WAKEUP);
 	input_set_capability(thp->pen, EV_KEY, KEY_POWER);
