@@ -1,0 +1,52 @@
+# SPDX-License-Identifier: GPL-2.0-only
+load("//build/kernel/kleaf:kernel.bzl", "ddk_config", "ddk_headers", "ddk_module")
+
+package(default_visibility = ["//visibility:public"])
+
+ddk_config(
+    name = "canoe_perf_wonder_kconfig",
+    kernel_build = "//vendor/lenovo/sm8850:canoe_perf_base_kernel",
+    kconfigs = ["Kconfig"],
+    defconfig = "defconfig",
+    deps = ["//vendor/lenovo/sm8850:canoe_perf_config"],
+)
+
+ddk_module(
+    name = "canoe_perf_wonder",
+    out = "wonder.ko",
+    srcs = glob([
+        "**/*.h",
+    ]) + [
+        "band_config.c",
+        "mac80211.c",
+        "mac80211_txs.c",
+        "main.c",
+        "nl80211_ven_cmd.c",
+        "ssr.c",
+        "wondertap.c",
+    ],
+    conditional_srcs = {
+        "CONFIG_DEBUG_FS": {
+            True: [
+                "debugfs.c",
+            ],
+        },
+    },
+    kernel_build = "//vendor/lenovo/sm8850:canoe_perf_base_kernel",
+    config = ":canoe_perf_wonder_kconfig",
+    deps = [
+        "//vendor/lenovo/sm8850:all_headers",
+        "//vendor/lenovo/sm8850:canoe_perf/net/mac80211/mac80211",
+        "//vendor/lenovo/sm8850:canoe_perf/net/wireless/cfg80211",
+    ],
+)
+
+ddk_headers(
+    name = "wonder_headers",
+    hdrs = glob([
+        "include/**/*.h",
+    ]),
+    includes = [
+        "include",
+    ],
+)
