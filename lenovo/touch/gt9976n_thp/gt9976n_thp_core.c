@@ -92,20 +92,24 @@ struct thp_control {
 	const char *name;
 	u8 command;
 	int value;
+	int values[4];
+	char text[32];
+	umode_t mode;
 };
 static void thp_pen_uevent(struct goodix_thp *thp);
 static void thp_haptics_invalidate(struct goodix_thp *thp);
 static int thp_send_command(struct goodix_thp *thp, u8 cmd, u16 data);
 static int thp_sleep(struct goodix_thp *thp, bool suspend);
 static struct thp_control thp_controls[] = {
-	{ .name = "gesture_mode", .command = 0xa6 },
-	{ .name = "pen_wakeup_mode", .command = 0xa7 },
-	{ .name = "panel_direction", .command = 15 },
-	{ .name = "game_mode", .command = 14 },
-	{ .name = "game_edge", .command = 17 },
-	{ .name = "pen_type", .command = 19 },
-	{ .name = "support_pen", .command = 12 },
-	{ .name = "HighReportRate", .command = 0xa4 },
+	{ .name = "gesture_mode", .command = 0xa6, .mode = 0660 },
+	{ .name = "pen_wakeup_mode", .command = 0xa7, .mode = 0660 },
+	{ .name = "panel_direction", .command = 15, .mode = 0660 },
+	{ .name = "game_mode", .command = 14, .mode = 0660 },
+	{ .name = "game_edge", .command = 17, .mode = 0660 },
+	{ .name = "edge_grid_zone", .command = 16, .mode = 0666 },
+	{ .name = "pen_type", .command = 19, .mode = 0660 },
+	{ .name = "support_pen", .command = 12, .mode = 0660 },
+	{ .name = "HighReportRate", .command = 0xa4, .mode = 0660 },
 };
 static struct goodix_thp *thp_device;
 static DEFINE_MUTEX(thp_netlink_lock);
@@ -387,10 +391,15 @@ static int thp_control_send(struct thp_control *control, int value)
 	u16 checksum;
 
 	if (control->command == 16) {
-		/* The edge grid starts with four neutral values. */
 		size = 13;
 		command[2] = 11;
-		put_unaligned_le16(0xe9, command + 11);
+		command[5] = control->values[0];
+		command[6] = control->values[1];
+		put_unaligned_le16(control->values[2], command + 7);
+		put_unaligned_le16(control->values[3], command + 9);
+		checksum = 0xe9 + command[5] + command[6] + command[7] +
+			   command[8] + command[9] + command[10];
+		put_unaligned_le16(checksum, command + 11);
 	} else if (control->command == 0xa4) {
 		size = 7;
 		command[2] = 5;
@@ -418,6 +427,8 @@ static void thp_restore_modes(struct goodix_thp *thp)
 		for (j = 0; j < ARRAY_SIZE(thp_controls); j++) {
 			if (thp_controls[j].command == control.command) {
 				control.value = thp_controls[j].value;
+				memcpy(control.values, thp_controls[j].values,
+				       sizeof(control.values));
 				break;
 			}
 		}
@@ -498,6 +509,10 @@ static int thp_control_show(struct seq_file *seq, void *unused)
 {
 	struct thp_control *control = seq->private;
 
+	if (control->command == 16) {
+		seq_puts(seq, control->text);
+		return 0;
+	}
 	seq_printf(seq, "%d\n", READ_ONCE(control->value));
 	return 0;
 }
@@ -505,21 +520,51 @@ static int thp_control_open(struct inode *inode, struct file *file)
 {
 	return single_open(file, thp_control_show, pde_data(inode));
 }
+static int thp_parse_values(char *text, int *values, int max)
+{
+	char *p = text;
+	int i;
+
+	for (i = 0; i < max; i++) {
+		char *end;
+
+		while (*p == ' ' || *p == '\t' || *p == ',')
+			p++;
+		if (!*p || *p == '\n')
+			break;
+		values[i] = simple_strtol(p, &end, 10);
+		if (end == p)
+			return -EINVAL;
+		p = end;
+		while (*p == ' ' || *p == '\t')
+			p++;
+		if (*p && *p != ',' && *p != '\n')
+			return -EINVAL;
+	}
+	return i;
+}
 static ssize_t thp_control_write(struct file *file, const char __user *buffer,
 				size_t count, loff_t *offset)
 {
 	struct thp_control *control = pde_data(file_inode(file));
 	struct goodix_thp *thp = control->thp;
-	char text[8] = { 0 };
-	int value, ret;
+	char text[32] = { 0 };
+	int values[4] = { 0 };
+	int value = 0, ret;
 
-	if (!count || count >= sizeof(text))
+	if (!count || count >= (control->command == 16 ? 32 : 8))
 		return -EINVAL;
 	if (copy_from_user(text, buffer, count))
 		return -EFAULT;
-	ret = kstrtoint(strim(text), 10, &value);
-	if (ret)
-		return ret;
+	if (control->command == 16) {
+		ret = thp_parse_values(text, values, ARRAY_SIZE(values));
+		if (ret < 0)
+			return ret;
+	} else {
+		ret = kstrtoint(strim(text), 10, &value);
+		if (ret)
+			return ret;
+	}
 	mutex_lock(&thp->bus_lock);
 	if (thp->dead || !thp->ready) {
 		ret = -ENODEV;
@@ -540,10 +585,15 @@ static ssize_t thp_control_write(struct file *file, const char __user *buffer,
 		}
 	} else {
 		WRITE_ONCE(control->value, value);
+		if (control->command == 16)
+			memcpy(control->values, values, sizeof(values));
 		ret = thp_control_send(control, value);
 	}
-	if (!ret)
+	if (!ret) {
 		WRITE_ONCE(control->value, value);
+		if (control->command == 16)
+			strscpy(control->text, text, sizeof(control->text));
+	}
 	mutex_unlock(&thp->bus_lock);
 	return ret ?: count;
 }
@@ -579,8 +629,12 @@ static int thp_controls_create(struct goodix_thp *thp)
 	for (i = 0; i < ARRAY_SIZE(thp_controls); i++) {
 		thp_controls[i].thp = thp;
 		thp_controls[i].value = 0;
+		memset(thp_controls[i].values, 0,
+		       sizeof(thp_controls[i].values));
+		memset(thp_controls[i].text, 0, sizeof(thp_controls[i].text));
 		thp_controls[i].entry = proc_create_data(thp_controls[i].name,
-			0660, NULL, &thp_control_ops, &thp_controls[i]);
+			thp_controls[i].mode, NULL, &thp_control_ops,
+			&thp_controls[i]);
 		if (!thp_controls[i].entry) {
 			thp_controls_remove(thp);
 			return -ENOMEM;
