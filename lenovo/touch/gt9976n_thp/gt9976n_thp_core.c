@@ -107,6 +107,7 @@ static struct thp_control thp_controls[] = {
 	{ .name = "game_mode", .command = 14, .mode = 0660 },
 	{ .name = "game_edge", .command = 17, .mode = 0660 },
 	{ .name = "edge_grid_zone", .command = 16, .mode = 0666 },
+	{ .name = "report_threshold", .command = 18, .mode = 0666 },
 	{ .name = "pen_type", .command = 19, .mode = 0660 },
 	{ .name = "support_pen", .command = 12, .mode = 0660 },
 	{ .name = "HighReportRate", .command = 0xa4, .mode = 0660 },
@@ -509,7 +510,7 @@ static int thp_control_show(struct seq_file *seq, void *unused)
 {
 	struct thp_control *control = seq->private;
 
-	if (control->command == 16) {
+	if (control->command == 16 || control->command == 18) {
 		seq_puts(seq, control->text);
 		return 0;
 	}
@@ -591,7 +592,7 @@ static ssize_t thp_control_write(struct file *file, const char __user *buffer,
 	}
 	if (!ret) {
 		WRITE_ONCE(control->value, value);
-		if (control->command == 16)
+		if (control->command == 16 || control->command == 18)
 			strscpy(control->text, text, sizeof(control->text));
 	}
 	mutex_unlock(&thp->bus_lock);
