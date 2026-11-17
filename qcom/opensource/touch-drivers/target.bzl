@@ -192,10 +192,7 @@ def define_canoe(t,v):
         registry = touch_driver_modules,
         modules = [
             "atmel_mxt_ts",
-            "dummy_ts",
-            "focaltech_fts",
             "goodix_ts",
-            "st_fts",
             "qts"
         ],
         config_options = [
