@@ -9,13 +9,13 @@ package(
 
 ddk_headers(
     name = "sync_fence_uapi_headers",
-    hdrs = glob(["include/uapi/sync_fence/*.h"]),
+    hdrs = glob(["include/uapi/sync_fence/*.h"], allow_empty = True),
     includes = ["include"]
 )
 
 ddk_headers(
     name = "sync_fence_headers",
-    hdrs = glob(["include/*.h"]),
+    hdrs = glob(["include/*.h"], allow_empty = True),
     includes = ["include"]
 )
 

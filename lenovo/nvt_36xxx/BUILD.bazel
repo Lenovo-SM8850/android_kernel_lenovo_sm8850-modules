@@ -15,7 +15,7 @@ ddk_config(
 ddk_module(
     name = "canoe_perf_nvt_36xxx",
     out = "nvt_36xxx.ko",
-    srcs = glob(["src/*.c", "src/*.h", "inc/*.h"]),
+    srcs = glob(["src/*.c", "src/*.h", "inc/*.h"], allow_empty = True),
     kernel_build = "//vendor/lenovo/sm8850:canoe_perf_base_kernel",
     config = ":canoe_perf_supplier_config",
     includes = ['src'],

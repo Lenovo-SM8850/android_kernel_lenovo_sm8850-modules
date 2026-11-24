@@ -56,7 +56,7 @@ def _get_module_srcs(target, variant, module, options):
     for option in module["config_srcs"]:
         srcs.extend(module["config_srcs"][option].get(option in options, []))
 
-    globbed_srcs = native.glob(["{}{}".format(module_path, _replace_formatting_codes(target, variant, src)) for src in srcs])
+    globbed_srcs = native.glob(["{}{}".format(module_path, _replace_formatting_codes(target, variant, src)) for src in srcs], allow_empty = True)
 
     if not globbed_srcs:
         _console_print(target, variant, module["name"], "WARNING: Module has no sources attached!")

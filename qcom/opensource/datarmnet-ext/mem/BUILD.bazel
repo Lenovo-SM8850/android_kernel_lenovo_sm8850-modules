@@ -45,6 +45,6 @@ ddk_headers(
     name = "rmnet_mem_uapi_headers",
     hdrs = glob([
         "include/uapi/linux/*.h",
-    ]),
+    ], allow_empty = True),
     includes = ["."],
 )

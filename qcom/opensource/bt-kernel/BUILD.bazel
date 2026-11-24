@@ -4,7 +4,7 @@ ddk_headers(
     name = "btfmcodec_headers",
     hdrs = glob([
         "btfmcodec/include/*.h"
-    ]),
+    ], allow_empty = True),
     includes = ["btfmcodec/include"]
 )
 
@@ -12,7 +12,7 @@ ddk_headers(
     name = "spi_cnss_headers",
     hdrs = glob([
         "spi/include/*.h"
-    ]),
+    ], allow_empty = True),
     includes = ["spi/include"]
 )
 
@@ -20,7 +20,7 @@ ddk_headers(
     name = "thqspi_headers",
     hdrs = glob([
         "thq-spi/include/*.h"
-    ]),
+    ], allow_empty = True),
     includes = ["thq-spi/include"]
 )
 

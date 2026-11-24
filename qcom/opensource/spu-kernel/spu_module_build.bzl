@@ -28,7 +28,7 @@ def _register_module_to_map(module_map, name, path, config_option, srcs, config_
     module_map[name] = module
 
 def _get_kernel_build_module_srcs(kernel_build, module, formatter):
-    src_formatter = lambda srcs: native.glob(formatter(["{}/{}".format(module.path, src) for src in srcs]))
+    src_formatter = lambda srcs: native.glob(formatter(["{}/{}".format(module.path, src) for src in srcs]), allow_empty = True)
     srcs = [] + src_formatter(module.srcs)
 
     return srcs

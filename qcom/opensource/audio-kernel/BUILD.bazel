@@ -14,14 +14,14 @@ ddk_headers(
         "include/dsp/*.h",
         "include/ipc/*.h",
         "include/soc/*.h"
-    ]),
+    ], allow_empty = True),
     includes = ["include"]
 )
 ddk_headers(
     name = "audio_uapi_headers",
     hdrs = glob([
         "include/uapi/audio/**/*.h"
-    ]),
+    ], allow_empty = True),
     includes = ["include/uapi/audio"]
 )
 ddk_headers(
@@ -31,13 +31,13 @@ ddk_headers(
         "dsp/**/*.h",
         "ipc/**/*.h",
         "soc/**/*.h"
-    ])
+    ], allow_empty = True)
 )
 ddk_headers(
     name = "audio_configs",
     hdrs = glob([
         "config/*.h"
-    ]),
+    ], allow_empty = True),
     includes = ["config"]
 )
 ddk_headers(

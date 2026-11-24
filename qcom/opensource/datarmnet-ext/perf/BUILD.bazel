@@ -26,7 +26,7 @@ ddk_headers(
     name = "rmnet_perf_include_headers",
     hdrs = glob([
         "include/linux/*.h",
-    ]),
+    ], allow_empty = True),
     includes = [
         "include",
         "include/linux",
@@ -37,7 +37,7 @@ ddk_headers(
     name = "rmnet_perf_uapi_include_headers",
     hdrs = glob([
         "include/uapi/linux/*.h",
-    ]),
+    ], allow_empty = True),
     includes = [
         "include/uapi",
     ],

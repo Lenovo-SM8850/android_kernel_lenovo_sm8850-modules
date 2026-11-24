@@ -56,7 +56,7 @@ def _get_kernel_build_options(modules, config_options):
 def _get_kernel_build_module_srcs(module, options, formatter):
     srcs = module.srcs + _get_config_choices(module.config_srcs, options)
     module_path = "{}/".format(module.path) if module.path else ""
-    globbed_srcs = native.glob(["{}{}".format(module_path, formatter(src)) for src in srcs])
+    globbed_srcs = native.glob(["{}{}".format(module_path, formatter(src)) for src in srcs], allow_empty = True)
 
     return globbed_srcs
 

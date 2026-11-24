@@ -9,7 +9,7 @@ ddk_headers(
     name = "qts_headers",
     hdrs = glob([
             "qts/*.h"
-        ]
+        ], allow_empty = True
     )
 )
 
@@ -18,7 +18,7 @@ ddk_headers(
     hdrs = glob([
             "st/*.h",
             "st/fts_lib/*.h",
-        ]
+        ], allow_empty = True
     )
 )
 
@@ -26,7 +26,7 @@ ddk_headers(
     name = "goodix_ts_headers",
     hdrs = glob([
             "goodix_berlin_driver/*.h",
-        ]
+        ], allow_empty = True
     )
 )
 
@@ -34,7 +34,7 @@ ddk_headers(
     name = "goodix_ts2_headers",
     hdrs = glob([
             "goodix_berlin_driver2/*.h",
-        ]
+        ], allow_empty = True
     )
 )
 
@@ -42,7 +42,7 @@ ddk_headers(
     name = "nt36xxx_headers",
     hdrs = glob([
             "nt36xxx/*.h"
-        ]
+        ], allow_empty = True
     )
 )
 
@@ -50,7 +50,7 @@ ddk_headers(
     name = "focaltech_headers",
     hdrs = glob([
             "focaltech_touch/*.h"
-        ]
+        ], allow_empty = True
     )
 )
 
@@ -58,7 +58,7 @@ ddk_headers(
     name = "synaptics_tcm_headers",
     hdrs = glob([
             "synaptics_tcm/*.h"
-        ]
+        ], allow_empty = True
     )
 )
 
@@ -67,7 +67,7 @@ ddk_headers(
     hdrs = glob([
             "synaptics_tcm2/*.h",
             "synaptics_tcm2/tcm/*.h"
-        ]
+        ], allow_empty = True
     )
 )
 
@@ -75,7 +75,7 @@ ddk_headers(
     name = "uapi_headers",
     hdrs = glob([
             "include/uapi/linux/synaptics_tcm2/*.h"
-        ]
+        ], allow_empty = True
     ),
     includes = ["include/uapi"]
 )
@@ -84,7 +84,7 @@ ddk_headers(
     name = "config_headers",
     hdrs = glob([
             "config/*.h"
-        ]
+        ], allow_empty = True
     ),
     includes = ["config"]
 )
@@ -93,7 +93,7 @@ ddk_headers(
     name = "glink_interface_ts_headers",
     hdrs = glob([
             "glink_interface_ts/*.h"
-        ]
+        ], allow_empty = True
     ),
     includes = ["glink_interface_ts"]
 )
@@ -102,7 +102,7 @@ ddk_headers(
     name = "pt_headers",
     hdrs = glob([
             "pt/*.h",
-        ]
+        ], allow_empty = True
     )
 )
 
@@ -111,7 +111,7 @@ ddk_headers(
     hdrs = glob([
             "raydium/*.h",
             "raydium/chip_raydium/*.h"
-        ]
+        ], allow_empty = True
     )
 )
 
@@ -119,7 +119,7 @@ ddk_headers(
     name = "gt9xx_headers",
     hdrs = glob([
             "gt9xx/*.h"
-        ]
+        ], allow_empty = True
     )
 )
 

@@ -59,6 +59,6 @@ ddk_headers(
     name = "rmnet_core_headers",
     hdrs = glob([
         "core/*.h",
-    ]),
+    ], allow_empty = True),
     includes = ["core"],
 )

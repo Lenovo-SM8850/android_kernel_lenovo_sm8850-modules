@@ -22,7 +22,7 @@ def _get_module_srcs(module, options):
     """
     srcs = module.srcs + _get_config_choices(module.config_srcs, options)
     return native.glob(
-        ["{}/{}".format(module.path, src) for src in srcs] + ["include/*.h"],
+        ["{}/{}".format(module.path, src) for src in srcs] + ["include/*.h"], allow_empty = True,
     )
 
 def _get_module_deps(module, options, formatter):

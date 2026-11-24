@@ -9,7 +9,7 @@ package(
 
 ddk_headers(
     name = "mm_drivers_configs",
-    hdrs = glob(["config/*.h"]),
+    hdrs = glob(["config/*.h"], allow_empty = True),
     includes = ["config"],
 )
 

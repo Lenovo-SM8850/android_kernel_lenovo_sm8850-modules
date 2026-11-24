@@ -2719,7 +2719,7 @@ def _define_module_for_target_variant_chipset(target, variant, chipset):
         cmd = "cat $(SRCS) > $@",
     )
 
-    srcs = native.glob(iglobs) + _fixed_srcs
+    srcs = native.glob(iglobs, allow_empty = True) + _fixed_srcs
 
     if target == "sdxkova" or target == "shikra":
         out = "wlan.ko"

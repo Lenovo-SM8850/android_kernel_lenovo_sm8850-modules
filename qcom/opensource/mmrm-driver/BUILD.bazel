@@ -9,7 +9,7 @@ ddk_headers(
     name = "mmrm_drivers_configs",
     hdrs  = glob([
         "config/*.h",
-    ]),
+    ], allow_empty = True),
     includes = ["config"]
 )
 
@@ -17,7 +17,7 @@ ddk_headers(
     name = "driver_headers",
     hdrs = glob([
       "driver/src/*.h",
-    ]),
+    ], allow_empty = True),
     includes = ["driver/src"]
 )
 

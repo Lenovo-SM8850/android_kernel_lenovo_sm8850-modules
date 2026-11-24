@@ -16,7 +16,7 @@ ddk_module(
     out = "wonder.ko",
     srcs = glob([
         "**/*.h",
-    ]) + [
+    ], allow_empty = True) + [
         "band_config.c",
         "mac80211.c",
         "mac80211_txs.c",
@@ -45,7 +45,7 @@ ddk_headers(
     name = "wonder_headers",
     hdrs = glob([
         "include/**/*.h",
-    ]),
+    ], allow_empty = True),
     includes = [
         "include",
     ],

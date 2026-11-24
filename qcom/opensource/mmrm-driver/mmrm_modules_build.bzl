@@ -23,7 +23,7 @@ def _get_kernel_build_module_srcs(module, options, formatter):
     srcs = module.srcs
     print("srcs = ", srcs)
     module_path = "{}/".format(module.path) if module.path else ""
-    globbed_srcs = native.glob(["{}{}".format(module_path, formatter(src)) for src in srcs])
+    globbed_srcs = native.glob(["{}{}".format(module_path, formatter(src)) for src in srcs], allow_empty = True)
     return globbed_srcs
 
 def mmrm_driver_modules_entry(hdrs = []):

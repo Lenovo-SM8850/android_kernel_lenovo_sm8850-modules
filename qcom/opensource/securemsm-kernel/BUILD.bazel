@@ -30,7 +30,7 @@ ddk_headers(
         "include/linux/CTrustedCameraDriver.h",
         "include/linux/trusted_camera_driver.h",
         "include/linux/ctrusted_camera_driver.h",
-    ]),
+    ], allow_empty = True),
     includes = [
         "include",
         "include/linux",
@@ -48,7 +48,7 @@ ddk_headers(
         "linux/misc/qseecom_kernel.h",
         "linux/misc/qseecom_priv.h",
         "linux/misc/qseecomi.h",
-    ]),
+    ], allow_empty = True),
     includes = ["linux", "include/uapi", "include/uapi/linux"]
 )
 
@@ -62,7 +62,7 @@ ddk_headers(
         "include/smci/interface/*h",
         "linux/misc/*.h",
         "config/*.h",
-    ]),
+    ], allow_empty = True),
     includes = [
         ".",
         "config",
@@ -86,7 +86,7 @@ ddk_headers(
     hdrs = glob([
         "include/uapi/linux/*.h",
         "crypto-qti/*.h"
-    ]),
+    ], allow_empty = True),
     includes = ["linux", "include/uapi", "include/uapi/linux", "crypto-qti"]
 )
 
@@ -94,7 +94,7 @@ ddk_headers(
     name = "smmu_proxy_uapi_headers",
     hdrs = glob([
         "smmu-proxy/include/uapi/linux/*.h",
-    ]),
+    ], allow_empty = True),
     includes = ["smmu-proxy/include/uapi"],
 )
 
@@ -104,7 +104,7 @@ ddk_headers(
         "smmu-proxy/*.h",
         "smmu-proxy/linux/*.h",
         "smmu-proxy/include/uapi/linux/*.h"
-    ]),
+    ], allow_empty = True),
     includes = [".", "smmu-proxy"],
 )
 
@@ -113,7 +113,7 @@ ddk_headers(
     hdrs = glob([
         "include/uapi/linux/*.h",
         "qcedev_fe/*.h"
-    ]),
+    ], allow_empty = True),
     includes = ["linux", "include/uapi", "include/uapi/linux", "qcedev_fe"]
 )
 

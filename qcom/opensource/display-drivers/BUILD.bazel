@@ -9,7 +9,7 @@ ddk_headers(
     name = "linux_includes",
     hdrs = glob([
       "include/linux/*.h",
-    ]),
+    ], allow_empty = True),
     includes = ["include"]
 )
 
@@ -19,7 +19,7 @@ ddk_headers(
       "include/uapi/display/drm/*.h",
       "include/uapi/display/hdcp/*.h",
       "include/uapi/display/media/*.h",
-    ]),
+    ], allow_empty = True),
     includes = ["include/uapi/display"]
 )
 
@@ -27,7 +27,7 @@ ddk_headers(
     name = "dp_headers",
     hdrs = glob([
       "msm/dp/*.h",
-    ]),
+    ], allow_empty = True),
     includes = ["msm/dp"]
 )
 
@@ -35,7 +35,7 @@ ddk_headers(
     name = "dsi_hfi_headers",
     hdrs = glob([
       "msm/dsi/hfi/*.h",
-    ]),
+    ], allow_empty = True),
     includes = ["msm/dsi/hfi"]
 )
 
@@ -43,7 +43,7 @@ ddk_headers(
     name = "dsi_headers",
     hdrs = glob([
       "msm/dsi/*.h",
-    ]),
+    ], allow_empty = True),
     includes = ["msm/dsi"]
 )
 
@@ -51,7 +51,7 @@ ddk_headers(
     name = "hdmi_headers",
     hdrs = glob([
       "msm/hdmi/*.h",
-    ]),
+    ], allow_empty = True),
     includes = ["msm/hdmi"]
 )
 
@@ -59,7 +59,7 @@ ddk_headers(
     name = "hfi_headers",
     hdrs = glob([
       "msm/hfi/*.h",
-    ]),
+    ], allow_empty = True),
     includes = ["msm/hfi"]
 )
 
@@ -67,7 +67,7 @@ ddk_headers(
     name = "sde_hfi_headers",
     hdrs = glob([
       "msm/sde/hfi/*.h",
-    ]),
+    ], allow_empty = True),
     includes = ["msm/sde/hfi"]
 )
 
@@ -75,7 +75,7 @@ ddk_headers(
     name = "sde_headers",
     hdrs = glob([
       "msm/sde/*.h",
-    ]),
+    ], allow_empty = True),
     includes = ["msm/sde"]
 )
 
@@ -83,7 +83,7 @@ ddk_headers(
     name = "rotator_headers",
     hdrs = glob([
       "rotator/*.h",
-    ]),
+    ], allow_empty = True),
     includes = ["rotator"]
 )
 
@@ -91,7 +91,7 @@ ddk_headers(
     name = "msm_headers",
     hdrs = glob([
       "msm/*.h",
-    ]),
+    ], allow_empty = True),
     includes = ["msm"]
 )
 

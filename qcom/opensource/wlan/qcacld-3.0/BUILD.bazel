@@ -3,7 +3,7 @@ ddk_headers(
     name = "wlan_uapi_headers",
     hdrs = glob([
         "uapi/linux/*.h"
-    ]),
+    ], allow_empty = True),
     includes = ["uapi/linux"]
 )
 

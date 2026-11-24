@@ -82,7 +82,7 @@ def kgsl_get_srcs():
         "kgsl_vbo.c",
     ]
 
-    srcs = srcs + native.glob(["*.h"]) + msm_kgsl_includes
+    srcs = srcs + native.glob(["*.h"], allow_empty = True) + msm_kgsl_includes
 
     return srcs
 
@@ -212,7 +212,7 @@ def define_target_variant_module(target, variant):
 def define_target_modules():
         ddk_headers(
             name = "kgsl_uapi_headers",
-            hdrs = native.glob(["include/uapi/linux/*.h"]),
+            hdrs = native.glob(["include/uapi/linux/*.h"], allow_empty = True),
             visibility = ["//visibility:public"]
         )
 

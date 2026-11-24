@@ -16,7 +16,7 @@ ddk_headers(
     name = "uapi_headers",
     hdrs = glob([
       "include/uapi/eva/media/*.h",
-    ]),
+    ], allow_empty = True),
     includes = ["include/uapi/eva"]
 )
 ddk_headers(
@@ -25,7 +25,7 @@ ddk_headers(
       "msm/eva/*.h",
       "msm/eva/vm/*.h",
       "msm/eva/target/*.h",
-    ]),
+    ], allow_empty = True),
     includes = ["msm","msm/eva"]
 )
 

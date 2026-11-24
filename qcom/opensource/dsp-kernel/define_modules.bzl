@@ -135,6 +135,6 @@ def define_target_modules():
     # Creates a ddk_headers that exposes the FastRPC UAPI header with public visibility
     ddk_headers(
         name = "frpc_uapi_headers",
-        hdrs = native.glob(["include/uapi/misc/fastrpc.h"]),
+        hdrs = native.glob(["include/uapi/misc/fastrpc.h"], allow_empty = True),
         visibility = ["//visibility:public"]
     )
