@@ -15,6 +15,10 @@
 #if IS_ENABLED(CONFIG_QCOM_LAZY_MAPPING)
 #include <linux/msm_dma_iommu_mapping.h>
 #endif
+#include <linux/version.h>
+#if KERNEL_VERSION(6, 18, 0) <= LINUX_VERSION_CODE
+#include <linux/qcom-iommu-util.h>
+#endif
 #include <linux/workqueue.h>
 #include <linux/genalloc.h>
 #include <linux/debugfs.h>
@@ -5378,9 +5382,15 @@ static int cam_populate_smmu_context_banks(struct device *dev,
 		goto cb_init_fail;
 	}
 	if (cb->io_support && cb->domain) {
+#if KERNEL_VERSION(6, 18, 0) <= LINUX_VERSION_CODE
+		qcom_iommu_set_fault_handler(cb->domain,
+			cam_smmu_iommu_fault_handler,
+			(void *)cb->name[0]);
+#else
 		iommu_set_fault_handler(cb->domain,
 			cam_smmu_iommu_fault_handler,
 			(void *)cb->name[0]);
+#endif
 
 		num_fault_props = of_property_count_strings(dev->of_node, "qcom,iommu-faults");
 		if (num_fault_props > 0) {

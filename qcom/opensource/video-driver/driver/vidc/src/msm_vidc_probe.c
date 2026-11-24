@@ -17,6 +17,9 @@
 #endif
 #include <media/v4l2-mem2mem.h>
 #include <linux/msm_dma_iommu_mapping.h>
+#if (KERNEL_VERSION(6, 18, 0) <= LINUX_VERSION_CODE)
+#include <linux/qcom-iommu-util.h>
+#endif
 
 #include "msm_vidc_internal.h"
 #include "msm_vidc_driver.h"
@@ -582,8 +585,13 @@ static int msm_vidc_setup_context_bank(struct msm_vidc_core *core,
 	dma_set_max_seg_size(dev, (unsigned int)DMA_BIT_MASK(32));
 	dma_set_seg_boundary(dev, (unsigned long)DMA_BIT_MASK(64));
 
+#if (KERNEL_VERSION(6, 18, 0) <= LINUX_VERSION_CODE)
+	qcom_iommu_set_fault_handler(cb->domain,
+		msm_vidc_smmu_fault_handler, (void *)core);
+#else
 	iommu_set_fault_handler(cb->domain,
 		msm_vidc_smmu_fault_handler, (void *)core);
+#endif
 
 	d_vpr_h(
 		"%s: name %s addr start %x size %x secure %d dma_coherant %d "
@@ -853,7 +861,12 @@ static int msm_vidc_probe_without_context_bank(struct platform_device *pdev,
 				__func__, dev_name(cb->dev));
 			return -EIO;
 		}
+#if (KERNEL_VERSION(6, 18, 0) <= LINUX_VERSION_CODE)
+		qcom_iommu_set_fault_handler(cb->domain, msm_vidc_smmu_fault_handler,
+					     (void *)core);
+#else
 		iommu_set_fault_handler(cb->domain, msm_vidc_smmu_fault_handler, (void *)core);
+#endif
 	}
 
 	dma_set_mask_and_coherent(&pdev->dev, DMA_MASK);

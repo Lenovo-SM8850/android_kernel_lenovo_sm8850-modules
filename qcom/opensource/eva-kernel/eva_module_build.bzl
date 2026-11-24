@@ -96,6 +96,7 @@ def define_target_variant_modules(target, variant, registry, modules, config_opt
         soc_label("{}_{}/drivers/soc/qcom/mdt_loader".format(target, variant)),
         soc_label("{}_{}/drivers/soc/qcom/llcc-qcom".format(target, variant)),
         soc_label("{}_{}/drivers/soc/qcom/mem_buf/mem_buf_dev".format(target, variant)),
+        soc_label("{}_{}/drivers/iommu/qcom_iommu_util".format(target, variant)),
         soc_label("{}_{}/drivers/virt/gunyah/gh_rm_drv".format(target, variant)),
         soc_label("{}_{}/drivers/virt/gunyah/gh_msgq".format(target, variant)),
     ]

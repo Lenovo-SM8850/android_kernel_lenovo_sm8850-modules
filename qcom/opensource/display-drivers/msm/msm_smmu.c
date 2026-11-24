@@ -252,7 +252,11 @@ static void msm_smmu_destroy(struct msm_mmu *mmu)
 	struct iommu_domain *domain = iommu_get_domain_for_dev(smmu->client_dev);
 
 	if (domain)
+#if (KERNEL_VERSION(6, 18, 0) <= LINUX_VERSION_CODE)
+		qcom_iommu_set_fault_handler(domain, NULL, NULL);
+#else
 		iommu_set_fault_handler(domain, NULL, NULL);
+#endif
 
 	if (smmu->client_dev)
 		platform_device_unregister(pdev);
@@ -587,8 +591,13 @@ static int msm_smmu_probe(struct platform_device *pdev)
 	dma_set_max_seg_size(client->dev, (unsigned int)DMA_BIT_MASK(32));
 	dma_set_seg_boundary(client->dev, (unsigned long)DMA_BIT_MASK(64));
 
+#if (KERNEL_VERSION(6, 18, 0) <= LINUX_VERSION_CODE)
+	qcom_iommu_set_fault_handler(client->domain,
+			msm_smmu_fault_handler, (void *)client);
+#else
 	iommu_set_fault_handler(client->domain,
 			msm_smmu_fault_handler, (void *)client);
+#endif
 
 	DRM_INFO("Created domain %s, secure=%d\n",
 			domain->label, domain->secure);

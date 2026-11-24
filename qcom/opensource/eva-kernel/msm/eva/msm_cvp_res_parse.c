@@ -11,6 +11,10 @@
 #include <linux/pm_domain.h>
 #include <linux/of_reserved_mem.h>
 #include <linux/of_address.h>
+#include <linux/version.h>
+#if (KERNEL_VERSION(6, 18, 0) <= LINUX_VERSION_CODE)
+#include <linux/qcom-iommu-util.h>
+#endif
 #include "msm_cvp_debug.h"
 #include "msm_cvp_resources.h"
 #include "msm_cvp_res_parse.h"
@@ -1330,8 +1334,13 @@ static int msm_cvp_populate_context_bank(struct device *dev,
 		goto err_setup_cb;
 	}
 
+#if (KERNEL_VERSION(6, 18, 0) <= LINUX_VERSION_CODE)
+	qcom_iommu_set_fault_handler(cb->domain,
+		msm_cvp_smmu_fault_handler, (void *)core);
+#else
 	iommu_set_fault_handler(cb->domain,
 		msm_cvp_smmu_fault_handler, (void *)core);
+#endif
 
 	return 0;
 

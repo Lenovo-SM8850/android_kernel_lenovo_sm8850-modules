@@ -81,6 +81,7 @@ def define_target_variant_modules(target, variant, registry, modules, config_opt
         soc_label("{}/drivers/soc/qcom/minidump".format(kernel_build)),
         soc_label("{}/drivers/soc/qcom/socinfo".format(kernel_build)),
         soc_label("{}/drivers/iommu/msm_dma_iommu_mapping".format(kernel_build)),
+        soc_label("{}/drivers/iommu/qcom_iommu_util".format(kernel_build)),
     ]
     kernel_build_label = soc_label("{}_base_kernel".format(kernel_build))
 
@@ -148,6 +149,7 @@ def define_lunch_target_variant_modules(target, variant, registry, modules, lunc
         soc_label("{}/drivers/soc/qcom/minidump".format(kernel_build)),
         soc_label("{}/drivers/soc/qcom/socinfo".format(kernel_build)),
         soc_label("{}/drivers/iommu/msm_dma_iommu_mapping".format(kernel_build)),
+        soc_label("{}/drivers/iommu/qcom_iommu_util".format(kernel_build)),
     ]
     kernel_build_label = soc_label("{}_base_kernel".format(kernel_build))
 
