@@ -57,7 +57,7 @@
  *
  * Return: int
  */
-int i2c_disable_irq(struct nfc_dev *dev)
+static int i2c_disable_irq(struct nfc_dev *dev)
 {
 	unsigned long flags;
 
@@ -79,7 +79,7 @@ int i2c_disable_irq(struct nfc_dev *dev)
  *
  * Return: int
  */
-int i2c_enable_irq(struct nfc_dev *dev)
+static int i2c_enable_irq(struct nfc_dev *dev)
 {
 	unsigned long flags;
 
@@ -107,7 +107,7 @@ static irqreturn_t i2c_irq_handler(int irq, void *dev_id)
 	return IRQ_HANDLED;
 }
 
-int i2c_read(struct nfc_dev *nfc_dev, char *buf, size_t count, int timeout)
+static int i2c_read(struct nfc_dev *nfc_dev, char *buf, size_t count, int timeout)
 {
 	int ret;
 	struct i2c_dev *i2c_dev = &nfc_dev->i2c_dev;
@@ -219,7 +219,7 @@ err:
 	return ret;
 }
 
-int i2c_write(struct nfc_dev *nfc_dev, const char *buf, size_t count,
+static int i2c_write(struct nfc_dev *nfc_dev, const char *buf, size_t count,
 	      int max_retry_cnt)
 {
 	int ret = -EINVAL;
@@ -272,7 +272,7 @@ int i2c_write(struct nfc_dev *nfc_dev, const char *buf, size_t count,
 	return ret;
 }
 
-ssize_t nfc_i2c_dev_read(struct file *filp, char __user *buf, size_t count,
+static ssize_t nfc_i2c_dev_read(struct file *filp, char __user *buf, size_t count,
 			 loff_t *offset)
 {
 	int ret;
@@ -306,7 +306,7 @@ ssize_t nfc_i2c_dev_read(struct file *filp, char __user *buf, size_t count,
 	return ret;
 }
 
-ssize_t nfc_i2c_dev_write(struct file *filp, const char __user *buf,
+static ssize_t nfc_i2c_dev_write(struct file *filp, const char __user *buf,
 			  size_t count, loff_t *offset)
 {
 	int ret;

@@ -57,14 +57,4 @@ int nfc_i2c_dev_remove(struct i2c_client *client);
 int nfc_i2c_dev_suspend(struct device *device);
 int nfc_i2c_dev_resume(struct device *device);
 
-#if IS_ENABLED(CONFIG_NXP_NFC_I2C)
-
-int i2c_enable_irq(struct nfc_dev *dev);
-int i2c_disable_irq(struct nfc_dev *dev);
-int i2c_write(struct nfc_dev *dev, const char *buf, size_t count,
-						int max_retry_cnt);
-int i2c_read(struct nfc_dev *dev, char *buf, size_t count, int timeout);
-
-#endif
-
 #endif //_I2C_DRV_H_

@@ -119,7 +119,7 @@ void set_valid_gpio(int gpio, int value)
 	}
 }
 
-int get_valid_gpio(int gpio)
+static int get_valid_gpio(int gpio)
 {
 	int value = -EINVAL;
 

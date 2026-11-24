@@ -103,7 +103,7 @@ err:
  *             NFC_STATE_FW_DWL if session closed
  *             NFC_STATE_UNKNOWN in error cases.
  */
-enum nfc_state_flags get_nfcc_session_state_dl(struct nfc_dev *nfc_dev)
+static enum nfc_state_flags get_nfcc_session_state_dl(struct nfc_dev *nfc_dev)
 {
 	int ret = 0;
 	uint8_t *cmd = nfc_dev->write_kbuf;
