@@ -4,6 +4,7 @@
  */
 
 #include <linux/types.h>
+#include <linux/version.h>
 #include <linux/module.h>
 #include <linux/moduleparam.h>
 #include <linux/skbuff.h>
@@ -295,11 +296,19 @@ rmnet_perf_sk_lookup(struct rmnet_perf_quickack_tuple *tuple,
 {
 	struct net *net = dev_net(skb_dev);
 
+#if (KERNEL_VERSION(6, 18, 0) <= LINUX_VERSION_CODE)
+	/* The established hash is looked up through the netns in 6.18 */
+	if (tuple->ip_proto == 4)
+		return inet_lookup_established(net, tuple->v4_saddr,
+					       tuple->sport, tuple->v4_daddr,
+					       tuple->dport, skb_dev->ifindex);
+#else
 	if (tuple->ip_proto == 4)
 		return inet_lookup_established(net, &tcp_hashinfo,
 					       tuple->v4_saddr,
 					       tuple->sport, tuple->v4_daddr,
 					       tuple->dport, skb_dev->ifindex);
+#endif
 
 	/* Interestingly, this one doesn't have a nice wrapper.
 	 *
@@ -307,10 +316,17 @@ rmnet_perf_sk_lookup(struct rmnet_perf_quickack_tuple *tuple,
 	 * actually handles doing that for us. The lookup code REALLY does want
 	 * dport in host order ;)
 	 */
+#if (KERNEL_VERSION(6, 18, 0) <= LINUX_VERSION_CODE)
+	return __inet6_lookup_established(net, &tuple->v6_saddr,
+					  tuple->sport, &tuple->v6_daddr,
+					  ntohs(tuple->dport), skb_dev->ifindex,
+					  0);
+#else
 	return __inet6_lookup_established(net, &tcp_hashinfo, &tuple->v6_saddr,
 					  tuple->sport, &tuple->v6_daddr,
 					  ntohs(tuple->dport), skb_dev->ifindex,
 					  0);
+#endif
 }
 
 static void rmnet_perf_quickack_force(struct rmnet_perf_quickack_node *node,
