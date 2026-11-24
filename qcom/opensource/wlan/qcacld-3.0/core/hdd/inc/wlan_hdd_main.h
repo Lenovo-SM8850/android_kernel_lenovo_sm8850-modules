@@ -447,6 +447,20 @@ enum hdd_nb_cmd_id {
 #define WLAN_HDD_GET_PRIV_PTR(__dev__) \
 		(struct hdd_adapter *)(netdev_priv((__dev__)))
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 18, 21))
+/**
+ * hdd_wdev_get_netdev() - get the netdev backing a wireless device
+ * @wdev: pointer to wireless device
+ *
+ * Return: pointer to the net device, NULL if @wdev has none
+ */
+static inline struct net_device *
+hdd_wdev_get_netdev(struct wireless_dev *wdev)
+{
+	return wdev ? wdev->netdev : NULL;
+}
+#endif
+
 #define MAX_NO_OF_2_4_CHANNELS 14
 
 #define WLAN_HDD_PUBLIC_ACTION_FRAME_OFFSET 24

@@ -29783,7 +29783,35 @@ static int __wlan_hdd_cfg80211_add_key(struct wiphy *wiphy,
 	return errno;
 }
 
-#ifdef CFG80211_KEY_INSTALL_SUPPORT_ON_WDEV
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 18, 21))
+static int wlan_hdd_cfg80211_add_key(struct wiphy *wiphy,
+				     struct wireless_dev *wdev,
+				     int link_id, u8 key_index, bool pairwise,
+				     const u8 *mac_addr,
+				     struct key_params *params)
+{
+	int errno;
+	struct osif_vdev_sync *vdev_sync;
+	struct net_device *dev;
+
+	dev = hdd_wdev_get_netdev(wdev);
+	if (!dev) {
+		hdd_err("Failed to get netdev from wdev");
+		return -EINVAL;
+	}
+
+	errno = osif_vdev_sync_op_start(dev, &vdev_sync);
+	if (errno)
+		return errno;
+
+	errno = __wlan_hdd_cfg80211_add_key(wiphy, dev, key_index, pairwise,
+					    mac_addr, params, link_id);
+
+	osif_vdev_sync_op_stop(vdev_sync);
+
+	return errno;
+}
+#elif defined(CFG80211_KEY_INSTALL_SUPPORT_ON_WDEV)
 #ifdef CFG80211_SET_KEY_WITH_SRC_MAC
 static int wlan_hdd_cfg80211_add_key(struct wiphy *wiphy,
 				     struct wireless_dev *wdev,
@@ -29985,7 +30013,38 @@ static int __wlan_hdd_cfg80211_get_key(struct wiphy *wiphy,
 	return 0;
 }
 
-#ifdef CFG80211_KEY_INSTALL_SUPPORT_ON_WDEV
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 18, 21))
+static int wlan_hdd_cfg80211_get_key(struct wiphy *wiphy,
+				     struct wireless_dev *wdev,
+				     int link_id, u8 key_index, bool pairwise,
+				     const u8 *mac_addr, void *cookie,
+				     void (*callback)(void *cookie,
+						      struct key_params *)
+				     )
+{
+	int errno;
+	struct osif_vdev_sync *vdev_sync;
+	struct net_device *dev;
+
+	dev = hdd_wdev_get_netdev(wdev);
+	if (!dev) {
+		hdd_err("Failed to get netdev from wdev");
+		return -EINVAL;
+	}
+
+	errno = osif_vdev_sync_op_start(dev, &vdev_sync);
+	if (errno)
+		return errno;
+
+	errno = __wlan_hdd_cfg80211_get_key(wiphy, dev, link_id, key_index,
+					    pairwise, mac_addr, cookie,
+					    callback);
+
+	osif_vdev_sync_op_stop(vdev_sync);
+
+	return errno;
+}
+#elif defined(CFG80211_KEY_INSTALL_SUPPORT_ON_WDEV)
 static int wlan_hdd_cfg80211_get_key(struct wiphy *wiphy,
 				     struct wireless_dev *wdev,
 				     u8 key_index, bool pairwise,
@@ -30226,7 +30285,34 @@ err:
  *
  * Return: 0 for success, error number on failure.
  */
-#ifdef CFG80211_KEY_INSTALL_SUPPORT_ON_WDEV
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 18, 21))
+static int wlan_hdd_cfg80211_del_key(struct wiphy *wiphy,
+				     struct wireless_dev *wdev,
+				     int link_id, u8 key_index,
+				     bool pairwise, const u8 *mac_addr)
+{
+	int errno;
+	struct osif_vdev_sync *vdev_sync;
+	struct net_device *dev;
+
+	dev = hdd_wdev_get_netdev(wdev);
+	if (!dev) {
+		hdd_err("Failed to get netdev from wdev");
+		return -EINVAL;
+	}
+
+	errno = osif_vdev_sync_op_start(dev, &vdev_sync);
+	if (errno)
+		return errno;
+
+	errno = __wlan_hdd_cfg80211_del_key(wiphy, dev, key_index,
+					    pairwise, mac_addr);
+
+	osif_vdev_sync_op_stop(vdev_sync);
+
+	return errno;
+}
+#elif defined(CFG80211_KEY_INSTALL_SUPPORT_ON_WDEV)
 static int wlan_hdd_cfg80211_del_key(struct wiphy *wiphy,
 				     struct wireless_dev *wdev,
 				     u8 key_index,
@@ -30468,7 +30554,33 @@ static int _wlan_hdd_cfg80211_set_default_beacon_key(struct wiphy *wiphy,
 	return 0;
 }
 
-#ifdef CFG80211_KEY_INSTALL_SUPPORT_ON_WDEV
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 18, 21))
+static int wlan_hdd_cfg80211_set_default_beacon_key(struct wiphy *wiphy,
+						    struct wireless_dev *wdev,
+						    int link_id, u8 key_index)
+{
+	int errno;
+	struct osif_vdev_sync *vdev_sync;
+	struct net_device *dev;
+
+	dev = hdd_wdev_get_netdev(wdev);
+	if (!dev) {
+		hdd_err("Failed to get netdev from wdev");
+		return -EINVAL;
+	}
+
+	errno = osif_vdev_sync_op_start(dev, &vdev_sync);
+	if (errno)
+		return errno;
+
+	errno = _wlan_hdd_cfg80211_set_default_beacon_key(wiphy, dev,
+							  key_index);
+
+	osif_vdev_sync_op_stop(vdev_sync);
+
+	return errno;
+}
+#elif defined(CFG80211_KEY_INSTALL_SUPPORT_ON_WDEV)
 static int wlan_hdd_cfg80211_set_default_beacon_key(struct wiphy *wiphy,
 						    struct wireless_dev *wdev,
 						    u8 key_index)
@@ -30824,7 +30936,32 @@ static int __wlan_hdd_set_default_mgmt_key(struct wiphy *wiphy,
  *
  * Return: 0 on success, error number on failure
  */
-#ifdef CFG80211_KEY_INSTALL_SUPPORT_ON_WDEV
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 18, 21))
+static int wlan_hdd_set_default_mgmt_key(struct wiphy *wiphy,
+					 struct wireless_dev *wdev,
+					 int link_id, u8 key_index)
+{
+	int errno;
+	struct osif_vdev_sync *vdev_sync;
+	struct net_device *dev;
+
+	dev = hdd_wdev_get_netdev(wdev);
+	if (!dev) {
+		hdd_err("Failed to get netdev from wdev");
+		return -EINVAL;
+	}
+
+	errno = osif_vdev_sync_op_start(dev, &vdev_sync);
+	if (errno)
+		return errno;
+
+	errno = __wlan_hdd_set_default_mgmt_key(wiphy, dev, key_index);
+
+	osif_vdev_sync_op_stop(vdev_sync);
+
+	return errno;
+}
+#elif defined(CFG80211_KEY_INSTALL_SUPPORT_ON_WDEV)
 static int wlan_hdd_set_default_mgmt_key(struct wiphy *wiphy,
 					 struct wireless_dev *wdev,
 					 u8 key_index)
