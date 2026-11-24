@@ -617,9 +617,10 @@ static int synx_handle_merge_n(struct synx_private_ioctl_arg *k_ioctl,
 				kfree(h_synxs);
 				return -EFAULT;
 		}
+
+		kfree(h_synxs);
 	}
 
-	kfree(h_synxs);
 	return result;
 }
 
