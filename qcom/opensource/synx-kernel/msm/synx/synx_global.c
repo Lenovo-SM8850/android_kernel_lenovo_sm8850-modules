@@ -550,7 +550,7 @@ int synx_global_clear_subscribed_core(u32 idx, enum synx_core_id id)
 	return SYNX_SUCCESS;
 }
 
-u32 synx_global_get_parents_num(u32 idx)
+static u32 __maybe_unused synx_global_get_parents_num(u32 idx)
 {
 	int rc;
 	unsigned long flags;

@@ -1889,7 +1889,7 @@ static void ipclite_recover_v0(enum ipcmem_host_type core_id)
 /* API Definition End - Minor Version 0*/
 
 /* Versioned Functions Start */
-int ipclite_init(struct platform_device *pdev)
+static int ipclite_init(struct platform_device *pdev)
 {
 	if (api_list_t.init == NULL) {
 		IPCLITE_LOG(ERR, "Unassigned function : %s", __func__);

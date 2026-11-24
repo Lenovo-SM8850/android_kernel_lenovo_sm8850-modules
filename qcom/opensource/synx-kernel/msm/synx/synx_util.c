@@ -14,14 +14,13 @@
 #include "synx_interop.h"
 #include "synx_private.h"
 static atomic64_t seq_counter = ATOMIC64_INIT(1);
-extern void synx_external_callback(s32 sync_obj, int status, void *data);
 
 static void *synx_dma_array_cb_func;
-const char *synx_dummy_fence_name(struct dma_fence *fence)
+static const char *synx_dummy_fence_name(struct dma_fence *fence)
 {
 	return "Synx Dummy fence";
 }
-void synx_dummy_fence_release(struct dma_fence *fence)
+static void synx_dummy_fence_release(struct dma_fence *fence)
 {
 	/* Release dma memory allocated during dma init */
 	kfree(fence->lock);
@@ -231,7 +230,7 @@ int synx_util_add_callback(struct synx_coredata *synx_obj,
 	return SYNX_SUCCESS;
 }
 
-void *synx_util_get_dma_func_cb(void)
+static void *synx_util_get_dma_func_cb(void)
 {
 	struct dma_fence *fence = NULL;
 	struct dma_fence_array *array = NULL;
@@ -447,7 +446,7 @@ void synx_util_put_object(struct synx_coredata *synx_obj)
 	kref_put(&synx_obj->refcount, synx_util_destroy_coredata);
 }
 
-int synx_util_cleanup_merged_fence(struct synx_coredata *synx_obj, int status)
+static int synx_util_cleanup_merged_fence(struct synx_coredata *synx_obj, int status)
 {
 	struct dma_fence_array *array = NULL;
 	u32 i;

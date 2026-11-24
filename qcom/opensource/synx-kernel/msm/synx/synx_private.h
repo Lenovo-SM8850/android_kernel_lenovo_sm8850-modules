@@ -261,6 +261,11 @@ struct synx_device {
 };
 
 extern struct synx_ops synx_hwfence_ops;
+
+void synx_external_callback(s32 sync_obj, int status, void *data);
+void synx_fence_release(struct dma_fence *fence);
+void synx_dma_fence_callback(struct dma_fence *fence, struct dma_fence_cb *cb);
+void synx_test_fence_release(struct dma_fence *fence);
 extern struct synx_ops synx_internal_ops;
 
 int synx_signal_core(struct synx_coredata *synx_obj,

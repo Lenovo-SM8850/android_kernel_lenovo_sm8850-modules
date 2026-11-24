@@ -625,7 +625,7 @@ static int alloc_index(int *bitmap_base)
 	return index;
 }
 
-void clear_index(int *bitmap_base, uint32_t index)
+static void clear_index(int *bitmap_base, uint32_t index)
 {
 	uint32_t addr_idx = index/32, ii = index % 32;
 
