@@ -1841,7 +1841,7 @@ AW_REQUEST(int, richtap_file_mmap, (struct file *filp, struct vm_area_struct *vm
 	int ret = 0;
 
 	//only accept PROT_READ, PROT_WRITE and MAP_SHARED from the API of mmap
-	vm_flags_t vm_flags = calc_vm_prot_bits(PROT_READ|PROT_WRITE, 0) | __calc_vm_flag_bits(filp, MAP_SHARED);
+	vm_flags_t vm_flags = calc_vm_prot_bits(PROT_READ|PROT_WRITE, 0) | calc_vm_flag_bits(filp, MAP_SHARED);
 	vm_flags |= current->mm->def_flags | VM_MAYREAD | VM_MAYWRITE | VM_MAYEXEC| VM_SHARED | VM_MAYSHARE;
 	if(vma && (pgprot_val(vma->vm_page_prot) != pgprot_val(vm_get_page_prot(vm_flags))))
 	    return -EPERM;
@@ -4265,7 +4265,7 @@ AW_REQUEST(int, tiktap_file_mmap, (struct file *file, struct vm_area_struct *vma
 	int ret = 0;
 
 	vm_flags_t vm_flags = calc_vm_prot_bits(PROT_READ|PROT_WRITE, 0) |
-			      __calc_vm_flag_bits(file, MAP_SHARED);
+			      calc_vm_flag_bits(file, MAP_SHARED);
 
 	vm_flags |= current->mm->def_flags | VM_MAYREAD | VM_MAYWRITE |
 		    VM_MAYEXEC | VM_SHARED | VM_MAYSHARE;
