@@ -101,7 +101,7 @@ struct tlv {
 	u16 length;
 };
 
-int free_bytes(u32 head, u32 tail, u32 max) {
+static int free_bytes(u32 head, u32 tail, u32 max) {
 	int free_bytes = 0;
 
 	if (head >= tail) {
@@ -332,7 +332,7 @@ int smem_mailbox_stop(int id) {
 }
 EXPORT_SYMBOL(smem_mailbox_stop);
 
-bool read_item(struct smem_client_channel *entry, void *item, u16 item_size) {
+static bool read_item(struct smem_client_channel *entry, void *item, u16 item_size) {
 	int offset;
 	void *smem;
 	void *read_buf;
