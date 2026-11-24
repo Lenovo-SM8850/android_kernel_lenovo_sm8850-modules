@@ -1136,7 +1136,11 @@ void __iomem *cam_compat_ioremap(bool mem_block_rw_prop,
 	if (mem_block_rw_prop) {
 		mem_base = ioremap(mem_block_start, mem_block_size);
 	} else {
-#if KERNEL_VERSION(6, 15, 0) <= LINUX_VERSION_CODE
+#if KERNEL_VERSION(6, 18, 0) <= LINUX_VERSION_CODE
+		/* ioremap_prot() only takes the memory attribute index on 6.18 */
+		mem_base = __ioremap_prot(mem_block_start, mem_block_size,
+		__pgprot((PROT_DEVICE_nGnRE & ~PTE_WRITE) | PTE_RDONLY));
+#elif KERNEL_VERSION(6, 15, 0) <= LINUX_VERSION_CODE
 		mem_base = ioremap_prot(mem_block_start, mem_block_size,
 		__pgprot((_PAGE_IOREMAP & ~PTE_WRITE) | PTE_RDONLY));
 #else
