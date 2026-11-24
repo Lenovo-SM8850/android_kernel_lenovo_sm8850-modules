@@ -198,7 +198,7 @@ static int btfm_slim_dai_hw_params(void *dai, uint32_t bps,
 	return 0;
 }
 
-void btfm_get_sampling_rate(uint32_t *sampling_rate)
+static void btfm_get_sampling_rate(uint32_t *sampling_rate)
 {
 	uint8_t codec_types_avb = ARRAY_SIZE(codec_text);
 	if (usecase_codec > (codec_types_avb - 1)) {
@@ -430,7 +430,7 @@ static int btfm_slim_dai_get_channel_map(void *dai,
 	return 0;
 }
 
-int btfm_slim_dai_get_configs(void *dai, void *config, uint8_t id)
+static int btfm_slim_dai_get_configs(void *dai, void *config, uint8_t id)
 {
 	struct hwep_data *hwep_info = (struct hwep_data *)dai;
 	struct btfmslim *btfmslim = dev_get_drvdata(hwep_info->dev);

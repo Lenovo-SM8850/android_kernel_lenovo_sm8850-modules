@@ -38,7 +38,7 @@ void btfmcodec_initiate_hwep_shutdown(struct btfmcodec_char_device *btfmcodec_de
 	}
 }
 
-void btfmcodec_move_to_next_state(struct btfmcodec_state_machine *state)
+static void btfmcodec_move_to_next_state(struct btfmcodec_state_machine *state)
 {
 	mutex_lock(&state->state_machine_lock);
 	if (state->current_state == BT_Connecting ||
@@ -56,7 +56,7 @@ void btfmcodec_move_to_next_state(struct btfmcodec_state_machine *state)
 	mutex_unlock(&state->state_machine_lock);
 }
 
-void btfmcodec_revert_current_state(struct btfmcodec_state_machine *state)
+static void btfmcodec_revert_current_state(struct btfmcodec_state_machine *state)
 {
 	mutex_lock(&state->state_machine_lock);
 	BTFMCODEC_INFO("reverting from %s to %s", coverttostring(state->current_state),
@@ -98,7 +98,7 @@ btfmcodec_state btfmcodec_get_prev_transport(struct btfmcodec_state_machine *sta
 	return prev_state;
 }
 
-int btfmcodec_frame_transport_switch_ind_pkt(struct btfmcodec_char_device *btfmcodec_dev,
+static int btfmcodec_frame_transport_switch_ind_pkt(struct btfmcodec_char_device *btfmcodec_dev,
 					uint8_t active_transport,
 					uint8_t status)
 {
@@ -112,7 +112,7 @@ int btfmcodec_frame_transport_switch_ind_pkt(struct btfmcodec_char_device *btfmc
 					BTM_HEADER_LEN));
 }
 
-int btfmcodec_frame_prepare_bearer_rsp_pkt(struct btfmcodec_char_device *btfmcodec_dev,
+static int btfmcodec_frame_prepare_bearer_rsp_pkt(struct btfmcodec_char_device *btfmcodec_dev,
 					uint8_t active_transport,
 					uint8_t status)
 {
@@ -126,7 +126,7 @@ int btfmcodec_frame_prepare_bearer_rsp_pkt(struct btfmcodec_char_device *btfmcod
 					BTM_HEADER_LEN));
 }
 
-int btfmcodec_wait_for_bearer_ind(struct btfmcodec_char_device *btfmcodec_dev)
+static int btfmcodec_wait_for_bearer_ind(struct btfmcodec_char_device *btfmcodec_dev)
 {
 	wait_queue_head_t *rsp_wait_q =
 		&btfmcodec_dev->rsp_wait_q[BTM_PKT_TYPE_BEARER_SWITCH_IND];
@@ -162,7 +162,7 @@ int btfmcodec_wait_for_bearer_ind(struct btfmcodec_char_device *btfmcodec_dev)
 	return ret;
 }
 
-int btfmcodec_initiate_hwep_configuration(struct btfmcodec_char_device *btfmcodec_dev)
+static int btfmcodec_initiate_hwep_configuration(struct btfmcodec_char_device *btfmcodec_dev)
 {
 	wait_queue_head_t *rsp_wait_q =
 		&btfmcodec_dev->rsp_wait_q[BTM_PKT_TYPE_HWEP_CONFIG];
@@ -193,7 +193,7 @@ int btfmcodec_initiate_hwep_configuration(struct btfmcodec_char_device *btfmcode
 	return ret;
 }
 
-void btfmcodec_configure_hwep(struct btfmcodec_char_device *btfmcodec_dev)
+static void btfmcodec_configure_hwep(struct btfmcodec_char_device *btfmcodec_dev)
 {
 	struct btfmcodec_data *btfmcodec = (struct btfmcodec_data *)btfmcodec_dev->btfmcodec;
 	struct btfmcodec_state_machine *state = &btfmcodec->states;
@@ -234,7 +234,7 @@ void btfmcodec_configure_hwep(struct btfmcodec_char_device *btfmcodec_dev)
 	}
 }
 
-void btfmcodec_prepare_bearer(struct btfmcodec_char_device *btfmcodec_dev,
+static void btfmcodec_prepare_bearer(struct btfmcodec_char_device *btfmcodec_dev,
 		enum transport_type new_transport)
 {
 	struct btfmcodec_data *btfmcodec = (struct btfmcodec_data *)btfmcodec_dev->btfmcodec;

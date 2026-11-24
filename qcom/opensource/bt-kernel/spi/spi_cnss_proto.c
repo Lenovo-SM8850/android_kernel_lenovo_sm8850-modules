@@ -67,7 +67,7 @@ EXPORT_SYMBOL(notification_to_schedule_wq);
 /**
  * FTrace logging
  */
-void spi_cnss_trace_log(struct device *dev, const char *fmt, ...)
+static void spi_cnss_trace_log(struct device *dev, const char *fmt, ...)
 {
 	struct va_format vaf = {
 				.fmt = fmt,
@@ -261,7 +261,7 @@ static int spi_cnss_single_transfer(struct spi_cnss_priv *spi_drv)
  * @size: total size str
  * return: void
  */
-void spi_cnss_prepare_data_log(struct spi_cnss_priv *spi_drv, char *prefix,
+static void spi_cnss_prepare_data_log(struct spi_cnss_priv *spi_drv, char *prefix,
 										char *str, int total, int offset, int size)
 {
 	char buf[DATA_BYTES_PER_LINE * 5];
@@ -807,7 +807,7 @@ static int spi_cnss_clear_irq(struct spi_cnss_priv *spi_drv)
  * @spi_drv: pointer to main spi_cnss struct
  * return: zero on success, non-zero otherwise
  */
-int spi_cnss_wakeup_client(struct spi_cnss_priv *spi_drv, int retry)
+static int spi_cnss_wakeup_client(struct spi_cnss_priv *spi_drv, int retry)
 {
 	int i, ret = 0;
 	int sanity_checker = retry/2;
@@ -1354,7 +1354,7 @@ static int spi_cnss_read_context_info(struct spi_cnss_priv *spi_drv, bool is_irq
 	return ret;
 }
 #ifdef CONFIG_AGGRESSIVE_SLEEP
-void spi_cnss_sleep_timeout_handler(struct timer_list *t)
+static void spi_cnss_sleep_timeout_handler(struct timer_list *t)
 {
 #if (KERNEL_VERSION(6, 16, 0) > LINUX_VERSION_CODE)
         struct spi_cnss_priv *spi_drv = from_timer(spi_drv, t, client_sleep_timer);

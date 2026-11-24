@@ -181,7 +181,7 @@ static inline void * btfmcodec_get_dai_drvdata(struct hwep_data *hwep_info)
 	return hwep_info->dai_drv;
 }
 
-int btfmcodec_hwep_startup(struct btfmcodec_data *btfmcodec)
+static int btfmcodec_hwep_startup(struct btfmcodec_data *btfmcodec)
 {
 	struct hwep_data *hwep_info = btfmcodec->hwep_info;
 	struct hwep_dai_driver *dai_drv = (struct hwep_dai_driver *)
@@ -214,7 +214,7 @@ static int btfmcodec_dai_startup(struct snd_pcm_substream *substream,
 	return 0;
 }
 
-int btfmcodec_hwep_shutdown(struct btfmcodec_data *btfmcodec, int id,
+static int btfmcodec_hwep_shutdown(struct btfmcodec_data *btfmcodec, int id,
 			    bool disable_master)
 {
 	struct hwep_data *hwep_info = btfmcodec->hwep_info;
@@ -378,7 +378,7 @@ static void btfmcodec_dai_shutdown(struct snd_pcm_substream *substream,
 	}
 }
 
-int btfmcodec_hwep_hw_params (struct btfmcodec_data *btfmcodec, uint32_t bps,
+static int btfmcodec_hwep_hw_params (struct btfmcodec_data *btfmcodec, uint32_t bps,
 			      uint32_t direction, uint8_t num_channels)
 {
 	struct hwep_data *hwep_info = btfmcodec->hwep_info;
@@ -597,7 +597,7 @@ static int btfmcodec_configure_dma(struct btfmcodec_data *btfmcodec, uint8_t id)
 	return ret;
 }
 
-int btfmcodec_hwep_prepare(struct btfmcodec_data *btfmcodec, uint32_t sampling_rate,
+static int btfmcodec_hwep_prepare(struct btfmcodec_data *btfmcodec, uint32_t sampling_rate,
 			uint32_t direction, int id, bool seamless)
 {
 	struct hwep_data *hwep_info = btfmcodec->hwep_info;
@@ -730,11 +730,11 @@ static int btfmcodec_dai_prepare(struct snd_pcm_substream *substream,
 }
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 10, 0)
-int btfmcodec_hwep_set_channel_map(void *hwep_info, unsigned int tx_num,
+static int btfmcodec_hwep_set_channel_map(void *hwep_info, unsigned int tx_num,
 				const unsigned int *tx_slot, unsigned int rx_num,
 				const unsigned int *rx_slot)
 #else
-int btfmcodec_hwep_set_channel_map(void *hwep_info, unsigned int tx_num,
+static int btfmcodec_hwep_set_channel_map(void *hwep_info, unsigned int tx_num,
 				unsigned int *tx_slot, unsigned int rx_num,
 				unsigned int *rx_slot)
 #endif
@@ -778,7 +778,7 @@ static int btfmcodec_dai_set_channel_map(struct snd_soc_dai *dai,
 }
 
 
-int btfmcodec_hwep_get_channel_map(void *hwep_info, unsigned int *tx_num,
+static int btfmcodec_hwep_get_channel_map(void *hwep_info, unsigned int *tx_num,
 				unsigned int *tx_slot, unsigned int *rx_num,
 				unsigned int *rx_slot, int id)
 {
@@ -820,7 +820,7 @@ static int btfmcodec_dai_get_channel_map(struct snd_soc_dai *dai,
 	return 0;
 }
 
-void btfmcodec_wq_hwep_configure(struct work_struct *work)
+static void btfmcodec_wq_hwep_configure(struct work_struct *work)
 {
 	struct btfmcodec_char_device *btfmcodec_dev = container_of(work,
 						struct btfmcodec_char_device,

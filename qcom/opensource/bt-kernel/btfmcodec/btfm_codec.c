@@ -142,7 +142,7 @@ static int btfmcodec_dev_release(struct inode *inode, struct file *file)
 	return 0;
 }
 
-btm_opcode STREAM_TO_UINT32 (struct sk_buff *skb)
+static btm_opcode STREAM_TO_UINT32 (struct sk_buff *skb)
 {
 	return (skb->data[0] | (skb->data[1] << 8) |
 		(skb->data[2] << 16) | (skb->data[3] << 24));
