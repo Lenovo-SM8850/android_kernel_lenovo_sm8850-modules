@@ -44,10 +44,18 @@ struct p2p_app_set_ps {
 	uint8_t ps_selection;
 };
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 18, 21))
+int wlan_hdd_cfg80211_remain_on_channel(struct wiphy *wiphy,
+					struct wireless_dev *wdev,
+					struct ieee80211_channel *chan,
+					unsigned int duration, u64 *cookie,
+					const u8 *rx_addr);
+#else
 int wlan_hdd_cfg80211_remain_on_channel(struct wiphy *wiphy,
 					struct wireless_dev *wdev,
 					struct ieee80211_channel *chan,
 					unsigned int duration, u64 *cookie);
+#endif
 
 int wlan_hdd_cfg80211_cancel_remain_on_channel(struct wiphy *wiphy,
 					       struct wireless_dev *wdev,
