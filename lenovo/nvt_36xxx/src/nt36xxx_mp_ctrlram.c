@@ -112,11 +112,6 @@ static int8_t nvt_mp_test_result_printed = 0;
 static uint8_t fw_ver = 0;
 static uint16_t nvt_pid = 0;
 
-extern void nvt_change_mode(uint8_t mode);
-extern uint8_t nvt_get_fw_pipe(void);
-extern void nvt_read_mdata(uint32_t xdata_addr, uint32_t xdata_btn_addr);
-extern void nvt_get_mdata(int32_t *buf, uint8_t *m_x_num, uint8_t *m_y_num);
-extern void nvt_read_get_num_mdata(uint32_t xdata_addr, int32_t *buffer, uint32_t num);
 int32_t nvt_mp_parse_dt(struct device_node *root, const char *node_compatible);
 
 /*******************************************************
@@ -1582,7 +1577,7 @@ static void print_selftest_status(struct seq_file *m, int32_t result)
 		nvt_mp_seq_printf(m, " FAIL!\n");
 }
 
-void print_selftest_result(struct seq_file *m, int32_t result,
+static void print_selftest_result(struct seq_file *m, int32_t result,
 			 uint8_t records[], int32_t rawdata[],
 			 uint8_t x_len, uint8_t y_len)
 {
@@ -2028,7 +2023,7 @@ Description:
 return:
 	n.a.
 *******************************************************/
-int32_t nvt_mp_parse_ain(struct device_node *np, const char *name, uint8_t *array, int32_t size)
+static int32_t nvt_mp_parse_ain(struct device_node *np, const char *name, uint8_t *array, int32_t size)
 {
 	struct property *data;
 	int32_t len, ret;
@@ -2068,7 +2063,7 @@ Description:
 return:
 	n.a.
 *******************************************************/
-int32_t nvt_mp_parse_u32(struct device_node *np, const char *name, int32_t *para)
+static int32_t nvt_mp_parse_u32(struct device_node *np, const char *name, int32_t *para)
 {
 	int32_t ret;
 
@@ -2092,7 +2087,7 @@ Description:
 return:
 	n.a.
 *******************************************************/
-int32_t nvt_mp_parse_array(struct device_node *np, const char *name, int32_t *array,
+static int32_t nvt_mp_parse_array(struct device_node *np, const char *name, int32_t *array,
 		int32_t x_ch, int32_t y_ch)
 {
 	struct property *data;
@@ -2128,7 +2123,7 @@ Description:
 return:
 	n.a.
 *******************************************************/
-int32_t nvt_mp_parse_pen_array(struct device_node *np, const char *name, int32_t *array,
+static int32_t nvt_mp_parse_pen_array(struct device_node *np, const char *name, int32_t *array,
 		uint32_t x_num, uint32_t y_num)
 {
 	struct property *data;

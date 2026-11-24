@@ -416,4 +416,43 @@ int32_t nvt_report_threshold_set(uint8_t status);
 int32_t nvt_game_edge_set(uint8_t status);
 int32_t nvt_ts_platform_driver_init(void);
 
+#if NVT_TOUCH_EXT_PROC
+int32_t nvt_extra_proc_init(void);
+void nvt_extra_proc_deinit(void);
+void nvt_change_mode(uint8_t mode);
+uint8_t nvt_get_fw_pipe(void);
+void nvt_read_mdata(uint32_t xdata_addr, uint32_t xdata_btn_addr);
+void nvt_get_mdata(int32_t *buf, uint8_t *m_x_num, uint8_t *m_y_num);
+void nvt_read_get_num_mdata(uint32_t xdata_addr, int32_t *buffer, uint32_t num);
+#endif
+#if NVT_CUST_PROC_CMD
+#if NVT_EDGE_REJECT
+int32_t nvt_edge_reject_set(int32_t status);
+#endif
+#if NVT_EDGE_GRID_ZONE
+int32_t nvt_edge_grid_zone_set(uint8_t deg, uint8_t dir, uint16_t y1,
+			       uint16_t y2);
+#endif
+#if NVT_PALM_MODE
+int32_t nvt_game_mode_set(uint8_t status);
+#endif
+#if NVT_SUPPORT_PEN
+int32_t nvt_support_pen_set(uint8_t status);
+#endif
+#ifdef BUILD_NOVATEK_TOUCH
+int32_t nvt_haptics_set(uint8_t status);
+#endif
+#endif
+#if NVT_SET_CHARGER
+int32_t nvt_set_charger(uint8_t charger_on_off);
+#endif
+#if NVT_TOUCH_MP
+int32_t nvt_mp_proc_init(void);
+void nvt_mp_proc_deinit(void);
+#endif
+int ts_touch_info_uevent(const struct device *dev, struct kobj_uevent_env *env);
+#if BOOT_UPDATE_FIRMWARE
+void Boot_Update_Firmware(struct work_struct *work);
+#endif
+
 #endif /* _LINUX_NVT_TOUCH_H */

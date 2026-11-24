@@ -23,10 +23,6 @@
 
 #if BOOT_UPDATE_FIRMWARE
 
-#if NVT_SUPPORT_PEN
-extern int32_t nvt_support_pen_set(uint8_t status);
-#endif
-
 static ktime_t start, end;
 const struct firmware *fw_entry = NULL;
 static size_t fw_need_write_size = 0;

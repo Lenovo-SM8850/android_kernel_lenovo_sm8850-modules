@@ -79,37 +79,10 @@ static struct workqueue_struct *nvt_hall_check_wq;
 #endif
 #endif
 
-#if NVT_TOUCH_EXT_PROC
-extern int32_t nvt_extra_proc_init(void);
-extern void nvt_extra_proc_deinit(void);
-#endif
-
-#if NVT_TOUCH_MP
-extern int32_t nvt_mp_proc_init(void);
-extern void nvt_mp_proc_deinit(void);
-#endif
-
 #if NVT_CUST_PROC_CMD
-#if NVT_EDGE_REJECT
-extern int32_t nvt_edge_reject_set(int32_t status);
-#endif
-#if NVT_EDGE_GRID_ZONE
-extern int32_t nvt_edge_grid_zone_set(uint8_t deg, uint8_t dir, uint16_t y1,
-				      uint16_t y2);
-#endif
-#if NVT_PALM_MODE
-extern int32_t nvt_game_mode_set(uint8_t status);
-#endif
-#if NVT_SUPPORT_PEN
-extern int32_t nvt_support_pen_set(uint8_t status);
-#endif
-#ifdef BUILD_NOVATEK_TOUCH
-extern int32_t nvt_haptics_set(uint8_t status);
-#endif
 static struct work_struct ts_restore_cmd_work;
 #endif
 #if NVT_SET_CHARGER
-extern int32_t nvt_set_charger(uint8_t charger_on_off);
 bool tp_charge_flag = false;
 EXPORT_SYMBOL(tp_charge_flag);
 bool tp_resume_flag = false;
@@ -137,7 +110,6 @@ static struct platform_device *nvt_ts_pdev;
 
 #if BOOT_UPDATE_FIRMWARE
 static struct workqueue_struct *nvt_fwu_wq;
-extern void Boot_Update_Firmware(struct work_struct *work);
 char *BOOT_UPDATE_FIRMWARE_NAME = "novatek_ts_fw.bin";
 char *MP_UPDATE_FIRMWARE_NAME = "novatek_ts_mp.bin";
 #endif
@@ -429,7 +401,7 @@ Description:
 return:
 	Executive outcomes. 0---succeed. -5---access fail.
 *******************************************************/
-int32_t nvt_read_reg(nvt_ts_reg_t reg, uint8_t *val)
+static int32_t nvt_read_reg(nvt_ts_reg_t reg, uint8_t *val)
 {
 	int32_t ret = 0;
 	uint32_t addr = 0;
@@ -550,7 +522,7 @@ Description:
 return:
 	Executive outcomes. 0---succeed. -1---fail.
 *******************************************************/
-int32_t nvt_check_spi_dma_tx_info(void)
+static int32_t nvt_check_spi_dma_tx_info(void)
 {
 	uint8_t buf[8] = { 0 };
 	int32_t i = 0;
@@ -591,7 +563,7 @@ Description:
 return:
 	Executive outcomes. 0---succeed. -1---fail.
 *******************************************************/
-int32_t nvt_check_tx_auto_copy(void)
+static int32_t nvt_check_tx_auto_copy(void)
 {
 	uint8_t buf[8] = { 0 };
 	int32_t i = 0;
@@ -1143,7 +1115,7 @@ Description:
 return:
 	n.a.
 *******************************************************/
-void nvt_ts_wakeup_gesture_report(uint8_t gesture_id, uint8_t *data)
+static void nvt_ts_wakeup_gesture_report(uint8_t gesture_id, uint8_t *data)
 {
 	uint32_t keycode = 0;
 	uint8_t func_type = data[2];
@@ -1550,7 +1522,7 @@ static uint8_t nvt_wdt_fw_recovery(uint8_t *point_data)
 	return recovery_enable;
 }
 
-void nvt_clear_aci_error_flag(void)
+static void nvt_clear_aci_error_flag(void)
 {
 	if (ts->mmap->ACI_ERR_CLR_ADDR == 0)
 		return;
@@ -1561,7 +1533,7 @@ void nvt_clear_aci_error_flag(void)
 }
 #endif /* #if NVT_TOUCH_WDT_RECOVERY */
 
-void nvt_read_fw_history(uint32_t fw_history_addr)
+static void nvt_read_fw_history(uint32_t fw_history_addr)
 {
 	uint8_t i = 0;
 	uint8_t buf[65];
@@ -2291,7 +2263,7 @@ out:
 	return ret;
 }
 #if WAKEUP_GESTURE
-int nvt_gesture_switch(struct input_dev *dev, unsigned int type, unsigned int code, int value)
+static int nvt_gesture_switch(struct input_dev *dev, unsigned int type, unsigned int code, int value)
 {
 	NVT_LOG("%s:start\n", __func__);
 	if (type == EV_SYN && code == SYN_CONFIG) {
@@ -2551,7 +2523,7 @@ static int nvt_charger_notifier_callback(struct notifier_block *nb,unsigned long
 	return 0;
 }
 
-void nvt_charger_init(void)
+static void nvt_charger_init(void)
 {
 	int ret = 0;
 	struct power_supply *psy = NULL;

@@ -131,7 +131,7 @@ void nvt_change_mode(uint8_t mode)
 	}
 }
 
-int32_t nvt_set_pen_inband_mode_1(uint8_t freq_idx, uint8_t x_term)
+static int32_t nvt_set_pen_inband_mode_1(uint8_t freq_idx, uint8_t x_term)
 {
 	uint8_t buf[8] = {0};
 	int32_t i = 0;
@@ -167,7 +167,7 @@ int32_t nvt_set_pen_inband_mode_1(uint8_t freq_idx, uint8_t x_term)
 	}
 }
 
-int32_t nvt_set_pen_normal_mode(void)
+static int32_t nvt_set_pen_normal_mode(void)
 {
 	uint8_t buf[8] = {0};
 	int32_t i = 0;
@@ -969,7 +969,7 @@ static int32_t nvt_cmd_store_locked(uint8_t *command, uint8_t len)
 	return ret;
 }
 
-int32_t nvt_cmd_store(uint8_t *command, uint8_t len)
+static int32_t nvt_cmd_store(uint8_t *command, uint8_t len)
 {
 	int32_t ret;
 
@@ -1758,8 +1758,6 @@ static const struct proc_ops nvt_game_edge_fops = {
 	.proc_lseek = seq_lseek,
 	.proc_release = single_release,
 };
-void nvt_extra_proc_deinit(void);
-
 int32_t nvt_extra_proc_init(void)
 {
 	NVT_proc_fw_version_entry = proc_create(NVT_FW_VERSION, 0444, NULL,&nvt_fw_version_fops);
