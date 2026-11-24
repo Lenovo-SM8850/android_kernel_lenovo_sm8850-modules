@@ -39,5 +39,8 @@ struct rmnet_ctl_dev {
 void rmnet_ctl_endpoint_post(const void *data, size_t len);
 void rmnet_ctl_endpoint_setdev(const struct rmnet_ctl_dev *dev);
 void rmnet_ctl_set_dbgfs(bool enable);
+void *rmnet_ctl_register_client(struct rmnet_ctl_client_hooks *hook);
+int rmnet_ctl_send_client(void *handle, struct sk_buff *skb);
+int rmnet_ctl_unregister_client(void *handle);
 
 #endif /* _RMNET_CTL_CLIENT_H_ */

@@ -2027,7 +2027,7 @@ recycle:
 	rmnet_recycle_frag_descriptor(frag_desc, port);
 }
 
-void rmnet_descriptor_classify_chain_count(u64 chain_count,
+static void rmnet_descriptor_classify_chain_count(u64 chain_count,
 					   struct rmnet_port *port)
 {
 	u64 index;
@@ -2042,7 +2042,7 @@ void rmnet_descriptor_classify_chain_count(u64 chain_count,
 	port->stats.dl_chain_stat[index] += chain_count;
 }
 
-void rmnet_descriptor_classify_frag_count(u64 frag_count,
+static void rmnet_descriptor_classify_frag_count(u64 frag_count,
 					  struct rmnet_port *port)
 {
 	u64 index;

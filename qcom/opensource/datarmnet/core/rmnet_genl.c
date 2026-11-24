@@ -141,7 +141,7 @@ void rmnet_update_pid_and_check_boost(pid_t pid, unsigned int len,
 	spin_unlock_irqrestore(&rmnet_pid_ht_splock, ht_flags);
 }
 
-void rmnet_boost_for_pid(pid_t pid, int boost_enable,
+static void rmnet_boost_for_pid(pid_t pid, int boost_enable,
 			 u64 boost_period)
 {
 	struct hlist_node *tmp;
@@ -247,7 +247,7 @@ static void rmnet_create_pid_bps_resp(struct rmnet_core_pid_bps_resp
 	pid_bps_resp_ptr->list_len = i;
 }
 
-int rmnet_core_genl_send_resp(struct genl_info *info,
+static int rmnet_core_genl_send_resp(struct genl_info *info,
 			      struct rmnet_core_pid_bps_resp *pid_bps_resp)
 {
 	struct sk_buff *skb;
