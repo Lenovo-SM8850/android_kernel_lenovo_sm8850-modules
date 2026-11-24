@@ -150,6 +150,8 @@ bool kgsl_hw_fence_signaled(struct dma_fence *fence);
 
 void kgsl_get_fence_name(struct dma_fence *f, char *name, u32 max_size);
 
+void kgsl_get_fence_value(struct dma_fence *f, char *value, u32 size);
+
 int kgsl_hw_fence_soccp_vote(bool pwr_on);
 
 #else
@@ -291,6 +293,11 @@ bool kgsl_hw_fence_signaled(struct dma_fence *fence)
 }
 
 void kgsl_get_fence_name(struct dma_fence *f, char *name, u32 max_size)
+{
+
+}
+
+void kgsl_get_fence_value(struct dma_fence *f, char *value, u32 size)
 {
 
 }

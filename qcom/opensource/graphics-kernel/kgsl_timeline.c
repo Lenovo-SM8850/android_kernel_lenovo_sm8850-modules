@@ -195,8 +195,7 @@ static bool timeline_fence_signaled(struct dma_fence *fence)
 {
 	struct kgsl_timeline_fence *f = to_timeline_fence(fence);
 
-	return !__dma_fence_is_later(fence->seqno, f->timeline->value,
-		fence->ops);
+	return !__dma_fence_is_later(fence, fence->seqno, f->timeline->value);
 }
 
 static bool timeline_fence_enable_signaling(struct dma_fence *fence)
@@ -221,22 +220,12 @@ static const char *timeline_get_timeline_name(struct dma_fence *fence)
 	return f->timeline->name;
 }
 
-static void timeline_get_value_str(struct dma_fence *fence,
-		char *str, int size)
-{
-	struct kgsl_timeline_fence *f = to_timeline_fence(fence);
-
-	snprintf(str, size, "%lld", f->timeline->value);
-}
-
 static const struct dma_fence_ops timeline_fence_ops = {
 	.get_driver_name = timeline_get_driver_name,
 	.get_timeline_name = timeline_get_timeline_name,
 	.signaled = timeline_fence_signaled,
 	.release = timeline_fence_release,
 	.enable_signaling = timeline_fence_enable_signaling,
-	.timeline_value_str = timeline_get_value_str,
-	.use_64bit_seqno = true,
 };
 
 static void kgsl_timeline_add_fence(struct kgsl_timeline *timeline,
@@ -336,7 +325,7 @@ struct dma_fence *kgsl_timeline_fence_alloc(struct kgsl_timeline *timeline,
 		return ERR_PTR(-ENOENT);
 	}
 
-	dma_fence_init(&fence->base, &timeline_fence_ops,
+	dma_fence_init64(&fence->base, &timeline_fence_ops,
 		&timeline->lock, timeline->context, seqno);
 
 	INIT_LIST_HEAD(&fence->node);

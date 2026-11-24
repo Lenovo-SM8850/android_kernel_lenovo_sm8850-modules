@@ -697,8 +697,7 @@ static void set_fence_signal_bit(struct adreno_device *adreno_dev,
 	char name[KGSL_FENCE_NAME_LEN];
 	char value[32] = "unknown";
 
-	if (fence->ops->timeline_value_str)
-		fence->ops->timeline_value_str(fence, value, sizeof(value));
+	kgsl_get_fence_value(fence, value, sizeof(value));
 
 	if (test_bit(DMA_FENCE_FLAG_SIGNALED_BIT, &fence->flags)) {
 		dev_err(gmu_pdev_dev,

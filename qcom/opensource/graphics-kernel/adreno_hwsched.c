@@ -2266,8 +2266,7 @@ static void _print_syncobj(struct adreno_device *adreno_dev, struct kgsl_drawobj
 		bool signaled = test_bit(DMA_FENCE_FLAG_SIGNALED_BIT, &fence->flags);
 		char value[32] = "unknown";
 
-		if (fence->ops->timeline_value_str)
-			fence->ops->timeline_value_str(fence, value, sizeof(value));
+		kgsl_get_fence_value(fence, value, sizeof(value));
 
 		dev_err(device->dev,
 			"dma fence[%d] signaled:%d kgsl:%d ctx:%llu seqno:%llu value:%s\n",
