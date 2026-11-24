@@ -165,7 +165,7 @@ static int _ipa_rm_add_dependency_sync(enum ipa_rm_resource_name resource_name,
  *
  * Side effects: May block. See documentation above.
  */
-int ipa_rm_add_dependency_sync_from_ioctl(
+static __maybe_unused int ipa_rm_add_dependency_sync_from_ioctl(
 	enum ipa_rm_resource_name resource_name,
 	enum ipa_rm_resource_name depends_on_name)
 {

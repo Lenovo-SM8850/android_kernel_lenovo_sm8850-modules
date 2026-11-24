@@ -3185,6 +3185,23 @@ int ipa3_get_wdi_gsi_stats(struct ipa_uc_dbg_ring_stats *stats);
 int ipa3_get_wdi3_gsi_stats(struct ipa_uc_dbg_ring_stats *stats);
 int ipa3_get_usb_gsi_stats(struct ipa_uc_dbg_ring_stats *stats);
 bool ipa_usb_is_teth_prot_connected(enum ipa_usb_teth_prot usb_teth_prot);
+int ipa_usb_deinit_teth_prot(enum ipa_usb_teth_prot teth_prot);
+int ipa_usb_init_teth_prot(enum ipa_usb_teth_prot teth_prot,
+			   struct ipa_usb_teth_params *teth_params,
+			   int (*ipa_usb_notify_cb)(enum ipa_usb_notify_event,
+			   void *),
+			   void *user_data);
+int ipa_usb_xdci_connect(struct ipa_usb_xdci_chan_params *ul_chan_params,
+			 struct ipa_usb_xdci_chan_params *dl_chan_params,
+			 struct ipa_req_chan_out_params *ul_out_params,
+			 struct ipa_req_chan_out_params *dl_out_params,
+			 struct ipa_usb_xdci_connect_params *connect_params);
+int ipa_usb_xdci_disconnect(u32 ul_clnt_hdl, u32 dl_clnt_hdl,
+			    enum ipa_usb_teth_prot teth_prot);
+int ipa_usb_xdci_resume(u32 ul_clnt_hdl, u32 dl_clnt_hdl,
+	enum ipa_usb_teth_prot teth_prot);
+int ipa_usb_xdci_suspend(u32 ul_clnt_hdl, u32 dl_clnt_hdl,
+	enum ipa_usb_teth_prot teth_prot, bool with_remote_wakeup);
 int ipa3_get_aqc_gsi_stats(struct ipa_uc_dbg_ring_stats *stats);
 int ipa3_get_rtk_gsi_stats(struct ipa_uc_dbg_ring_stats *stats);
 int ipa3_get_ntn_gsi_stats(struct ipa_uc_dbg_ring_stats *stats);
@@ -3613,6 +3630,7 @@ uint ipa3_get_emulation_type(void);
 int ipa3_get_transport_info(
 	phys_addr_t *phys_addr_ptr,
 	unsigned long *size_ptr);
+enum ipa_transport_type ipa3_get_transport_type(void);
 irq_handler_t ipa3_get_isr(void);
 void ipa_pc_qmp_enable(void);
 u32 ipa3_get_r_rev_version(void);

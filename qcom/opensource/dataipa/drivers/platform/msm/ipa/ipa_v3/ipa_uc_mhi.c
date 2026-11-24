@@ -613,7 +613,7 @@ void ipa3_uc_mhi_cleanup(void)
 	IPADBG("Done\n");
 }
 
-int ipa3_uc_mhi_init_engine(struct ipa_mhi_msi_info *msi, u32 mmio_addr,
+static __maybe_unused int ipa3_uc_mhi_init_engine(struct ipa_mhi_msi_info *msi, u32 mmio_addr,
 	u32 host_ctrl_addr, u32 host_data_addr, u32 first_ch_idx,
 	u32 first_evt_idx)
 {

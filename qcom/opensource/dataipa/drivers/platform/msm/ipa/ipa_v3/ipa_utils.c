@@ -7677,7 +7677,7 @@ EXPORT_SYMBOL(ipa_get_version_string);
  *
  * Return codes: 0 on success, negative on failure.
  */
-int ipa3_get_clients_from_rm_resource(
+static int ipa3_get_clients_from_rm_resource(
 	enum ipa_rm_resource_name resource,
 	struct ipa3_client_names *clients)
 {
@@ -8128,7 +8128,7 @@ u8 ipa3_get_hw_type_index(void)
  *
  * Returns:	None
  */
-void _ipa_sram_settings_read_v3_0(void)
+static void _ipa_sram_settings_read_v3_0(void)
 {
 	struct ipahal_reg_shared_mem_size smem_sz;
 
@@ -9208,7 +9208,7 @@ int ipa3_cfg_ep_status(u32 clnt_hdl,
  *
  * Return value: none
  */
-void ipa3_cfg_ep_cfg_pipe_replicate(u32 clnt_hdl)
+static void ipa3_cfg_ep_cfg_pipe_replicate(u32 clnt_hdl)
 {
 	/* Enable ADPL v6 Feature for certain IPA clients */
 	if (ipa3_ctx->ipa_hw_type >= IPA_HW_v5_5) {
@@ -9608,7 +9608,7 @@ int ipa_cfg_ep_ctrl(u32 clnt_hdl, const struct ipa_ep_cfg_ctrl *ep_ctrl)
 }
 EXPORT_SYMBOL(ipa_cfg_ep_ctrl);
 
-const char *ipa3_get_mode_type_str(enum ipa_mode_type mode)
+static const char *ipa3_get_mode_type_str(enum ipa_mode_type mode)
 {
 	switch (mode) {
 	case (IPA_BASIC):
@@ -9701,7 +9701,7 @@ int ipa3_cfg_ep_mode(u32 clnt_hdl, const struct ipa_ep_cfg_mode *ep_mode)
 	return 0;
 }
 
-const char *ipa3_get_aggr_enable_str(enum ipa_aggr_en_type aggr_en)
+static const char *ipa3_get_aggr_enable_str(enum ipa_aggr_en_type aggr_en)
 {
 	switch (aggr_en) {
 	case (IPA_BYPASS_AGGR):
@@ -9715,7 +9715,7 @@ const char *ipa3_get_aggr_enable_str(enum ipa_aggr_en_type aggr_en)
 	return "undefined";
 }
 
-const char *ipa3_get_aggr_type_str(enum ipa_aggr_type aggr_type)
+static const char *ipa3_get_aggr_type_str(enum ipa_aggr_type aggr_type)
 {
 	switch (aggr_type) {
 	case (IPA_NCM_16):
@@ -10254,7 +10254,7 @@ int ipa3_cfg_ep_deaggr(u32 clnt_hdl,
  *
  * Note:	Should not be called from atomic context
  */
-int ipa3_cfg_ep_metadata(u32 clnt_hdl, const struct ipa_ep_cfg_metadata *ep_md)
+static int ipa3_cfg_ep_metadata(u32 clnt_hdl, const struct ipa_ep_cfg_metadata *ep_md)
 {
 	u32 qmap_id = 0;
 	struct ipa_ep_cfg_metadata ep_md_reg_wrt;
@@ -14310,7 +14310,7 @@ int ipa3_get_prot_id(enum ipa_client_type client)
 	return prot_id;
 }
 
-void __ipa_ntn3_prod_stats_get(struct ipa_ntn3_stats_rx *stats, enum ipa_client_type client)
+static void __ipa_ntn3_prod_stats_get(struct ipa_ntn3_stats_rx *stats, enum ipa_client_type client)
 {
 	int ch_id, ipa_ep_idx;
 
@@ -14335,7 +14335,7 @@ void __ipa_ntn3_prod_stats_get(struct ipa_ntn3_stats_rx *stats, enum ipa_client_
 
 }
 
-void __ipa_ntn3_cons_stats_get(struct ipa_ntn3_stats_tx *stats, enum ipa_client_type client)
+static void __ipa_ntn3_cons_stats_get(struct ipa_ntn3_stats_tx *stats, enum ipa_client_type client)
 {
 	int ch_id, ipa_ep_idx;
 

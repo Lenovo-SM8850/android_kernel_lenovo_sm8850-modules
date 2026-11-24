@@ -1868,7 +1868,7 @@ static long ipa_lnx_stats_ioctl(struct file *filp,
 
 #ifdef CONFIG_COMPAT
 
-long compat_ipa_lnx_stats_ioctl(struct file *filp,
+static long compat_ipa_lnx_stats_ioctl(struct file *filp,
 	unsigned int cmd,
 	unsigned long arg)
 {

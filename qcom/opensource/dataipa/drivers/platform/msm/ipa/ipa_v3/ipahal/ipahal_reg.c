@@ -11,6 +11,7 @@
 #include "ipahal_i.h"
 #include "ipahal_reg.h"
 #include "ipahal_reg_i.h"
+#include "ipahal.h"
 
 #define IPA_MAX_MSG_LEN 4096
 

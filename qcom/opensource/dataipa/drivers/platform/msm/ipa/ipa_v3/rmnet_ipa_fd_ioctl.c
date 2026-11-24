@@ -508,7 +508,7 @@ static long ipa3_wan_ioctl(struct file *filp,
 }
 
 #ifdef CONFIG_COMPAT
-long ipa3_compat_wan_ioctl(struct file *file,
+static long ipa3_compat_wan_ioctl(struct file *file,
 		unsigned int cmd,
 		unsigned long arg)
 {

@@ -223,7 +223,7 @@ static void delete_first_node(void)
 	}
 }
 
-int ipa3_send_adpl_msg(unsigned long skb_data)
+static int ipa3_send_adpl_msg(unsigned long skb_data)
 {
 	struct ipa3_push_msg_odl *msg;
 	struct sk_buff *skb = (struct sk_buff *)skb_data;
@@ -277,7 +277,7 @@ static void odl_ipa_packet_receive_notify(void *priv,
 		IPAERR("Invalid evt %d received in wan_ipa_receive\n", evt);
 }
 
-int ipa_setup_odl_pipe(void)
+static int ipa_setup_odl_pipe(void)
 {
 	struct ipa_sys_connect_params *ipa_odl_ep_cfg;
 	int ret;
@@ -670,7 +670,7 @@ fail:
 }
 #ifdef CONFIG_COMPAT
 
-long compat_ipa_odl_ctl_fops_ioctl(struct file *filp, unsigned int cmd,
+static long compat_ipa_odl_ctl_fops_ioctl(struct file *filp, unsigned int cmd,
 							unsigned long arg)
 {
         IPAERR("compat_odl_ctl_ioctl cmd=%x nr=%d\n", cmd, _IOC_NR(cmd));
@@ -695,7 +695,7 @@ long compat_ipa_odl_ctl_fops_ioctl(struct file *filp, unsigned int cmd,
 	return ipa_odl_ctl_fops_ioctl(filp, cmd, (unsigned long) compat_ptr(arg));
 }
 
-long compat_ipa_adpl_ioctl(struct file *filp,
+static long compat_ipa_adpl_ioctl(struct file *filp,
 	unsigned int cmd, unsigned long arg)
 {
 	IPAERR("compat_ipa3_adpl_ioctl cmd=%x nr=%d\n", cmd, _IOC_NR(cmd));

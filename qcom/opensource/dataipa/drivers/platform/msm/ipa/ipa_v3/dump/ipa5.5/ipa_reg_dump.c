@@ -1412,7 +1412,7 @@ static void ipa_reg_save_rsrc_cnts(void)
  *
  * @return
  */
-void ipa_reg_save_rsrc_cnts_test_bus(void)
+static __maybe_unused void ipa_reg_save_rsrc_cnts_test_bus(void)
 {
 	int32_t rsrc_type = 0;
 

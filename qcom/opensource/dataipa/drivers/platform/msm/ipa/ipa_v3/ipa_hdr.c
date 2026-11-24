@@ -1100,7 +1100,7 @@ bail:
  *
  * Note:	Should not be called from atomic context
  */
-int ipa3_del_hdr_hpc_usr(struct ipa_ioc_del_hdr *hdls, bool by_user)
+static int ipa3_del_hdr_hpc_usr(struct ipa_ioc_del_hdr *hdls, bool by_user)
 {
 	int i;
 	int result = 0;

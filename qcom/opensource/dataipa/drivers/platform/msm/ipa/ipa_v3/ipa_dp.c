@@ -1124,7 +1124,7 @@ static int ipa3_handle_rx_core(struct ipa3_sys_context *sys, bool process_all,
  * In RSC/RSB enabled cases using common event ring, so both the pipe
  * polling state should be in sync.
  */
-void __ipa3_update_curr_poll_state(enum ipa_client_type client, int state)
+static void __ipa3_update_curr_poll_state(enum ipa_client_type client, int state)
 {
 	int ep_idx = IPA_EP_NOT_ALLOCATED;
 
@@ -1267,7 +1267,7 @@ static void ipa3_switch_to_intr_rx_work_func(struct work_struct *work)
 		ipa3_handle_rx(sys);
 }
 
-enum hrtimer_restart ipa3_ring_doorbell_timer_fn(struct hrtimer *param)
+static enum hrtimer_restart ipa3_ring_doorbell_timer_fn(struct hrtimer *param)
 {
 	struct ipa3_sys_context *sys = container_of(param,
 		struct ipa3_sys_context, db_timer);
@@ -2368,7 +2368,7 @@ static void ipa3_tx_comp_usr_notify_release(void *user1, int user2)
 		dev_kfree_skb_any(skb);
 }
 
-void ipa3_tx_cmd_comp(void *user1, int user2)
+static __maybe_unused void ipa3_tx_cmd_comp(void *user1, int user2)
 {
 	ipahal_destroy_imm_cmd(user1);
 }

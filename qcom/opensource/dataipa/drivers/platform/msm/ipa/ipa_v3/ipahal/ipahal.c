@@ -552,7 +552,7 @@ static struct ipahal_imm_cmd_pyld *ipa_imm_cmd_construct_ip_packet_init_ex_v5_5(
 	return pyld;
 }
 
-int ipa_imm_cmd_modify_ip_packet_init_ex(
+static int ipa_imm_cmd_modify_ip_packet_init_ex(
 	enum ipahal_imm_cmd_name cmd,
 	const void *cmd_data,
 	const void *params,
@@ -2708,7 +2708,7 @@ void ipahal_free_dma_mem(struct ipa_mem_buffer *mem)
  *
  * ***************************************************************
  */
-void ipa_qmap_hdr_parse_v4_5(
+static void ipa_qmap_hdr_parse_v4_5(
 	union qmap_hdr_u*     qmap_hdr,
 	struct qmap_hdr_data* qmap_data_rslt )
 {
@@ -2723,7 +2723,7 @@ void ipa_qmap_hdr_parse_v4_5(
 	qmap_data_rslt->zero_checksum = qmap_hdr->qmap5_0.zero_checksum;
 }
 
-void ipa_qmap_hdr_parse_v5_0(
+static void ipa_qmap_hdr_parse_v5_0(
 	union qmap_hdr_u*     qmap_hdr,
 	struct qmap_hdr_data* qmap_data_rslt )
 {
@@ -2741,7 +2741,7 @@ void ipa_qmap_hdr_parse_v5_0(
 	qmap_data_rslt->segment_size = qmap_hdr->qmap5_0.segment_size;
 }
 
-void ipa_qmap_hdr_parse_v5_5(
+static void ipa_qmap_hdr_parse_v5_5(
 	union qmap_hdr_u*     qmap_hdr,
 	struct qmap_hdr_data* qmap_data_rslt )
 {
