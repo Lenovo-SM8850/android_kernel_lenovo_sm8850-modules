@@ -402,7 +402,7 @@ static int cam_eeprom_i2c_driver_probe(struct i2c_client *client,
 #if KERNEL_VERSION(6, 1, 0) > LINUX_VERSION_CODE
 static int cam_eeprom_i2c_driver_remove(struct i2c_client *client)
 #else
-void cam_eeprom_i2c_driver_remove(struct i2c_client *client)
+static void cam_eeprom_i2c_driver_remove(struct i2c_client *client)
 #endif
 {
 	cam_soc_util_uninitialize_power_domain(&client->dev);

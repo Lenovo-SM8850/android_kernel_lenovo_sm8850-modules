@@ -31,6 +31,7 @@
 #include "cam_debug_util.h"
 #include "cam_smmu_api.h"
 #include "camera_main.h"
+#include "cam_icp_subdev.h"
 #include "cam_common_util.h"
 #include "cam_context_utils.h"
 #include "cam_mem_mgr_api.h"

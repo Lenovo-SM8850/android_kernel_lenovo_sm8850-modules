@@ -292,7 +292,7 @@ static enum cam_sfe_bus_sfe_out_type
 	}
 }
 
-bool cam_sfe_is_mipi_pcking_needed(
+static bool cam_sfe_is_mipi_pcking_needed(
 	struct cam_sfe_bus_wr_priv *bus_priv,
 	int wm_index)
 {

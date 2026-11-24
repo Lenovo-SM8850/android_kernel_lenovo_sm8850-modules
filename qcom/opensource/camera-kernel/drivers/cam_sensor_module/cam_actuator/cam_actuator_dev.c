@@ -421,7 +421,7 @@ static int32_t cam_actuator_driver_i2c_probe(struct i2c_client *client,
 static int32_t cam_actuator_driver_i2c_remove(
 	struct i2c_client *client)
 #else
-void cam_actuator_driver_i2c_remove(
+static void cam_actuator_driver_i2c_remove(
 	struct i2c_client *client)
 #endif
 {

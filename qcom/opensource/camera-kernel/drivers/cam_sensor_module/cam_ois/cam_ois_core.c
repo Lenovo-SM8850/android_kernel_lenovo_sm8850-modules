@@ -775,7 +775,7 @@ release:
 }
 
 
-int cam_ois_fw_info_input_check(uint32_t *cmd_buf, size_t len)
+static int cam_ois_fw_info_input_check(uint32_t *cmd_buf, size_t len)
 {
 	int32_t     rc           = 0;
 	uint32_t    version_size = 0;

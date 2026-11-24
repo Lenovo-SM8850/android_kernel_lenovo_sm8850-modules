@@ -1119,7 +1119,7 @@ static int cam_icp_v2_pc_prep(struct cam_icp_v2_core_info *core_info)
 	return 0;
 }
 
-int cam_icp_v2_set_hfi_handle(struct cam_icp_v2_core_info *core_info,
+static int cam_icp_v2_set_hfi_handle(struct cam_icp_v2_core_info *core_info,
 	void *args, uint32_t arg_size)
 {
 	if (!core_info || !args) {

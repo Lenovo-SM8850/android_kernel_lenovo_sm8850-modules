@@ -40,7 +40,7 @@ static struct cam_ipe_device_hw_info cam_ipe680_hw_info[] = {
 	},
 };
 
-int cam_ipe_register_cpas(struct cam_hw_soc_info *soc_info,
+static int cam_ipe_register_cpas(struct cam_hw_soc_info *soc_info,
 	struct cam_ipe_device_core_info *core_info,
 	uint32_t hw_idx)
 {
@@ -238,7 +238,7 @@ const static struct component_ops cam_ipe_component_ops = {
 	.unbind = cam_ipe_component_unbind,
 };
 
-int cam_ipe_probe(struct platform_device *pdev)
+static int cam_ipe_probe(struct platform_device *pdev)
 {
 	int rc = 0;
 

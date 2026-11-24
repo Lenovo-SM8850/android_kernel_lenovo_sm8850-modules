@@ -373,7 +373,7 @@ static int cam_mem_trace_new_record_page(void)
 	return 0;
 }
 
-void cam_mem_trace_record_mass_mem(
+static void cam_mem_trace_record_mass_mem(
 	struct cam_mem_trace_header *trace_header)
 {
 	ktime_t now;
@@ -2338,7 +2338,7 @@ slot_fail:
 	return rc;
 }
 
-int cam_mem_mgr_alloc_presil_copy_buf(uint32_t presil_copy_buffer_len,
+static __maybe_unused int cam_mem_mgr_alloc_presil_copy_buf(uint32_t presil_copy_buffer_len,
 	struct dma_buf **p_retrieve_buffer_dma_buf,
 	uint32_t *p_buf_handle,
 	uintptr_t *p_kvaddr)

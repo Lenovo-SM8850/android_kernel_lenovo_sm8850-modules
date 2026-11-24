@@ -344,7 +344,7 @@ int cam_cpas_dump_camnoc_buff_fill_info(void)
 }
 EXPORT_SYMBOL(cam_cpas_dump_camnoc_buff_fill_info);
 
-bool cam_cpas_is_part_supported(uint32_t flag, uint32_t hw_map, uint32_t part_info)
+static bool cam_cpas_is_part_supported(uint32_t flag, uint32_t hw_map, uint32_t part_info)
 {
 	int32_t i;
 	struct cam_hw_info *cpas_hw = g_cpas_intf->hw_intf->hw_priv;
@@ -1781,7 +1781,7 @@ static int cam_cpas_handle_generic_query_blob(
 	return rc;
 }
 
-int cam_cpas_subdev_cmd(struct cam_cpas_intf *cpas_intf,
+static int cam_cpas_subdev_cmd(struct cam_cpas_intf *cpas_intf,
 	struct cam_control *cmd)
 {
 	int rc = 0;

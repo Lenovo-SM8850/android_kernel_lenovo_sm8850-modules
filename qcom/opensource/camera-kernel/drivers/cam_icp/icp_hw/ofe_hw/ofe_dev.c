@@ -68,7 +68,7 @@ static bool cam_ofe_cpas_cb(uint32_t client_handle, void *userdata,
 	return error_handled;
 }
 
-int cam_ofe_register_cpas(struct cam_hw_soc_info *soc_info,
+static int cam_ofe_register_cpas(struct cam_hw_soc_info *soc_info,
 	struct cam_ofe_device_core_info *core_info, uint32_t hw_idx)
 {
 	struct cam_cpas_register_params cpas_register_params;
@@ -233,7 +233,7 @@ static const struct component_ops cam_ofe_component_ops = {
 	.unbind = cam_ofe_component_unbind,
 };
 
-int cam_ofe_probe(struct platform_device *pdev)
+static int cam_ofe_probe(struct platform_device *pdev)
 {
 	int rc = 0;
 

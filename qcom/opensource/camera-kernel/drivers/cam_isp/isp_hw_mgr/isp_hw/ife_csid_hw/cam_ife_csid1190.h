@@ -14,7 +14,7 @@
 #include "cam_irq_controller.h"
 #include "cam_isp_hw_mgr_intf.h"
 
-int cam_ife_csid_1190_override_cb(void *hw_info)
+static inline int cam_ife_csid_1190_override_cb(void *hw_info)
 {
 	struct cam_ife_csid_core_info *core_info = (struct cam_ife_csid_core_info *)hw_info;
 	struct cam_ife_csid_ver2_reg_info *csid_reg = NULL;

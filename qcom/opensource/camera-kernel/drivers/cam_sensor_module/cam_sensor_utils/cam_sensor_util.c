@@ -2083,7 +2083,7 @@ int cam_sensor_bob_pwm_mode_switch(struct cam_hw_soc_info *soc_info,
 	return rc;
 }
 
-int msm_cam_sensor_handle_reg_gpio(int seq_type,
+static int msm_cam_sensor_handle_reg_gpio(int seq_type,
 	struct msm_camera_gpio_num_info *gpio_num_info, int val)
 {
 	int gpio_offset = -1;

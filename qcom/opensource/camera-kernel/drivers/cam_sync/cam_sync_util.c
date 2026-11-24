@@ -64,7 +64,7 @@ static inline struct cam_generic_fence_monitor_entry *__cam_sync_get_prev_monito
 		return mon_data->prev_monitor_entries;
 }
 
-const char *cam_fence_op_to_string(
+static const char *cam_fence_op_to_string(
 	enum cam_fence_op op)
 {
 	switch (op) {

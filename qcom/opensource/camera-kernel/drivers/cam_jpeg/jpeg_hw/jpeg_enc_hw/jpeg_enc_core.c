@@ -456,7 +456,7 @@ int cam_jpeg_enc_stop_hw(void *data,
 	return 0;
 }
 
-int cam_jpeg_enc_hw_dump(
+static int cam_jpeg_enc_hw_dump(
 	struct cam_hw_info           *jpeg_enc_dev,
 	struct cam_jpeg_hw_dump_args *dump_args)
 {
@@ -557,7 +557,7 @@ static int  cam_jpeg_enc_mini_dump(struct cam_hw_info *dev, void *args) {
 	return 0;
 }
 
-int cam_jpeg_enc_dump_camnoc_misr_val(struct cam_jpeg_enc_device_hw_info *hw_info,
+static int cam_jpeg_enc_dump_camnoc_misr_val(struct cam_jpeg_enc_device_hw_info *hw_info,
 	struct cam_hw_soc_info *soc_info, void *cmd_args)
 {
 	void __iomem                         *enc_mem_base = NULL;
@@ -620,7 +620,7 @@ int cam_jpeg_enc_dump_camnoc_misr_val(struct cam_jpeg_enc_device_hw_info *hw_inf
 	return 0;
 }
 
-int cam_jpeg_enc_dump_hw_misr_val(struct cam_jpeg_enc_device_hw_info *hw_info,
+static int cam_jpeg_enc_dump_hw_misr_val(struct cam_jpeg_enc_device_hw_info *hw_info,
 	struct cam_hw_soc_info *soc_info, void *cmd_args)
 {
 	void __iomem                         *enc_mem_base = NULL;
@@ -685,7 +685,7 @@ int cam_jpeg_enc_dump_hw_misr_val(struct cam_jpeg_enc_device_hw_info *hw_info,
 	return 0;
 }
 
-int cam_jpeg_enc_config_cmanoc_hw_misr(struct cam_jpeg_enc_device_hw_info *hw_info,
+static int cam_jpeg_enc_config_cmanoc_hw_misr(struct cam_jpeg_enc_device_hw_info *hw_info,
 	struct cam_hw_soc_info *soc_info, void *cmd_args)
 {
 	void __iomem                         *enc_mem_base = NULL;
@@ -742,7 +742,7 @@ int cam_jpeg_enc_config_cmanoc_hw_misr(struct cam_jpeg_enc_device_hw_info *hw_in
 	return 0;
 }
 
-int cam_jpeg_enc_dump_debug_regs(struct cam_hw_info *jpeg_enc_dev)
+static int cam_jpeg_enc_dump_debug_regs(struct cam_hw_info *jpeg_enc_dev)
 {
 	struct cam_hw_soc_info *soc_info = NULL;
 	struct cam_jpeg_enc_device_core_info *core_info = NULL;

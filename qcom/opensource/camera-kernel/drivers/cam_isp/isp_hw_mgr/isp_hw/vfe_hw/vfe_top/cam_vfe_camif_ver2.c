@@ -630,7 +630,7 @@ static int cam_vfe_camif_sof_irq_debug(
 	return 0;
 }
 
-int cam_vfe_camif_dump_timestamps(
+static int cam_vfe_camif_dump_timestamps(
 	struct cam_isp_resource_node *rsrc_node, void *cmd_args)
 {
 	struct cam_vfe_mux_camif_data *camif_priv =

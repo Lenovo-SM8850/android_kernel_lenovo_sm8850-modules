@@ -673,7 +673,7 @@ static int cam_cdm_get_irq_line_test(void *data, u64 *val)
 DEFINE_DEBUGFS_ATTRIBUTE(cam_cdm_irq_line_test, cam_cdm_get_irq_line_test,
 	cam_cdm_set_irq_line_test, "%16llu");
 
-int cam_cdm_debugfs_init(struct cam_cdm_intf_mgr *mgr)
+static int cam_cdm_debugfs_init(struct cam_cdm_intf_mgr *mgr)
 {
 	struct dentry *dbgfileptr = NULL;
 	int rc;

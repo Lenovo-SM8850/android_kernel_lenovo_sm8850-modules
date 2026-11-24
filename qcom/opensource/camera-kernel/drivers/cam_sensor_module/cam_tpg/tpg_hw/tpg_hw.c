@@ -886,7 +886,7 @@ int tpg_hw_release(struct tpg_hw *hw)
 	return rc;
 }
 
-enum cam_vote_level get_tpg_clk_level(
+static enum cam_vote_level get_tpg_clk_level(
 		struct tpg_hw *hw)
 {
 	uint32_t cam_vote_level = 0;

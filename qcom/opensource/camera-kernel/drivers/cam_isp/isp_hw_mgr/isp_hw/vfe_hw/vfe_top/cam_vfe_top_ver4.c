@@ -965,7 +965,7 @@ static void cam_vfe_top_ver4_print_top_irq_error(
 	}
 }
 
-int cam_vfe_top_ver4_dump_timestamps(struct cam_vfe_top_ver4_priv *top_priv, int  res_id)
+static int cam_vfe_top_ver4_dump_timestamps(struct cam_vfe_top_ver4_priv *top_priv, int  res_id)
 {
 	uint32_t                           i;
 	struct cam_vfe_mux_ver4_data      *vfe_priv = NULL;
@@ -1025,7 +1025,7 @@ int cam_vfe_top_ver4_dump_timestamps(struct cam_vfe_top_ver4_priv *top_priv, int
 	return 0;
 }
 
-void cam_vfe_top_ver4_print_bus_debug_info(
+static void cam_vfe_top_ver4_print_bus_debug_info(
 	struct cam_vfe_top_ver4_priv        *top_priv,
 	struct cam_vfe_core_debug_data      *debug_data)
 {
@@ -1201,7 +1201,7 @@ static int cam_vfe_top_ver4_get_data(
 	return -EINVAL;
 }
 
-int cam_vfe_top_ver4_get_hw_caps(void *device_priv, void *args, uint32_t arg_size)
+static int cam_vfe_top_ver4_get_hw_caps(void *device_priv, void *args, uint32_t arg_size)
 {
 	struct cam_vfe_hw_get_hw_cap *vfe_cap_info = NULL;
 	struct cam_vfe_top_ver4_priv *vfe_top_prv = NULL;
@@ -1230,7 +1230,7 @@ int cam_vfe_top_ver4_get_hw_caps(void *device_priv, void *args, uint32_t arg_siz
 	return 0;
 }
 
-int cam_vfe_top_ver4_init_hw(void *device_priv,
+static int cam_vfe_top_ver4_init_hw(void *device_priv,
 	void *init_hw_args, uint32_t arg_size)
 {
 	struct cam_vfe_top_ver4_priv   *top_priv = device_priv;
@@ -1248,14 +1248,14 @@ int cam_vfe_top_ver4_init_hw(void *device_priv,
 	return 0;
 }
 
-int cam_vfe_top_ver4_reset(void *device_priv,
+static int cam_vfe_top_ver4_reset(void *device_priv,
 	void *reset_core_args, uint32_t arg_size)
 {
 	CAM_DBG(CAM_ISP, "Reset not supported");
 	return 0;
 }
 
-int cam_vfe_top_acquire_resource(
+static int cam_vfe_top_acquire_resource(
 	struct cam_isp_resource_node  *vfe_full_res,
 	void                          *acquire_param)
 {
@@ -1307,7 +1307,7 @@ config_done:
 	return rc;
 }
 
-int cam_vfe_top_ver4_reserve(void *device_priv,
+static int cam_vfe_top_ver4_reserve(void *device_priv,
 	void *reserve_args, uint32_t arg_size)
 {
 	struct cam_vfe_top_ver4_priv            *top_priv;
@@ -1402,7 +1402,7 @@ int cam_vfe_top_ver4_reserve(void *device_priv,
 
 }
 
-int cam_vfe_top_ver4_release(void *device_priv,
+static int cam_vfe_top_ver4_release(void *device_priv,
 	void *release_args, uint32_t arg_size)
 {
 	int rc = 0;
@@ -1442,7 +1442,7 @@ int cam_vfe_top_ver4_release(void *device_priv,
 	return rc;
 }
 
-int cam_vfe_top_ver4_start(void *device_priv,
+static int cam_vfe_top_ver4_start(void *device_priv,
 	void *start_args, uint32_t arg_size)
 {
 	struct cam_vfe_top_ver4_priv         *top_priv;
@@ -1551,7 +1551,7 @@ int cam_vfe_top_ver4_start(void *device_priv,
 	return rc;
 }
 
-int cam_vfe_top_ver4_stop(void *device_priv,
+static int cam_vfe_top_ver4_stop(void *device_priv,
 	void *stop_args, uint32_t arg_size)
 {
 	struct cam_vfe_top_ver4_priv               *top_priv;
@@ -1621,13 +1621,13 @@ int cam_vfe_top_ver4_stop(void *device_priv,
 	return rc;
 }
 
-int cam_vfe_top_ver4_read(void *device_priv,
+static int cam_vfe_top_ver4_read(void *device_priv,
 	void *read_args, uint32_t arg_size)
 {
 	return -EPERM;
 }
 
-int cam_vfe_top_ver4_write(void *device_priv,
+static int cam_vfe_top_ver4_write(void *device_priv,
 	void *write_args, uint32_t arg_size)
 {
 	return -EPERM;
@@ -1948,7 +1948,7 @@ static int cam_vfe_top_ver4_update_sof_debug(
 	return 0;
 }
 
-int cam_vfe_top_ver4_process_cmd(void *device_priv, uint32_t cmd_type,
+static int cam_vfe_top_ver4_process_cmd(void *device_priv, uint32_t cmd_type,
 	void *cmd_args, uint32_t arg_size)
 {
 	int rc = 0;
@@ -2920,7 +2920,7 @@ static int cam_vfe_resource_deinit(
 	return rc;
 }
 
-int cam_vfe_res_mux_init(
+static int cam_vfe_res_mux_init(
 	struct cam_vfe_top_ver4_priv  *top_priv,
 	struct cam_hw_intf            *hw_intf,
 	struct cam_hw_soc_info        *soc_info,
@@ -2966,7 +2966,7 @@ int cam_vfe_res_mux_init(
 	return 0;
 }
 
-int cam_vfe_res_mux_deinit(
+static int cam_vfe_res_mux_deinit(
 	struct cam_isp_resource_node  *vfe_res)
 {
 	struct cam_vfe_mux_ver4_data *vfe_priv;

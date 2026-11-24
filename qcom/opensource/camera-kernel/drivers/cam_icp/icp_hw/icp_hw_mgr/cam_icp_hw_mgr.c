@@ -10168,7 +10168,7 @@ cmd_work_failed:
 	return rc;
 }
 
-void cam_icp_mgr_destroy_worker(struct cam_icp_hw_mgr *hw_mgr)
+static void cam_icp_mgr_destroy_worker(struct cam_icp_hw_mgr *hw_mgr)
 {
 	cam_worker_wrapper_deinit(hw_mgr->timer_worker_ctx);
 	CAM_MEM_FREE(hw_mgr->timer_work_data);

@@ -10450,7 +10450,7 @@ static int __cam_isp_ctx_apply_default_settings(
 	return rc;
 }
 
-void __cam_isp_ctx_notify_cpas(struct cam_context *ctx, uint32_t evt_id)
+static void __cam_isp_ctx_notify_cpas(struct cam_context *ctx, uint32_t evt_id)
 {
 	uint64_t request_id = 0;
 	struct cam_isp_context *ctx_isp =

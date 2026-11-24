@@ -8,7 +8,7 @@
 
 #include "../cam_csiphy_dev.h"
 
-uint32_t csiphy_reg_addr_func_1_2_3(uint32_t partial_offset, uint32_t lane_offset) {
+static inline uint32_t csiphy_reg_addr_func_1_2_3(uint32_t partial_offset, uint32_t lane_offset) {
 	// implementation specific to 1_2_3
 	int index;
 	switch (lane_offset) {

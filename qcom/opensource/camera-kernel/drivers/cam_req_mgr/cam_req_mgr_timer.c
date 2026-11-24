@@ -20,7 +20,7 @@ void crm_timer_reset(struct cam_req_mgr_timer *crm_timer)
 
 }
 
-void crm_timer_callback(struct timer_list *timer_data)
+static void crm_timer_callback(struct timer_list *timer_data)
 {
 	struct cam_req_mgr_timer *timer =
 		container_of(timer_data, struct cam_req_mgr_timer, sys_timer);

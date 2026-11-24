@@ -10,6 +10,7 @@
 #include <linux/of_device.h>
 #include <linux/component.h>
 
+#include "cam_vfe_dev.h"
 #include "cam_vfe_core.h"
 #include "cam_vfe_soc.h"
 #include "cam_debug_util.h"

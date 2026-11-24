@@ -175,4 +175,6 @@ int cam_sensor_driver_init(void);
  */
 void cam_sensor_driver_exit(void);
 
+struct completion *cam_sensor_get_i3c_completion(uint32_t index);
+
 #endif /* _CAM_SENSOR_DEV_H_ */

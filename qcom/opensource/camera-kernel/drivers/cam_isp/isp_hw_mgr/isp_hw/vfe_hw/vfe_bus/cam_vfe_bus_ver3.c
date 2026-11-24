@@ -5547,7 +5547,7 @@ static int cam_vfe_bus_ver3_dump_wm_mid_info(
 	return 0;
 }
 
-int cam_vfe_bus_ver3_get_out_res_mid_info(struct cam_vfe_bus_ver3_priv *bus_priv,
+static int cam_vfe_bus_ver3_get_out_res_mid_info(struct cam_vfe_bus_ver3_priv *bus_priv,
 	struct cam_isp_hw_get_res_for_mid       *get_res)
 {
 	struct cam_vfe_bus_ver3_vfe_out_data   *out_data = NULL;

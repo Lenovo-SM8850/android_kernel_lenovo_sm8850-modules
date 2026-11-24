@@ -864,7 +864,7 @@ static inline int cam_soc_util_set_cesta_clk_rate(struct cam_hw_soc_info *soc_in
 #endif
 
 #if IS_REACHABLE(CONFIG_MSM_MMRM)
-bool cam_is_mmrm_supported_on_current_chip(void)
+static bool cam_is_mmrm_supported_on_current_chip(void)
 {
 	bool is_supported;
 
@@ -876,7 +876,7 @@ bool cam_is_mmrm_supported_on_current_chip(void)
 	return is_supported;
 }
 
-int cam_mmrm_notifier_callback(
+static int cam_mmrm_notifier_callback(
 	struct mmrm_client_notifier_data *notifier_data)
 {
 	if (!notifier_data) {
@@ -898,7 +898,7 @@ int cam_mmrm_notifier_callback(
 	return 0;
 }
 
-int cam_soc_util_register_mmrm_client(
+static int cam_soc_util_register_mmrm_client(
 	uint32_t clk_id, struct clk *clk, bool is_nrt_dev,
 	struct cam_hw_soc_info *soc_info, const char *clk_name,
 	void **mmrm_handle)
@@ -961,7 +961,7 @@ int cam_soc_util_register_mmrm_client(
 	return 0;
 }
 
-int cam_soc_util_unregister_mmrm_client(
+static int cam_soc_util_unregister_mmrm_client(
 	void *mmrm_handle)
 {
 	int rc = 0;
@@ -1017,7 +1017,7 @@ static int cam_soc_util_set_sw_client_rate_through_mmrm(
 	return rc;
 }
 #else
-int cam_soc_util_register_mmrm_client(
+static int cam_soc_util_register_mmrm_client(
 	uint32_t clk_id, struct clk *clk, bool is_nrt_dev,
 	struct cam_hw_soc_info *soc_info, const char *clk_name,
 	void **mmrm_handle)
@@ -1032,7 +1032,7 @@ int cam_soc_util_register_mmrm_client(
 	return 0;
 }
 
-int cam_soc_util_unregister_mmrm_client(
+static int cam_soc_util_unregister_mmrm_client(
 	void *mmrm_handle)
 {
 	return 0;
@@ -4276,7 +4276,7 @@ static bool cam_soc_util_is_presil_address_space(unsigned long mem_block_start)
 }
 
 #ifndef CONFIG_CAM_PRESIL
-void __iomem * cam_soc_util_get_mem_base(
+static void __iomem * cam_soc_util_get_mem_base(
 	unsigned long mem_block_start,
 	unsigned long mem_block_size,
 	const char *mem_block_name,
@@ -4306,7 +4306,7 @@ void __iomem * cam_soc_util_get_mem_base(
 	return mem_base;
 }
 
-int cam_soc_util_request_irq(struct device *dev,
+static int cam_soc_util_request_irq(struct device *dev,
 	unsigned int irq_line_start,
 	irq_handler_t handler,
 	unsigned long irqflags,
@@ -4333,7 +4333,7 @@ int cam_soc_util_request_irq(struct device *dev,
 }
 
 #else
-void __iomem * cam_soc_util_get_mem_base(
+static void __iomem * cam_soc_util_get_mem_base(
 	unsigned long mem_block_start,
 	unsigned long mem_block_size,
 	const char *mem_block_name,
@@ -4366,7 +4366,7 @@ void __iomem * cam_soc_util_get_mem_base(
 	return mem_base;
 }
 
-int cam_soc_util_request_irq(struct device *dev,
+static int cam_soc_util_request_irq(struct device *dev,
 	unsigned int irq_line_start,
 	irq_handler_t handler,
 	unsigned long irqflags,

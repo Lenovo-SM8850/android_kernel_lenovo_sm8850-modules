@@ -72,6 +72,7 @@
 #include "cam_vfe_hw_intf.h"
 #include "cam_vfe_core.h"
 #include "cam_vfe_dev.h"
+#include "cam_vfe.h"
 #include "camera_main.h"
 
 static const struct of_device_id cam_vfe_dt_match[] = {
