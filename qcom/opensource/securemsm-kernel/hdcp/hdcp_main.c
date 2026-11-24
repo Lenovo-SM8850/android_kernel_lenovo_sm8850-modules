@@ -11,7 +11,7 @@ struct hdcp_ta_interface ta_interface;
 static DEFINE_MUTEX(hdcp1_mutex_g);
 static DEFINE_MUTEX(hdcp2_mutex_g);
 
-void select_interface(bool use_smcinvoke)
+static void select_interface(bool use_smcinvoke)
 {
 	if (use_smcinvoke) {
 		ta_interface.trusted_app_hdcp1_init = &hdcp1_init_smcinvoke;
@@ -58,7 +58,7 @@ void select_interface(bool use_smcinvoke)
 	}
 }
 
-int hdcp1_count_ones(u8 *array, u8 len)
+static int hdcp1_count_ones(u8 *array, u8 len)
 {
 	int i, j, count = 0;
 

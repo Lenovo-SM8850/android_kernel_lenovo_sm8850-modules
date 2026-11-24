@@ -548,7 +548,7 @@ unsupported:
 	return ret;
 };
 
-void qcedev_offload_cipher_req_err_cb(void *cookie, struct qce_error *qce_err)
+static void qcedev_offload_cipher_req_err_cb(void *cookie, struct qce_error *qce_err)
 {
 	struct qcedev_cipher_req *areq;
 	struct qcedev_handle *handle;
@@ -571,7 +571,7 @@ void qcedev_offload_cipher_req_err_cb(void *cookie, struct qce_error *qce_err)
 	complete(&qcedev_areq->complete);
 }
 
-void qcedev_offload_cipher_req_cb(void *cookie, unsigned char *icv,
+static void qcedev_offload_cipher_req_cb(void *cookie, unsigned char *icv,
 			      unsigned char *iv, int ret)
 {
 	struct qcedev_cipher_req *areq;
@@ -2246,7 +2246,7 @@ error:
 	return -EINVAL;
 }
 
-void qcedev_offload_translate_to_areq(
+static void qcedev_offload_translate_to_areq(
 	struct qcedev_async_req *areq,
 	struct qcedev_offload_cipher_op_req *legacy_op)
 {
@@ -2289,7 +2289,7 @@ void qcedev_offload_translate_to_areq(
 	new_op->aad_len = 0;
 }
 
-long qcedev_offload_ioctl(struct qcedev_handle *handle,
+static long qcedev_offload_ioctl(struct qcedev_handle *handle,
 			  struct qcedev_control *podev,
 			  struct qcedev_async_req *qcedev_areq, long arg)
 {
@@ -2321,7 +2321,7 @@ long qcedev_offload_ioctl(struct qcedev_handle *handle,
 	return err;
 }
 
-long qcedev_ext_cipher_ioctl(struct qcedev_handle *handle,
+static long qcedev_ext_cipher_ioctl(struct qcedev_handle *handle,
 			     struct qcedev_control *podev,
 			     struct qcedev_async_req *qcedev_areq, long arg)
 {

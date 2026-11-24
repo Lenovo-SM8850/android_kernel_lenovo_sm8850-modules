@@ -82,7 +82,7 @@ static int hdcp1_key_set(struct hdcp1_smcinvoke_handle *handle,
 	return ret;
 }
 
-int load_app(char *app_name, struct Object *app_obj,
+static int load_app(char *app_name, struct Object *app_obj,
 			 struct Object *app_controller_obj)
 {
 	int ret = 0;
@@ -383,7 +383,7 @@ void hdcp2_deinit_smcinvoke(void *ctx)
 	kfree_sensitive(ctx);
 }
 
-int hdcp_get_version(struct hdcp2_smcinvoke_handle *handle)
+static int hdcp_get_version(struct hdcp2_smcinvoke_handle *handle)
 {
 	int ret = 0;
 	uint32_t app_major_version = 0;
@@ -407,7 +407,7 @@ error:
 	return ret;
 }
 
-int hdcp2_app_init(struct hdcp2_smcinvoke_handle *handle)
+static int hdcp2_app_init(struct hdcp2_smcinvoke_handle *handle)
 {
 	int ret = 0;
 	uint32_t app_minor_version = 0;
@@ -449,7 +449,7 @@ error:
 	return ret;
 }
 
-int hdcp2_app_tx_init(struct hdcp2_smcinvoke_handle *handle)
+static int hdcp2_app_tx_init(struct hdcp2_smcinvoke_handle *handle)
 {
 	int ret = 0;
 	uint32_t ctxhandle = 0;
@@ -478,7 +478,7 @@ error:
 	return ret;
 }
 
-int hdcp2_app_tx_deinit(struct hdcp2_smcinvoke_handle *handle)
+static int hdcp2_app_tx_deinit(struct hdcp2_smcinvoke_handle *handle)
 {
 	int ret = 0;
 

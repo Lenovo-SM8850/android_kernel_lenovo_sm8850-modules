@@ -134,7 +134,7 @@ out:
 	return ret;
 }
 
-int smmu_proxy_unmap(void *data)
+static int smmu_proxy_unmap(void *data)
 {
 	struct dma_buf *dmabuf;
 	void *buf;
@@ -252,7 +252,7 @@ out:
 }
 EXPORT_SYMBOL_GPL(smmu_proxy_switch_sid);
 
-int smmu_proxy_map(struct device *client_dev, struct sg_table *proxy_iova,
+static int smmu_proxy_map(struct device *client_dev, struct sg_table *proxy_iova,
 		   struct dma_buf *dmabuf)
 {
 	void *buf;
@@ -363,7 +363,7 @@ out:
 	return ret;
 }
 
-void smmu_proxy_unmap_nop(struct device *client_dev, struct sg_table *table,
+static void smmu_proxy_unmap_nop(struct device *client_dev, struct sg_table *table,
 			  struct dma_buf *dmabuf)
 {
 
@@ -488,7 +488,7 @@ static struct platform_driver smmu_proxy_driver = {
 	},
 };
 
-int __init init_smmu_proxy_driver(void)
+static int __init init_smmu_proxy_driver(void)
 {
 	return platform_driver_register(&smmu_proxy_driver);
 }

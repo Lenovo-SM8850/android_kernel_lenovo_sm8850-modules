@@ -152,7 +152,7 @@ out_failed:
 	return ret;
 }
 
-int get_root_obj(struct Object *rootObj)
+static int get_root_obj(struct Object *rootObj)
 {
 	rootObj->context = ROOT_SI_OBJECT;
 	rootObj->invoke = do_invoke;

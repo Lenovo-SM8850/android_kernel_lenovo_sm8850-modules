@@ -109,5 +109,7 @@ struct hdcp_ta_interface
 };
 
 int hdcp1_validate_aksv(u32 aksv_msb, u32 aksv_lsb);
+void hdcp1_set_hdcp_key_verify_retries(void *ctx, u32 max_hdcp_key_verify_retries);
+void hdcp2_set_hdcp_key_verify_retries(void *ctx, u32 max_hdcp_key_verify_retries);
 
 #endif /* __HDCP_MAIN_H__ */
