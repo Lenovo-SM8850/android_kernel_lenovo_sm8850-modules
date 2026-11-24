@@ -25,6 +25,7 @@
 #include "wlan_scan_api.h"
 #include "wlan_mlo_mgr_link_switch.h"
 #include "wlan_utility.h"
+#include "wlan_cm_api.h"
 
 #ifdef WLAN_CM_USE_SPINLOCK
 /**
