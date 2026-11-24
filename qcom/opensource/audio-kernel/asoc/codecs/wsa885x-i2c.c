@@ -939,7 +939,7 @@ static int codec_set_sysclk(struct snd_soc_dai *dai, int clk_id,
 	return 0;
 }
 
-void reinit_wsa885x_powerup(struct wsa885x_i2c_priv *wsa885x)
+static void reinit_wsa885x_powerup(struct wsa885x_i2c_priv *wsa885x)
 {
 	int ret=0;
 	int ps=0;
@@ -2149,7 +2149,7 @@ static irqreturn_t wsa885x_interrupt_handler(int irq, void *data)
  *
  * Return: 0 on success, negative error code on failure
  */
-int wsa885x_register_irq(struct wsa885x_i2c_priv *wsa885x)
+static int wsa885x_register_irq(struct wsa885x_i2c_priv *wsa885x)
 {
 	int ret;
 

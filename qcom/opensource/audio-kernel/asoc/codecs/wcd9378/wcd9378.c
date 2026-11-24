@@ -4633,7 +4633,7 @@ static int wcd9378_reset_low(struct device *dev)
 	return rc;
 }
 
-struct wcd9378_pdata *wcd9378_populate_dt_data(struct device *dev)
+static struct wcd9378_pdata *wcd9378_populate_dt_data(struct device *dev)
 {
 	struct wcd9378_pdata *pdata = NULL;
 

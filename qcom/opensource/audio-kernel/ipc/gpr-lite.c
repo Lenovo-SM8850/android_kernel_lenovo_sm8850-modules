@@ -59,7 +59,7 @@ enum gpr_subsys_state gpr_get_modem_state(void)
 EXPORT_SYMBOL(gpr_get_modem_state);
 
 
-void gpr_subsys_notif_register(char *client_name, int domain,
+static void gpr_subsys_notif_register(char *client_name, int domain,
 			   struct notifier_block *nb)
 {
 	int ret;
@@ -70,7 +70,7 @@ void gpr_subsys_notif_register(char *client_name, int domain,
 			__func__, domain, ret);
 }
 
-void gpr_subsys_notif_deregister(char *client_name)
+static void gpr_subsys_notif_deregister(char *client_name)
 {
 	int ret;
 

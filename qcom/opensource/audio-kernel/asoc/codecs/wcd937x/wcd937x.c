@@ -3348,7 +3348,7 @@ static int wcd937x_reset_low(struct device *dev)
 	return rc;
 }
 
-struct wcd937x_pdata *wcd937x_populate_dt_data(struct device *dev)
+static struct wcd937x_pdata *wcd937x_populate_dt_data(struct device *dev)
 {
 	struct wcd937x_pdata *pdata = NULL;
 

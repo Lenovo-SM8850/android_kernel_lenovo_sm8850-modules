@@ -9,6 +9,7 @@
 #include <sound/soc.h>
 #include <asoc/wcd-mbhc-v2.h>
 #include "wcd939x.h"
+#include "internal.h"
 
 #define WCD939X_MAX_MICBIAS 4
 

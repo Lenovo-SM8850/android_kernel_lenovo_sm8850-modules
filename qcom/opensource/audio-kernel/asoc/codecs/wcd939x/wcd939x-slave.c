@@ -11,6 +11,8 @@
 #include <linux/kernel.h>
 #include <linux/component.h>
 #include <soc/soundwire.h>
+#include <sound/soc.h>
+#include "internal.h"
 
 #ifdef CONFIG_DEBUG_FS
 #include <linux/debugfs.h>

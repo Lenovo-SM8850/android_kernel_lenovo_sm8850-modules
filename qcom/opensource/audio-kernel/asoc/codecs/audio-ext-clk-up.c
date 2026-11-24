@@ -18,9 +18,8 @@
 #include <linux/ratelimit.h>
 #ifdef CONFIG_AUDIO_PRM
 #include <dsp/audio_prm.h>
-#else
-#include "audio-ext-clk-up.h"
 #endif
+#include "audio-ext-clk-up.h"
 enum {
 	AUDIO_EXT_CLK_PMI,
 	AUDIO_EXT_CLK_LNBB2,

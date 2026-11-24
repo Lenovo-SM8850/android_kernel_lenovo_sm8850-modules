@@ -40,7 +40,7 @@ char __iomem *lpass_core_0;
 char __iomem *lpass_core_1;
 char __iomem *lpass_core_2;
 
-int lpass_cdc_set_version(struct lpass_cdc_priv *priv)
+static int lpass_cdc_set_version(struct lpass_cdc_priv *priv)
 {
 	int ret;
 	int version = LPASS_CDC_VERSION_UNKNOWN;

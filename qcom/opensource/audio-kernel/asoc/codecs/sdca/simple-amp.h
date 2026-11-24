@@ -230,5 +230,10 @@ struct simple_amp_priv {
 void get_reg_defaults(const struct reg_default **reg_def, size_t *num_defaults,
 			struct simple_amp_priv *simple_amp);
 
+#ifdef CONFIG_DEBUG_FS
+void simple_amp_regdump_register(struct simple_amp_priv *simple_amp,
+				 struct swr_device *pdev);
+#endif
+
 
 #endif /* SIMPLE_AMP_H */

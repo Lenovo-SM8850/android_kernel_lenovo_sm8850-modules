@@ -49,6 +49,10 @@ struct swr_device;
 #define SWR_PORT_PARAMS 2
 
 /* Regmap support for soundwire interface */
+struct regmap *__regmap_init_swr(struct swr_device *swr,
+				 const struct regmap_config *config,
+				 struct lock_class_key *lock_key,
+				 const char *lock_name);
 struct regmap *__devm_regmap_init_swr(struct swr_device *dev,
 				      const struct regmap_config *config,
 				      struct lock_class_key *lock_key,

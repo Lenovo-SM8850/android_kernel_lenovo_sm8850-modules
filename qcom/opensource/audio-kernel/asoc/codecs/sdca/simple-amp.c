@@ -34,11 +34,6 @@
 #define SIMPLE_AMP_IMPL_DEF_VALID_REG_MASK 0x00339000
 #define IS_VALID_FUNCTION(func)  (((func) > FUNCTION_ZERO) && ((func) < MAX_FUNCTION))
 
-#ifdef CONFIG_DEBUG_FS
-void simple_amp_regdump_register(struct simple_amp_priv *simple_amp,
-	struct swr_device *pdev);
-#endif
-
 /*
  *	Bits		Contents
  *	31		0 (required by addressing range)
@@ -2215,7 +2210,7 @@ static const char *simple_amp_interrupts[] = {
 	"mono_left_protection_Mode_Changed",
 };
 
-void simple_amp_read_print_registers(struct regmap *regmap, unsigned int *regs, size_t count)
+static void simple_amp_read_print_registers(struct regmap *regmap, unsigned int *regs, size_t count)
 {
 	int ret;
 	unsigned int val;

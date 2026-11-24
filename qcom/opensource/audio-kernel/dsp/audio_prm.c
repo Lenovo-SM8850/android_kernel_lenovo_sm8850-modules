@@ -216,7 +216,7 @@ static int _audio_prm_set_lpass_cpu_lpr_req(uint8_t enable)
 
 /**
  */
-int _audio_prm_set_lpass_hw_core_req(uint32_t hw_core_id, uint8_t enable)
+static int _audio_prm_set_lpass_hw_core_req(uint32_t hw_core_id, uint8_t enable)
 {
 	struct gpr_pkt *pkt;
         prm_cmd_request_hw_core_t prm_rsc_request;
