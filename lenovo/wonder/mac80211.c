@@ -716,7 +716,7 @@ static void wonder_stop(struct ieee80211_hw *hw)
 	wondertap_deinit(&wonder->wondertap_data);
 }
 
-static int wonder_config(struct ieee80211_hw *hw, u32 changed)
+static int wonder_config(struct ieee80211_hw *hw, int radio_idx, u32 changed)
 {
 	/* Handle configuration changes (rate control, power, etc.) */
 	wonder_debug(DRV_NAME ": HW configuration changed (0x%X).\n", changed);
