@@ -914,7 +914,7 @@ static void aw_dev_boost_type_recover(struct aw_device *aw_dev)
 
 }
 
-void aw_dev_i2s_enable(struct aw_device *aw_dev, bool flag)
+static void aw_dev_i2s_enable(struct aw_device *aw_dev, bool flag)
 {
 	struct aw_txen_desc *txen_desc = &aw_dev->txen_desc;
 	struct aw_cali_desc *cali_desc = &aw_dev->cali_desc;
@@ -1513,7 +1513,7 @@ static int aw_dev_parse_sound_channel_dt(struct aw_device *aw_dev)
 
 }
 
-void aw_dev_parse_fade_flag_dt(struct aw_device *aw_dev)
+static void aw_dev_parse_fade_flag_dt(struct aw_device *aw_dev)
 {
 	int ret;
 	uint32_t fade_en = 0;

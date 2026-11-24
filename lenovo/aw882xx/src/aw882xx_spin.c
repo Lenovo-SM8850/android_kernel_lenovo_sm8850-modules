@@ -33,7 +33,7 @@ static unsigned int g_spin_value;
 
 static DEFINE_MUTEX(g_spin_lock);
 
-int aw_dev_set_channal_mode(struct aw_device *aw_dev,
+static int aw_dev_set_channal_mode(struct aw_device *aw_dev,
 			struct aw_spin_desc spin_desc, uint32_t spin_val)
 {
 	int ret;

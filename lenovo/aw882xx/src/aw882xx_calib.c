@@ -193,7 +193,7 @@ static int aw_cali_get_read_cali_re(int32_t *cali_re, int channel)
 #endif
 
 /*custom need add to set/get cali_re form/to nv*/
-int aw_cali_write_re_to_nvram(int32_t cali_re, int32_t channel)
+static int aw_cali_write_re_to_nvram(int32_t cali_re, int32_t channel)
 {
 #ifdef AW_CALI_STORE_EXAMPLE
 	if (channel >= AW_DEV_CH_MAX) {
@@ -291,7 +291,7 @@ static int aw_cali_svc_get_devs_re_range(struct aw_device *aw_dev,
 	return cnt;
 }
 
-int aw_cali_store_cali_re(struct aw_device *aw_dev, int32_t re)
+static int aw_cali_store_cali_re(struct aw_device *aw_dev, int32_t re)
 {
 	int ret = 0;
 
@@ -714,7 +714,7 @@ static int aw_cali_svc_cali_re_f0_q(struct aw_device *aw_dev, bool is_single, un
 	return 0;
 }
 
-int aw_cali_svc_cali_cmd(struct aw_device *aw_dev, int cali_cmd, bool is_single, unsigned int flag)
+static int aw_cali_svc_cali_cmd(struct aw_device *aw_dev, int cali_cmd, bool is_single, unsigned int flag)
 {
 	switch (cali_cmd) {
 	case AW_CALI_CMD_RE:
@@ -734,7 +734,7 @@ int aw_cali_svc_cali_cmd(struct aw_device *aw_dev, int cali_cmd, bool is_single,
 	return 0;
 }
 
-int aw_cali_svc_get_devs_cali_re(struct aw_device *aw_dev, int32_t *re_buf, int num)
+static int aw_cali_svc_get_devs_cali_re(struct aw_device *aw_dev, int32_t *re_buf, int num)
 {
 	int ret, cnt = 0;
 	struct list_head *dev_list = NULL;
@@ -763,7 +763,7 @@ int aw_cali_svc_get_devs_cali_re(struct aw_device *aw_dev, int32_t *re_buf, int 
 	return cnt;
 }
 
-int aw_cali_svc_get_devs_r0(struct aw_device *aw_dev, int32_t *re_buf, int num)
+static int aw_cali_svc_get_devs_r0(struct aw_device *aw_dev, int32_t *re_buf, int num)
 {
 	int ret, cnt = 0;
 	struct list_head *dev_list = NULL;
@@ -794,7 +794,7 @@ int aw_cali_svc_get_devs_r0(struct aw_device *aw_dev, int32_t *re_buf, int num)
 	return cnt;
 }
 
-int aw_cali_svc_get_devs_te(struct aw_device *aw_dev, int32_t *te_buf, int num)
+static int aw_cali_svc_get_devs_te(struct aw_device *aw_dev, int32_t *te_buf, int num)
 {
 	int ret, cnt = 0;
 	struct list_head *dev_list = NULL;
@@ -826,7 +826,7 @@ int aw_cali_svc_get_devs_te(struct aw_device *aw_dev, int32_t *te_buf, int num)
 	return cnt;
 }
 
-int aw_cali_svc_get_devs_st(struct aw_device *aw_dev, int32_t *st_buf, int num)
+static int aw_cali_svc_get_devs_st(struct aw_device *aw_dev, int32_t *st_buf, int num)
 {
 	int ret, cnt = 0;
 	struct list_head *dev_list = NULL;
@@ -857,7 +857,7 @@ int aw_cali_svc_get_devs_st(struct aw_device *aw_dev, int32_t *st_buf, int num)
 	return cnt;
 }
 
-int aw_cali_svc_get_devs_cali_f0(struct aw_device *aw_dev, int32_t *f0_buf, int num)
+static int aw_cali_svc_get_devs_cali_f0(struct aw_device *aw_dev, int32_t *f0_buf, int num)
 {
 	int ret, cnt = 0;
 	struct list_head *dev_list = NULL;
@@ -885,7 +885,7 @@ int aw_cali_svc_get_devs_cali_f0(struct aw_device *aw_dev, int32_t *f0_buf, int 
 	return cnt;
 }
 
-int aw_cali_svc_get_devs_f0(struct aw_device *aw_dev, int32_t *f0_buf, int num)
+static int aw_cali_svc_get_devs_f0(struct aw_device *aw_dev, int32_t *f0_buf, int num)
 {
 	int ret, cnt = 0;
 	struct list_head *dev_list = NULL;
@@ -916,7 +916,7 @@ int aw_cali_svc_get_devs_f0(struct aw_device *aw_dev, int32_t *f0_buf, int num)
 	return cnt;
 }
 
-int aw_cali_svc_get_devs_cali_f0_q(struct aw_device *aw_dev,
+static int aw_cali_svc_get_devs_cali_f0_q(struct aw_device *aw_dev,
 			int32_t *f0_buf, int32_t *q_buf, int num)
 {
 	int ret, cnt = 0;
@@ -2424,7 +2424,7 @@ static void aw_cali_parse_dt(struct aw_device *aw_dev)
 	aw_dev_info(aw_dev->dev, "cali mode is %d", desc->mode);
 }
 
-int aw_cali_parse_re_dt(struct aw_device *aw_dev)
+static int aw_cali_parse_re_dt(struct aw_device *aw_dev)
 {
 	int ret;
 
