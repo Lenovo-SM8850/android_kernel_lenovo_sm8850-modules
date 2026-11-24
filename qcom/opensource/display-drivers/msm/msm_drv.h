@@ -1300,6 +1300,7 @@ struct msm_drm_private {
 	 */
 	struct list_head inactive_list;
 	struct mutex mm_lock;
+	struct mutex gem_lock;
 
 	struct workqueue_struct *wq;
 
@@ -1592,7 +1593,8 @@ struct drm_framebuffer *msm_framebuffer_init(struct drm_device *dev,
 		const struct drm_mode_fb_cmd2 *mode_cmd,
 		struct drm_gem_object **bos);
 struct drm_framebuffer *msm_framebuffer_create(struct drm_device *dev,
-		struct drm_file *file, const struct drm_mode_fb_cmd2 *mode_cmd);
+		struct drm_file *file, const struct drm_format_info *info,
+		const struct drm_mode_fb_cmd2 *mode_cmd);
 int msm_framebuffer_set_cache_hint(struct drm_framebuffer *fb,
 		u32 flags, u32 rd_type, u32 wr_type);
 int msm_framebuffer_get_cache_hint(struct drm_framebuffer *fb,
@@ -1913,6 +1915,13 @@ int msm_drm_unregister_component(struct drm_device *dev, struct notifier_block *
  * @event: defined in msm_component_event
  */
 int msm_drm_notify_components(struct drm_device *dev, enum msm_component_event event);
+
+static inline struct mutex *msm_gem_mutex(struct drm_device *dev)
+{
+	struct msm_drm_private *priv = dev->dev_private;
+
+	return &priv->gem_lock;
+}
 
 #if (KERNEL_VERSION(6, 13, 0) <= LINUX_VERSION_CODE)
 /**

@@ -60,6 +60,7 @@ void convert_to_drm_mode(const struct dp_display_mode *dp_mode,
 }
 
 static int dp_bridge_attach(struct drm_bridge *dp_bridge,
+				struct drm_encoder *encoder,
 				enum drm_bridge_attach_flags flags)
 {
 	struct dp_bridge *bridge = to_dp_bridge(dp_bridge);

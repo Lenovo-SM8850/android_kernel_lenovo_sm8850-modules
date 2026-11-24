@@ -21,7 +21,6 @@
 #include <linux/spinlock.h>
 #include <linux/shmem_fs.h>
 #include <linux/dma-buf.h>
-#include <linux/pfn_t.h>
 #include <linux/version.h>
 #include <linux/vmalloc.h>
 #include <linux/module.h>
@@ -311,7 +310,7 @@ vm_fault_t msm_gem_fault(struct vm_fault *vmf)
 	VERB("Inserting %pK pfn %lx, pa %lx", (void *)vmf->address,
 			pfn, pfn << PAGE_SHIFT);
 
-	ret = vmf_insert_mixed(vma, vmf->address, __pfn_to_pfn_t(pfn, PFN_DEV));
+	ret = vmf_insert_mixed(vma, vmf->address, pfn);
 out_unlock:
 	mutex_unlock(&msm_obj->lock);
 out:
@@ -809,7 +808,7 @@ int msm_gem_madvise(struct drm_gem_object *obj, unsigned madv)
 
 	mutex_lock(&msm_obj->lock);
 
-	WARN_ON(!mutex_is_locked(&obj->dev->struct_mutex));
+	WARN_ON(!mutex_is_locked(msm_gem_mutex(obj->dev)));
 
 	if (msm_obj->madv != __MSM_MADV_PURGED)
 		msm_obj->madv = madv;
@@ -1416,5 +1415,5 @@ exit:
 #if (KERNEL_VERSION(6, 13, 0) <= LINUX_VERSION_CODE)
 MODULE_IMPORT_NS("DMA_BUF");
 #elif (KERNEL_VERSION(5, 19, 0) <= LINUX_VERSION_CODE)
-MODULE_IMPORT_NS(DMA_BUF);
+MODULE_IMPORT_NS("DMA_BUF");
 #endif

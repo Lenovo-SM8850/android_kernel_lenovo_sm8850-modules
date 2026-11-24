@@ -401,6 +401,7 @@ int hdmi_connector_install_properties(void *display, struct drm_connector *conn)
 }
 
 static int hdmi_bridge_attach(struct drm_bridge *hdmi_bridge,
+				struct drm_encoder *encoder,
 				enum drm_bridge_attach_flags flags)
 {
 	struct hdmi_bridge *bridge = to_hdmi_bridge(hdmi_bridge);

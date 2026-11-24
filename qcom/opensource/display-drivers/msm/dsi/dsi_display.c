@@ -620,9 +620,9 @@ free_aspace_cb:
 	msm_gem_address_space_unregister_cb(display->aspace,
 			dsi_display_aspace_cb_locked, display);
 free_gem:
-	mutex_lock(&display->drm_dev->struct_mutex);
+	mutex_lock(msm_gem_mutex(display->drm_dev));
 	msm_gem_free_object(display->tx_cmd_buf);
-	mutex_unlock(&display->drm_dev->struct_mutex);
+	mutex_unlock(msm_gem_mutex(display->drm_dev));
 error:
 	return rc;
 }
