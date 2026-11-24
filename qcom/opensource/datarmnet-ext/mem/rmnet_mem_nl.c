@@ -71,7 +71,7 @@ struct genl_family rmnet_mem_nl_family __ro_after_init = {
 	.n_ops = ARRAY_SIZE(rmnet_mem_nl_ops),
 };
 
-int rmnet_mem_send_msg_to_userspace(struct genl_info *info, struct rmnet_mem_msg_info *msg_ptr)
+static int rmnet_mem_send_msg_to_userspace(struct genl_info *info, struct rmnet_mem_msg_info *msg_ptr)
 {
 	struct sk_buff *skb;
 	void *msg_head;

@@ -29,6 +29,7 @@ void rmnet_mem_cache_add(unsigned int order, bool force);
 uint32_t rmnet_mem_config_query(unsigned int id);
 void rmnet_mem_put_page_entry(struct page *page);
 void rmnet_mem_page_ref_inc_entry(struct page *page, unsigned int id);
+void rmnet_mem_info_ref_inc_entry(struct page *page, unsigned int id);
 struct page *rmnet_mem_get_pages_entry(gfp_t gfp_mask, unsigned int order, int *code, int *pageorder, unsigned int id);
 
 #endif

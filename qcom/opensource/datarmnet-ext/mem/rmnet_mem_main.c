@@ -141,7 +141,7 @@ int rmnet_mem_get_pool_size(unsigned int order)
 }
 EXPORT_SYMBOL_GPL(rmnet_mem_get_pool_size);
 
-int rmnet_mem_mode_notify(unsigned int pool_size)
+static int rmnet_mem_mode_notify(unsigned int pool_size)
 {
 	unsigned long flags;
 
@@ -176,7 +176,7 @@ int rmnet_mem_unregister_notifier(struct notifier_block *nb)
 EXPORT_SYMBOL_GPL(rmnet_mem_unregister_notifier);
 
 /* Malloc by client so rem from to pool */
-mem_info_s *rmnet_mem_add_page(struct page *page, u8 pageorder)
+static mem_info_s *rmnet_mem_add_page(struct page *page, u8 pageorder)
 {
 	mem_info_s *mem_info;
 
@@ -199,7 +199,7 @@ mem_info_s *rmnet_mem_add_page(struct page *page, u8 pageorder)
 	return mem_info;
 }
 
-void rmnet_mem_check_all(void)
+static void rmnet_mem_check_all(void)
 {
 	mem_info_s *mem_info;
 	struct list_head *ptr = NULL, *next = NULL;
@@ -241,7 +241,7 @@ void rmnet_mem_check_all(void)
 	pr_info("static count order 2: %d  order 3: %d", static_pool_size[2], static_pool_size[3]);
 }
 
-void rmnet_mem_replenish_all(void)
+static void rmnet_mem_replenish_all(void)
 {
 	unsigned long flags;
 	int i;
@@ -254,7 +254,7 @@ void rmnet_mem_replenish_all(void)
 }
 
 /* Freed by client so added back to pool */
-void rmnet_mem_free_all(void)
+static void rmnet_mem_free_all(void)
 {
 	unsigned long flags;
 	mem_info_s *mem_info;
@@ -608,7 +608,7 @@ void rmnet_mem_adjust(unsigned int perm_size, u8 pageorder)
 
 }
 
-enum hrtimer_restart rmnet_mem_pb_timer_cb(struct hrtimer *t)
+static enum hrtimer_restart rmnet_mem_pb_timer_cb(struct hrtimer *t)
 {
 	unsigned int jiffies;
 
@@ -641,7 +641,7 @@ void rmnet_mem_pb_ind(void)
 }
 EXPORT_SYMBOL_GPL(rmnet_mem_pb_ind);
 
-int __init rmnet_mem_module_init(void)
+static int __init rmnet_mem_module_init(void)
 {
 	int rc, i = 0;
 
@@ -672,7 +672,7 @@ int __init rmnet_mem_module_init(void)
 	return 0;
 }
 
-void __exit rmnet_mem_module_exit(void)
+static void __exit rmnet_mem_module_exit(void)
 {
 	rmnet_mem_nl_unregister();
 	if (mem_wq) {
