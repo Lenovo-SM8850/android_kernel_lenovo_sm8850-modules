@@ -1564,7 +1564,7 @@ static int kgsl_genpd_disable_wait(struct device *dev, u32 timeout)
 	}
 }
 
-int kgsl_regulator_disable_wait(struct regulator *reg, u32 timeout)
+static int kgsl_regulator_disable_wait(struct regulator *reg, u32 timeout)
 {
 	ktime_t tout = ktime_add_us(ktime_get(), timeout * USEC_PER_MSEC);
 	int ret;

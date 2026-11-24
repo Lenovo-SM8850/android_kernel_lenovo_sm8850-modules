@@ -184,7 +184,7 @@ bool kgsl_hw_fence_tx_slot_available(struct kgsl_device *device, u32 pending_hw_
 	return false;
 }
 
-void _hw_fence_destroy(struct kgsl_sync_fence *kfence)
+static void _hw_fence_destroy(struct kgsl_sync_fence *kfence)
 {
 	synx_release(kgsl_synx.handle, kfence->hw_fence_index);
 }
@@ -327,7 +327,7 @@ bool kgsl_hw_fence_tx_slot_available(struct kgsl_device *device, u32 pending_hw_
 	return false;
 }
 
-void _hw_fence_destroy(struct kgsl_sync_fence *kfence)
+static void _hw_fence_destroy(struct kgsl_sync_fence *kfence)
 {
 	msm_hw_fence_destroy(kgsl_msm_hw_fence.handle, &kfence->fence);
 }

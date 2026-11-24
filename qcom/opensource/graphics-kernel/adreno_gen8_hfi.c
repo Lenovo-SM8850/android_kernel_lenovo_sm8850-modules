@@ -593,7 +593,7 @@ int gen8_hfi_send_bcl_feature_ctrl(struct adreno_device *adreno_dev)
 	return gen8_hfi_send_feature_ctrl(adreno_dev, HFI_FEATURE_BCL, 1, adreno_dev->bcl_data);
 }
 
-int gen8_hfi_send_iff_pclx_feature_ctrl(struct adreno_device *adreno_dev)
+static int gen8_hfi_send_iff_pclx_feature_ctrl(struct adreno_device *adreno_dev)
 {
 	const struct adreno_gen8_core *gen8_core = to_gen8_core(adreno_dev);
 	struct kgsl_device *device = KGSL_DEVICE(adreno_dev);

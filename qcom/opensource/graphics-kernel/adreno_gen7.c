@@ -474,7 +474,7 @@ static inline void gen7_regwrite_aperture(struct kgsl_device *device,
 	mb();
 }
 
-void gen7_regread_aperture(struct kgsl_device *device,
+static void gen7_regread_aperture(struct kgsl_device *device,
 	u32 offsetwords, u32 *value, u32 pipe)
 {
 	gen7_host_aperture_set(ADRENO_DEVICE(device), pipe);
@@ -1325,7 +1325,7 @@ static void gen7_gpu_keepalive(struct adreno_device *adreno_dev,
 			GEN7_GMU_GMU_PWR_COL_KEEPALIVE, state);
 }
 
-bool gen7_hw_isidle(struct adreno_device *adreno_dev)
+static bool gen7_hw_isidle(struct adreno_device *adreno_dev)
 {
 	struct kgsl_device *device = KGSL_DEVICE(adreno_dev);
 	unsigned int reg;
@@ -1917,7 +1917,7 @@ static u32 _get_pipeid(u32 groupid)
 	}
 }
 
-int gen7_perfcounter_remove(struct adreno_device *adreno_dev,
+static int gen7_perfcounter_remove(struct adreno_device *adreno_dev,
 	struct adreno_perfcount_register *reg, u32 groupid)
 {
 	const struct adreno_perfcounters *counters = ADRENO_PERFCOUNTERS(adreno_dev);

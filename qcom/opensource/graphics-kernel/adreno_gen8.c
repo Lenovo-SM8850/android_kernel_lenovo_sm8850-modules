@@ -2131,7 +2131,7 @@ static void gen8_gpu_keepalive(struct adreno_device *adreno_dev,
 			GEN8_GMUCX_PWR_COL_KEEPALIVE, state);
 }
 
-bool gen8_hw_isidle(struct adreno_device *adreno_dev)
+static bool gen8_hw_isidle(struct adreno_device *adreno_dev)
 {
 	struct kgsl_device *device = KGSL_DEVICE(adreno_dev);
 	u32 reg;
@@ -2847,7 +2847,7 @@ static void gen8_release_cp_semaphore(struct adreno_device *adreno_dev)
 	kgsl_regwrite(KGSL_DEVICE(adreno_dev), GEN8_CP_SEMAPHORE_REG_0, 0);
 }
 
-int gen8_perfcounter_remove(struct adreno_device *adreno_dev,
+static int gen8_perfcounter_remove(struct adreno_device *adreno_dev,
 			    struct adreno_perfcount_register *reg, u32 groupid)
 {
 	const struct adreno_perfcounters *counters = ADRENO_PERFCOUNTERS(adreno_dev);

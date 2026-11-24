@@ -1600,7 +1600,7 @@ done:
 	return ret;
 }
 
-ssize_t gen8_hwsched_preempt_info_get(struct adreno_device *adreno_dev, char *buf)
+static ssize_t gen8_hwsched_preempt_info_get(struct adreno_device *adreno_dev, char *buf)
 {
 	struct kgsl_device *device = KGSL_DEVICE(adreno_dev);
 	u32 preempt_count_l0, preempt_count_l1a, preempt_count_l1b;

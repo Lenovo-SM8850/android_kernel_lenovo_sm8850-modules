@@ -549,7 +549,7 @@ static void a6xx_deassert_gbif_halt(struct adreno_device *adreno_dev)
 		kgsl_regwrite(device, A6XX_RBBM_GBIF_HALT, 0x0);
 }
 
-bool a6xx_gx_is_on(struct adreno_device *adreno_dev)
+static bool a6xx_gx_is_on(struct adreno_device *adreno_dev)
 {
 	struct kgsl_device *device = KGSL_DEVICE(adreno_dev);
 	struct kgsl_pwrctrl *pwr = &device->pwrctrl;
@@ -1281,7 +1281,7 @@ static bool a619_holi_hw_isidle(struct adreno_device *adreno_dev)
 	return a6xx_irq_pending(adreno_dev) ? false : true;
 }
 
-bool a6xx_hw_isidle(struct adreno_device *adreno_dev)
+static bool a6xx_hw_isidle(struct adreno_device *adreno_dev)
 {
 	struct kgsl_device *device = KGSL_DEVICE(adreno_dev);
 	unsigned int reg;

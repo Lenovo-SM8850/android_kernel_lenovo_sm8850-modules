@@ -1723,7 +1723,7 @@ static unsigned int _preempt_count_show(struct adreno_device *adreno_dev)
 	return count;
 }
 
-ssize_t _preempt_info_show(struct device *dev, struct device_attribute *attr, char *buf)
+static ssize_t _preempt_info_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	struct adreno_device *adreno_dev = ADRENO_DEVICE(dev_get_drvdata(dev));
 	const struct adreno_hwsched_ops *hwsched_ops = adreno_dev->hwsched.hwsched_ops;

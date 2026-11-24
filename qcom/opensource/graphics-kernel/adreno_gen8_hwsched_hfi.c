@@ -2281,7 +2281,7 @@ static int gen8_hwsched_setup_default_votes(struct adreno_device *adreno_dev)
 	return gen8_hwsched_set_gmu_based_dcvs_votes(adreno_dev);
 }
 
-int gen8_hwsched_warmboot_init_gmu(struct adreno_device *adreno_dev)
+static int gen8_hwsched_warmboot_init_gmu(struct adreno_device *adreno_dev)
 {
 	struct gen8_gmu_device *gmu = to_gen8_gmu(adreno_dev);
 	struct pending_cmd ack = {0};
