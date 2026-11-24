@@ -27,6 +27,7 @@
 #include "rmnet_trace.h"
 #include <linux/icmp.h>
 #include <linux/inet.h>
+#include "rmnet_shs_ll.h"
 
 
 DEFINE_HASHTABLE(rmnet_shs_ll_ht, RMNET_SHS_HT_SIZE);
@@ -54,7 +55,7 @@ MODULE_PARM_DESC(rmnet_shs_filter_count, "LL filter count seen in ll rmnet_shs")
 /* Evaluates the incoming transport protocol of the incoming skb. Determines
  * if the skb transport protocol will be supported by SHS module
  */
-int rmnet_shs_is_ll_skb_stamping_reqd(struct sk_buff *skb)
+static int rmnet_shs_is_ll_skb_stamping_reqd(struct sk_buff *skb)
 {
 	int ret_val = 0;
 	struct iphdr *ip4h, __ip4h;
@@ -201,7 +202,7 @@ skip_trace_print_icmp6_rx:
 }
 
 /* Evaluates if a v6 skb matches the v6 filter passed in *info */
-int ipv6_packet_match(struct sk_buff *skb, struct ipv6hdr *skb_ip6h, struct rmnet_shs_wq_flow_info  *info)
+static int ipv6_packet_match(struct sk_buff *skb, struct ipv6hdr *skb_ip6h, struct rmnet_shs_wq_flow_info  *info)
 {
 	struct tcphdr *tp, __tp;
 	struct udphdr *up, __up;
@@ -271,7 +272,7 @@ int ipv6_packet_match(struct sk_buff *skb, struct ipv6hdr *skb_ip6h, struct rmne
 }
 
 /* Evaluates if a v4 skb matches the v4 filter passed in *info */
-int ipv4_packet_match(struct sk_buff *skb, struct iphdr *skb_ip4h, struct rmnet_shs_wq_flow_info  *info)
+static int ipv4_packet_match(struct sk_buff *skb, struct iphdr *skb_ip4h, struct rmnet_shs_wq_flow_info  *info)
 {
 	int ret = false;
 	struct tcphdr *tp, __tp;
@@ -330,7 +331,7 @@ int ipv4_packet_match(struct sk_buff *skb, struct iphdr *skb_ip4h, struct rmnet_
 }
 
 /* Evaluates if two filters match identical things, to prevent dup filter additions.*/
-int rmnet_shs_is_identical_filter(struct rmnet_shs_wq_flow_node  *node, struct rmnet_shs_wq_flow_node  *node2)
+static int rmnet_shs_is_identical_filter(struct rmnet_shs_wq_flow_node  *node, struct rmnet_shs_wq_flow_node  *node2)
 {
 	struct rmnet_shs_wq_flow_info  *info = &node->info;
 	struct rmnet_shs_wq_flow_info  *info2 = &node2->info;
@@ -508,7 +509,7 @@ void rmnet_shs_remove_llflow(struct rmnet_shs_wq_flow_node  *node)
 	rm_err("SHS_LL: %s", " Uninstalled LL filter");
 }
 
-void rmnet_shs_print_llflow(struct rmnet_shs_wq_flow_node  *node)
+static void rmnet_shs_print_llflow(struct rmnet_shs_wq_flow_node  *node)
 {
 	struct rmnet_shs_wq_flow_info  *info = &node->info;
 
@@ -594,7 +595,7 @@ void rmnet_shs_add_llflow(struct rmnet_shs_wq_flow_node  *node)
 	rm_err("SHS_LL: %s\n", "Installed LL filter");
 }
 
-void rmnet_shs_ll_stamp(struct sk_buff *skb, struct rmnet_shs_skbn_s *node)
+static void rmnet_shs_ll_stamp(struct sk_buff *skb, struct rmnet_shs_skbn_s *node)
 {
 	u32 hash2stamp = 0; /* the default value of skb->hash*/
 	u8 map = 0, maplen = 0;

@@ -144,7 +144,7 @@ static int rmnet_perf_ingress_handle_quic(struct sk_buff *skb, int ip_len)
 	return -EINVAL;
 }
 
-int rmnet_perf_ingress_handle(struct sk_buff *skb)
+static int rmnet_perf_ingress_handle(struct sk_buff *skb)
 {
 	if (skb->protocol == htons(ETH_P_IP)) {
 		struct iphdr *iph, __iph;
@@ -202,7 +202,7 @@ int rmnet_perf_ingress_handle(struct sk_buff *skb)
 	return -EINVAL;
 }
 
-void rmnet_perf_ingress_rx_handler(struct sk_buff *skb)
+static void rmnet_perf_ingress_rx_handler(struct sk_buff *skb)
 {
 	u8 proto = 0;
 
@@ -236,7 +236,7 @@ void rmnet_perf_ingress_rx_handler(struct sk_buff *skb)
 	}
 }
 
-int rmnet_perf_ingress_ecn_handle(struct sk_buff *skb)
+static int rmnet_perf_ingress_ecn_handle(struct sk_buff *skb)
 {
 	u8 proto = 0;
 	int ip_len;
@@ -285,7 +285,7 @@ static void rmnet_perf_egress_handle_quic(struct sk_buff *skb, int ip_len)
 		skb->priority = 0xDA001A;
 }
 
-void rmnet_perf_egress_handle(struct sk_buff *skb)
+static void rmnet_perf_egress_handle(struct sk_buff *skb)
 {
 	if (skb->protocol == htons(ETH_P_IP)) {
 		struct iphdr *iph, __iph;
@@ -347,7 +347,7 @@ void rmnet_perf_egress_handle(struct sk_buff *skb)
 void rmnet_perf_nl_map_cmd_multicast(struct sk_buff *skb);
 
 /* skb will be freed by rmnet_qmap_cmd_handler() */
-void rmnet_perf_cmd_ingress_handler(struct sk_buff *skb)
+static void rmnet_perf_cmd_ingress_handler(struct sk_buff *skb)
 {
 	if (skb_linearize(skb)) {
 		pr_err("%s(): Linearization error\n", __func__);
@@ -357,7 +357,7 @@ void rmnet_perf_cmd_ingress_handler(struct sk_buff *skb)
 	rmnet_perf_nl_map_cmd_multicast(skb);
 }
 
-void rmnet_perf_coal_common_stat(uint8_t mux_id, uint32_t type)
+static void rmnet_perf_coal_common_stat(uint8_t mux_id, uint32_t type)
 {
 	if (!mux_id || mux_id > 16)
 		goto err0;
@@ -404,7 +404,7 @@ err0:
 	return;
 }
 
-void rmnet_perf_coal_stat(uint8_t mux_id, uint8_t veid, uint64_t len, uint32_t type)
+static void rmnet_perf_coal_stat(uint8_t mux_id, uint8_t veid, uint64_t len, uint32_t type)
 {
 	if (!mux_id || mux_id > 16)
 		goto err0;
@@ -435,7 +435,7 @@ err0:
 	return;
 }
 
-void rmnet_perf_seg_stat(uint8_t mux_id, struct sk_buff *skb)
+static void rmnet_perf_seg_stat(uint8_t mux_id, struct sk_buff *skb)
 {
 	if (!mux_id || mux_id > 16)
 		goto err0;
@@ -464,7 +464,7 @@ err0:
 	return;
 }
 
-void rmnet_perf_non_coal_stat(uint8_t mux_id, uint64_t len)
+static void rmnet_perf_non_coal_stat(uint8_t mux_id, uint64_t len)
 {
 	if (!mux_id || mux_id > 16)
 		goto err0;
@@ -520,13 +520,13 @@ rmnet_perf_module_hooks[] = {
 	},
 };
 
-void rmnet_perf_set_hooks(void)
+static void rmnet_perf_set_hooks(void)
 {
 	rmnet_module_hook_register(rmnet_perf_module_hooks,
 				   ARRAY_SIZE(rmnet_perf_module_hooks));
 }
 
-void rmnet_perf_unset_hooks(void)
+static void rmnet_perf_unset_hooks(void)
 {
 	rmnet_module_hook_unregister(rmnet_perf_module_hooks,
 				     ARRAY_SIZE(rmnet_perf_module_hooks));
@@ -534,7 +534,7 @@ void rmnet_perf_unset_hooks(void)
 
 static struct genl_family rmnet_perf_nl_family;
 
-int rmnet_perf_nl_cmd_get_stats(struct sk_buff *skb, struct genl_info *info)
+static int rmnet_perf_nl_cmd_get_stats(struct sk_buff *skb, struct genl_info *info)
 {
 	struct rmnet_perf_stats_resp *resp = NULL;
 	struct rmnet_perf_stats_req req;
@@ -668,7 +668,7 @@ err0:
 	return;
 }
 
-int rmnet_perf_cmd_xmit(struct rmnet_perf_map_cmd_req *cmd)
+static int rmnet_perf_cmd_xmit(struct rmnet_perf_map_cmd_req *cmd)
 {
 	struct net_device *dev = dev_get_by_name(&init_net, "rmnet_ipa0");
 	int cmd_len = sizeof(struct qmap_cmd_hdr) + cmd->cmd_len;
@@ -714,7 +714,7 @@ err0:
 	return ret;
 }
 
-int rmnet_perf_nl_cmd_map_cmd_req(struct sk_buff *skb, struct genl_info *info)
+static int rmnet_perf_nl_cmd_map_cmd_req(struct sk_buff *skb, struct genl_info *info)
 {
 	struct rmnet_perf_map_cmd_req *req = NULL;
 	struct rmnet_perf_map_cmd_resp resp;
@@ -978,12 +978,12 @@ static struct genl_family rmnet_perf_nl_family __ro_after_init = {
 	.n_mcgrps = ARRAY_SIZE(rmnet_perf_nl_mcgrps),
 };
 
-int rmnet_perf_nl_register(void)
+static int rmnet_perf_nl_register(void)
 {
 	return genl_register_family(&rmnet_perf_nl_family);
 }
 
-void rmnet_perf_nl_unregister(void)
+static void rmnet_perf_nl_unregister(void)
 {
 	genl_unregister_family(&rmnet_perf_nl_family);
 }

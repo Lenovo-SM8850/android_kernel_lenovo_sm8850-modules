@@ -220,7 +220,7 @@ rmnet_perf_compare_node(struct rmnet_perf_tether_node *node,
 	return 1;
 }
 
-void rmnet_perf_tether_ingress(struct tcphdr *tp, struct sk_buff *skb)
+static void rmnet_perf_tether_ingress(struct tcphdr *tp, struct sk_buff *skb)
 {
 	int valid = 0;
 	u32 hash;
@@ -287,7 +287,7 @@ rmnet_perf_populate_node(struct rmnet_perf_tether_node *node,
 	}
 }
 
-void rmnet_perf_tether_egress(struct sk_buff *skb)
+static void rmnet_perf_tether_egress(struct sk_buff *skb)
 {
 	int valid = 0;
 	u32 hash;
@@ -344,7 +344,7 @@ void rmnet_perf_tether_egress(struct sk_buff *skb)
 	spin_unlock_irqrestore(&rmnet_perf_tether_lock, flags);
 }
 
-void rmnet_perf_tether_cmd(u8 message, u64 val)
+static void rmnet_perf_tether_cmd(u8 message, u64 val)
 {
 	struct net_device *dev = dev_get_by_name(&init_net, "rmnet_ipa0");
 	struct sk_buff *skb;
@@ -402,13 +402,13 @@ rmnet_perf_tether_module_hooks[] = {
 	},
 };
 
-void rmnet_perf_tether_set_hooks(void)
+static void rmnet_perf_tether_set_hooks(void)
 {
 	rmnet_module_hook_register(rmnet_perf_tether_module_hooks,
 				   ARRAY_SIZE(rmnet_perf_tether_module_hooks));
 }
 
-void rmnet_perf_tether_unset_hooks(void)
+static void rmnet_perf_tether_unset_hooks(void)
 {
 	rmnet_module_hook_unregister(rmnet_perf_tether_module_hooks,
 				ARRAY_SIZE(rmnet_perf_tether_module_hooks));

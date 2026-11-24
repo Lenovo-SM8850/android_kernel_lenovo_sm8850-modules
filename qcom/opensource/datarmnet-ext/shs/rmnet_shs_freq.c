@@ -84,7 +84,7 @@ static void shs_update_pb_cpu_policy(struct work_struct *work)
 	cpus_read_unlock();
 }
 
-void rmnet_shs_reset_freq(void)
+static void rmnet_shs_reset_freq(void)
 {
 	struct cpu_freq *boost;
 	int i;

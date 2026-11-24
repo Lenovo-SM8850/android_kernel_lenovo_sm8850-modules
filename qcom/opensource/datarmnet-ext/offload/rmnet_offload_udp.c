@@ -10,6 +10,7 @@
 #include "rmnet_offload_engine.h"
 #include "rmnet_offload_stats.h"
 #include "rmnet_offload_knob.h"
+#include "rmnet_offload_udp.h"
 
 /* Check if we can merge the packet with the flow */
 static int rmnet_offload_udp_merge_check(struct rmnet_offload_flow *flow,

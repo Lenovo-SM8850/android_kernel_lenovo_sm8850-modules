@@ -11,6 +11,7 @@
 #include "rmnet_offload_engine.h"
 #include "rmnet_offload_stats.h"
 #include "rmnet_offload_knob.h"
+#include "rmnet_offload_tcp.h"
 
 union rmnet_offload_tcp_opts {
 	struct rmnet_offload_tcphdr rotopt_tcp;

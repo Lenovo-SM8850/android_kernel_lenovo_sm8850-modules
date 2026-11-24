@@ -678,7 +678,7 @@ void rmnet_wlan_connection_flush(void)
 	cancel_delayed_work_sync(&rmnet_wlan_connection_work.ws);
 }
 
-void rmnet_wlan_ll_tuple_match(struct sk_buff *skb)
+static void rmnet_wlan_ll_tuple_match(struct sk_buff *skb)
 {
 	int protocol = -1;
 	struct rmnet_wlan_ll_tuple * tuple =

@@ -105,7 +105,7 @@ struct rmnet_shs_cfg_s rmnet_shs_cfg;
 struct rmnet_shs_flush_work shs_rx_work;
 unsigned rmnet_shs_last_seq = 0;
 
-ssize_t change_rps(struct netdev_rx_queue *queue, u8 cpu, u8 ff)
+static ssize_t change_rps(struct netdev_rx_queue *queue, u8 cpu, u8 ff)
 {
 	struct rps_map *old_map, *map;
 	cpumask_var_t mask;
@@ -156,7 +156,7 @@ ssize_t change_rps(struct netdev_rx_queue *queue, u8 cpu, u8 ff)
 /* Evaluates the incoming transport protocol of the incoming skb. Determines
  * if the skb transport protocol will be supported by SHS module
  */
-int rmnet_shs_is_skb_stamping_reqd(struct sk_buff *skb, u8 *ret)
+static int rmnet_shs_is_skb_stamping_reqd(struct sk_buff *skb, u8 *ret)
 {
 	int ret_val = 0;
 	struct iphdr *ip4h, __ip4h;
@@ -490,7 +490,7 @@ static void rmnet_shs_deliver_skb_segmented(struct sk_buff *in_skb, u8 ctext,
 	return;
 }
 
-int rmnet_shs_get_core_prio_flow(u8 mask)
+static int rmnet_shs_get_core_prio_flow(u8 mask)
 {
 	int ret = INVALID_CPU;
 	int least_flows = INVALID_CPU;
@@ -706,7 +706,7 @@ void rmnet_shs_update_cpu_proc_q_all_cpus(void)
 
 }
 
-int rmnet_shs_phy_switch(struct net_device *dev, u8 cpu, u8 ff)
+static int rmnet_shs_phy_switch(struct net_device *dev, u8 cpu, u8 ff)
 {
     struct rmnet_shs_msg_resp chg_msg;
 
@@ -727,7 +727,7 @@ int rmnet_shs_phy_switch(struct net_device *dev, u8 cpu, u8 ff)
 	return 0;
 }
 
-int rmnet_shs_node_can_flush_pkts(struct rmnet_shs_skbn_s *node, u8 force_flush, u8 ctxt)
+static int rmnet_shs_node_can_flush_pkts(struct rmnet_shs_skbn_s *node, u8 force_flush, u8 ctxt)
 {
 	int cpu_map_index;
 	u32 cur_cpu_qhead;
@@ -1451,7 +1451,7 @@ static void rmnet_flush_buffered(struct work_struct *work)
  * Upon the next expiry, if the packets haven't yet been delivered to the
  * next layer, a workqueue will be scheduled to flush all the parked packets.
  */
-enum hrtimer_restart rmnet_shs_map_flush_queue(struct hrtimer *t)
+static enum hrtimer_restart rmnet_shs_map_flush_queue(struct hrtimer *t)
 {
 	enum hrtimer_restart ret = HRTIMER_NORESTART;
 
@@ -1486,7 +1486,7 @@ enum hrtimer_restart rmnet_shs_map_flush_queue(struct hrtimer *t)
 	return ret;
 }
 
-enum hrtimer_restart rmnet_shs_wake_ring(struct hrtimer *t)
+static enum hrtimer_restart rmnet_shs_wake_ring(struct hrtimer *t)
 {
 	__pm_relax(rmnet_shs_cfg.ws);
 
@@ -1494,7 +1494,7 @@ enum hrtimer_restart rmnet_shs_wake_ring(struct hrtimer *t)
 	return HRTIMER_NORESTART;
 }
 
-enum hrtimer_restart rmnet_shs_lpm_ring(struct hrtimer *t)
+static enum hrtimer_restart rmnet_shs_lpm_ring(struct hrtimer *t)
 {
 	struct rmnet_shs_msg_resp boost_msg;
 	struct timespec64 time;
@@ -1509,7 +1509,7 @@ enum hrtimer_restart rmnet_shs_lpm_ring(struct hrtimer *t)
 	return HRTIMER_NORESTART;
 }
 
-enum hrtimer_restart rmnet_shs_queue_core(struct hrtimer *t)
+static enum hrtimer_restart rmnet_shs_queue_core(struct hrtimer *t)
 {
 	struct core_flush_s *core_work = container_of(t,
 				 struct core_flush_s, core_timer);
@@ -1520,7 +1520,7 @@ enum hrtimer_restart rmnet_shs_queue_core(struct hrtimer *t)
 	return HRTIMER_NORESTART;
 }
 
-enum hrtimer_restart rmnet_shs_pb_unboost_cpus(struct hrtimer *t)
+static enum hrtimer_restart rmnet_shs_pb_unboost_cpus(struct hrtimer *t)
 {
 	SHS_TRACE_LOW(RMNET_SHS_PB_BOOST_CPU, RMNET_SHS_PB_BOOST_CPU_RESET, 0, 0,
 				  0xDEF, 0xDEF, NULL, NULL);
@@ -1747,7 +1747,7 @@ void rmnet_shs_cancel_table(void)
 }
 
 /* Should only be called in shs_assing with ht_lock */
-void rmnet_shs_start_phy_switch(struct rmnet_shs_skbn_s * node_p,
+static void rmnet_shs_start_phy_switch(struct rmnet_shs_skbn_s * node_p,
 				struct rmnet_shs_clnt_s *clnt_cfg, struct net_device *dev)
 {
 	u32 temp;

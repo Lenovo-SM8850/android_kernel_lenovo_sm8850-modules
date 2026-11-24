@@ -1443,7 +1443,7 @@ static int qmap_send_data_report_query(u8 type, u8 mux_id, u8 sum, __be32 *txid)
 	return rmnet_qmap_send(skb, RMNET_CH_CTL, false);
 }
 
-void qmap_data_report_handler(struct sk_buff *skb)
+static void qmap_data_report_handler(struct sk_buff *skb)
 {
 	struct qmap_data_report *data_report;
 	struct data_report_req_info *req_info = NULL;

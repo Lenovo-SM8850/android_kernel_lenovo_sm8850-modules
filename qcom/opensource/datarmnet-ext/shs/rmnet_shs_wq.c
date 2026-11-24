@@ -241,7 +241,7 @@ static void rmnet_shs_wq_hstat_reset_node(struct rmnet_shs_wq_hstat_s *hnode)
 /* If there is an already pre-allocated node available and not in use,
  * we will try to re-use them.
  */
-struct rmnet_shs_wq_hstat_s *rmnet_shs_wq_get_new_hstat_node(void)
+static struct rmnet_shs_wq_hstat_s *rmnet_shs_wq_get_new_hstat_node(void)
 {
 	struct rmnet_shs_wq_hstat_s *hnode = NULL;
 	struct rmnet_shs_wq_hstat_s *ret_node = NULL;
@@ -357,7 +357,7 @@ static u64 rmnet_shs_wq_get_flow_avg_pps(struct rmnet_shs_wq_hstat_s *hnode)
 	return avg_pps;
 }
 
-void rmnet_shs_wq_update_hash_stats_debug(struct rmnet_shs_wq_hstat_s *hstats_p,
+static void rmnet_shs_wq_update_hash_stats_debug(struct rmnet_shs_wq_hstat_s *hstats_p,
 					  struct rmnet_shs_skbn_s *node_p)
 {
 	int idx = rmnet_shs_flow_dbg_stats_idx_cnt;
@@ -809,7 +809,7 @@ static int rmnet_shs_wq_time_check(ktime_t time, atomic_long_t num_flows)
 	return ret;
 }
 
-noinline void rmnet_shs_wq_filter(void)
+static noinline void rmnet_shs_wq_filter(void)
 {
 	int cpu, cur_cpu;
 	int temp;
@@ -847,7 +847,7 @@ noinline void rmnet_shs_wq_filter(void)
 
 }
 
-void rmnet_shs_wq_update_stats(void)
+static void rmnet_shs_wq_update_stats(void)
 {
 	struct timespec64 time;
 	struct rmnet_shs_wq_hstat_s *hnode = NULL;
@@ -881,7 +881,7 @@ void rmnet_shs_wq_update_stats(void)
 	rmnet_shs_wq_filter();
 }
 
-void rmnet_shs_wq_process_wq(struct work_struct *work)
+static void rmnet_shs_wq_process_wq(struct work_struct *work)
 {
 	unsigned long jiffies;
 
