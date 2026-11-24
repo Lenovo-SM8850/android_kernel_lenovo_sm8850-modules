@@ -394,13 +394,13 @@ static void kgsl_destroy_anon(struct kgsl_memdesc *memdesc)
 			 * were writable by the GPU.
 			 */
 			if (!(memdesc->flags & KGSL_MEMFLAGS_GPUREADONLY))
-				set_page_dirty_lock(nth_page(page, j));
+				set_page_dirty_lock(kgsl_nth_page(page, j));
 
 			/*
 			 * Put the page reference taken using get_user_pages
 			 * during memdesc_sg_virt.
 			 */
-			put_page(nth_page(page, j));
+			put_page(kgsl_nth_page(page, j));
 		}
 	}
 

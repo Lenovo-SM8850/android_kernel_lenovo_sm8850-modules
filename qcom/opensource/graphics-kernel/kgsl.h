@@ -15,6 +15,11 @@
 #include <linux/uaccess.h>
 #include <linux/version.h>
 
+static inline struct page *kgsl_nth_page(struct page *page, unsigned long n)
+{
+	return pfn_to_page(page_to_pfn(page) + n);
+}
+
 #include "kgsl_gmu_core.h"
 #include "kgsl_pwrscale.h"
 #include "kgsl_sharedmem.h"

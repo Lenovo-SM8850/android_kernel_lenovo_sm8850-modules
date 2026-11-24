@@ -836,7 +836,7 @@ out:
 
 /* Dump the sysfs binary data to the user */
 static ssize_t snapshot_show(struct file *filep, struct kobject *kobj,
-	struct bin_attribute *attr, char *buf, loff_t off,
+	const struct bin_attribute *attr, char *buf, loff_t off,
 	size_t count)
 {
 	struct kgsl_device *device = kobj_to_device(kobj);
