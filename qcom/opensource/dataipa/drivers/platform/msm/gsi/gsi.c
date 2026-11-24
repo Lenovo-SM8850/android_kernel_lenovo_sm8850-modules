@@ -4234,7 +4234,7 @@ bool gsi_is_event_pending(unsigned long chan_hdl) {
 }
 EXPORT_SYMBOL(gsi_is_event_pending);
 
-int __gsi_get_gci_cookie(struct gsi_chan_ctx *ctx, uint16_t idx)
+static int __gsi_get_gci_cookie(struct gsi_chan_ctx *ctx, uint16_t idx)
 {
 	int i;
 	int end;
@@ -4273,7 +4273,7 @@ int __gsi_get_gci_cookie(struct gsi_chan_ctx *ctx, uint16_t idx)
 	return 0xFFFF;
 }
 
-int __gsi_populate_gci_tre(struct gsi_chan_ctx *ctx,
+static int __gsi_populate_gci_tre(struct gsi_chan_ctx *ctx,
 	struct gsi_xfer_elem *xfer)
 {
 	struct gsi_gci_tre gci_tre;
@@ -4311,7 +4311,7 @@ int __gsi_populate_gci_tre(struct gsi_chan_ctx *ctx,
 	return 0;
 }
 
-int __gsi_populate_tre(struct gsi_chan_ctx *ctx,
+static int __gsi_populate_tre(struct gsi_chan_ctx *ctx,
 	struct gsi_xfer_elem *xfer)
 {
 	struct gsi_tre tre;

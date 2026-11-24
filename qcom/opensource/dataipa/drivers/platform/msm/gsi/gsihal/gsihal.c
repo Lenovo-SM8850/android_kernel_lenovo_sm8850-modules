@@ -5,6 +5,7 @@
 */
 
 #include "gsihal_i.h"
+#include "gsihal.h"
 #include "gsihal_reg.h"
 
 struct gsihal_context *gsihal_ctx;

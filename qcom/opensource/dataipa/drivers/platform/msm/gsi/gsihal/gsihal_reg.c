@@ -180,7 +180,7 @@ static const char *gsireg_name_to_str[GSI_REG_MAX] = {
 * gsihal_reg_name_str() - returns string that represent the register
 * @reg_name: [in] register name
 */
-const char *gsihal_reg_name_str(enum gsihal_reg_name reg_name)
+static const char *gsihal_reg_name_str(enum gsihal_reg_name reg_name)
 {
 	if (reg_name < 0 || reg_name >= GSI_REG_MAX) {
 		GSIERR("requested name of invalid reg=%d\n", reg_name);
