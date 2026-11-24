@@ -1524,7 +1524,7 @@ int hw_fence_utils_alloc_mem(struct hw_fence_driver_data *drv_data)
 	return ret;
 }
 
-char *_get_mem_reserve_type(enum hw_fence_mem_reserve type)
+static char *_get_mem_reserve_type(enum hw_fence_mem_reserve type)
 {
 	switch (type) {
 	case HW_FENCE_MEM_RESERVE_CTRL_QUEUE:

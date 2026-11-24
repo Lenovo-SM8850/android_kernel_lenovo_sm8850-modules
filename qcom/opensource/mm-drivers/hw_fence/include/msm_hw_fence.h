@@ -613,6 +613,16 @@ int msm_hw_fence_register_error_cb(void *client_handle, msm_hw_fence_error_cb_t 
  */
 int msm_hw_fence_deregister_error_cb(void *client_handle);
 
+/**
+ * msm_hw_fence_driver_doorbell_sim() - Simulate a doorbell interrupt
+ * @db_mask: doorbell mask to process
+ *
+ * Used for simulation purposes only.
+ *
+ * Return: 0 on success or negative errno
+ */
+int msm_hw_fence_driver_doorbell_sim(u64 db_mask);
+
 #else
 static inline void *msm_hw_fence_register(enum hw_fence_client_id client_id,
 	struct msm_hw_fence_mem_addr *mem_descriptor)
