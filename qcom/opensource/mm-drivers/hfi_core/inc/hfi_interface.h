@@ -341,6 +341,23 @@ int hfi_core_cmds_tx_buf_send(struct hfi_core_session *hfi_session,
 	u32 flags);
 
 /**
+ * hfi_core_cmds_tx_device_buf_send() - Send the hfi tx buffer as a device
+ * signal buffer.
+ *
+ * @hfi_session [in]: HFI core session, this was returned during
+ *                   'hfi_core_open'.
+ * @buff_desc [in]: Array of buffer descriptors to be set.
+ * @num_buff_desc [in]: Number of buffer descriptors in the buff_desc array
+ * @flags [in]: Flags to be set when the HFI commands buffer is sent.
+ *              For more info, see: HFI_CORE_SET_FLAGS_*.
+ *
+ * Return: 0 on success or negative errno
+ */
+int hfi_core_cmds_tx_device_buf_send(struct hfi_core_session *hfi_session,
+	struct hfi_core_cmds_buf_desc **buff_desc, u32 num_buff_desc,
+	u32 flags);
+
+/**
  * hfi_core_release_rx_buffer() - Release the hfi rx buffer.
  *
  * @hfi_session [in]: HFI core session, this was returned during

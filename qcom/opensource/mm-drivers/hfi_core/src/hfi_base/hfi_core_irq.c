@@ -11,6 +11,7 @@
 
 #include "hfi_core.h"
 #include "hfi_core_debug.h"
+#include "hfi_core_irq.h"
 
 
 #define INVALID_IRQ                                                          -1
