@@ -322,7 +322,7 @@ void qmi_rmnet_watchdog_remove(struct rmnet_bearer_map *bearer)
 	if (!bearer->watchdog_started)
 		return;
 
-	del_timer(&bearer->watchdog);
+	timer_delete(&bearer->watchdog);
 	bearer->watchdog_started = false;
 
 	trace_dfc_watchdog(bearer->qos->mux_id, bearer->bearer_id, 0);
@@ -336,9 +336,9 @@ static void qmi_rmnet_bearer_clean(struct qos_info *qos)
 {
 	if (qos->removed_bearer) {
 		qos->removed_bearer->watchdog_quit = true;
-		del_timer_sync(&qos->removed_bearer->watchdog);
+		timer_delete_sync(&qos->removed_bearer->watchdog);
 		qos->removed_bearer->ch_switch.timer_quit = true;
-		del_timer_sync(&qos->removed_bearer->ch_switch.guard_timer);
+		timer_delete_sync(&qos->removed_bearer->ch_switch.guard_timer);
 		kfree(qos->removed_bearer);
 		qos->removed_bearer = NULL;
 	}
@@ -1206,9 +1206,9 @@ void qmi_rmnet_qos_exit_pre(void *qos)
 
 	list_for_each_entry(bearer, &qosi->bearer_head, list) {
 		bearer->watchdog_quit = true;
-		del_timer_sync(&bearer->watchdog);
+		timer_delete_sync(&bearer->watchdog);
 		bearer->ch_switch.timer_quit = true;
-		del_timer_sync(&bearer->ch_switch.guard_timer);
+		timer_delete_sync(&bearer->ch_switch.guard_timer);
 	}
 
 	list_add(&qosi->list, &qos_cleanup_list);

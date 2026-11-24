@@ -847,16 +847,9 @@ void icnss_recovery_timeout_hdlr(struct timer_list *t);
 void icnss_wpss_ssr_timeout_hdlr(struct timer_list *t);
 void icnss_xo_trim_deinit(struct icnss_priv *priv);
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 15, 0))
 static inline int icnss_timer_delete(struct timer_list *timer)
 {
 	return timer_delete(timer);
 }
-#else
-static inline int icnss_timer_delete(struct timer_list *timer)
-{
-	return del_timer(timer);
-}
-#endif
 #endif
 

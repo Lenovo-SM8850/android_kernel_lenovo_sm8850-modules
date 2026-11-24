@@ -2618,7 +2618,7 @@ static int fastrpc_wait_for_response(struct fastrpc_invoke_ctx *ctx,
 		if (is_timer_set) {
 			// Delete timer after ssr callback is completed
 			#if (KERNEL_VERSION(6, 15, 0) > LINUX_VERSION_CODE)
-			del_timer_sync(&ctx->ssr_timer);
+			timer_delete_sync(&ctx->ssr_timer);
 			#else
 			timer_delete_sync(&ctx->ssr_timer);
 			#endif

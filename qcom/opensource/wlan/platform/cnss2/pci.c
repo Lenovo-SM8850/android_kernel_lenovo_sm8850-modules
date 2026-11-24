@@ -8300,7 +8300,7 @@ static char *cnss_mhi_notify_status_to_str(enum mhi_callback status)
 static void cnss_dev_rddm_timeout_hdlr(struct timer_list *t)
 {
 	struct cnss_pci_data *pci_priv =
-		from_timer(pci_priv, t, dev_rddm_timer);
+		timer_container_of(pci_priv, t, dev_rddm_timer);
 	enum mhi_ee_type mhi_ee;
 	int rddm_timeout_cnt;
 
@@ -8357,7 +8357,7 @@ static void cnss_dev_rddm_timeout_hdlr(struct timer_list *t)
 static void cnss_boot_debug_timeout_hdlr(struct timer_list *t)
 {
 	struct cnss_pci_data *pci_priv =
-		from_timer(pci_priv, t, boot_debug_timer);
+		timer_container_of(pci_priv, t, boot_debug_timer);
 
 	if (!pci_priv)
 		return;

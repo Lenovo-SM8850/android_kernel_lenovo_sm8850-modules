@@ -508,7 +508,7 @@ void synx_util_object_destroy(struct synx_coredata *synx_obj)
 #if (KERNEL_VERSION(6, 15, 0) <= LINUX_VERSION_CODE)
 				timer_delete_sync(&synx_cb->synx_timer);
 #else
-				del_timer_sync(&synx_cb->synx_timer);
+				timer_delete_sync(&synx_cb->synx_timer);
 #endif
 		}
 
@@ -1528,7 +1528,7 @@ void synx_util_callback_dispatch(struct synx_coredata *synx_obj, u32 status)
 #if (KERNEL_VERSION(6, 15, 0) <= LINUX_VERSION_CODE)
 			timer_delete_sync(&synx_cb->synx_timer);
 #else
-			del_timer_sync(&synx_cb->synx_timer);
+			timer_delete_sync(&synx_cb->synx_timer);
 #endif
 		}
 		synx_cb->status = status;

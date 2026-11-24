@@ -7158,9 +7158,9 @@ static void pt_stop_wd_timer(struct pt_core_data *cd)
 	 * Ensure we wait until the watchdog timer
 	 * running on a different CPU finishes
 	 */
-	del_timer_sync(&cd->watchdog_timer);
+	timer_delete_sync(&cd->watchdog_timer);
 	cancel_work_sync(&cd->watchdog_work);
-	del_timer_sync(&cd->watchdog_timer);
+	timer_delete_sync(&cd->watchdog_timer);
 	cd->watchdog_enabled = 0;
 	pt_debug(cd->dev, DL_INFO, "%s: TTDL WD Stopped\n", __func__);
 }
@@ -13394,7 +13394,7 @@ static void pt_watchdog_timer(unsigned long handle)
  ******************************************************************************/
 static void pt_watchdog_timer(struct timer_list *t)
 {
-	struct pt_core_data *cd = from_timer(cd, t, watchdog_timer);
+	struct pt_core_data *cd = timer_container_of(cd, t, watchdog_timer);
 	if (!cd)
 		return;
 
@@ -18204,7 +18204,7 @@ error_after_sysfs_create:
 
 error_after_startup:
 	pr_err("%s PARADE error_after_startup\n", __func__);
-	del_timer(&cd->watchdog_timer);
+	timer_delete(&cd->watchdog_timer);
 	if (cd->cpdata->setup_irq)
 		cd->cpdata->setup_irq(cd->cpdata, PT_MT_IRQ_FREE, dev);
 error_setup_irq:

@@ -2084,7 +2084,7 @@ static int qseecom_scale_bus_bandwidth_timer(uint32_t mode)
 			goto err_scale_timer;
 		}
 		#if (KERNEL_VERSION(6, 15, 0) > LINUX_VERSION_CODE)
-		del_timer_sync(&(qseecom.bw_scale_down_timer));
+		timer_delete_sync(&(qseecom.bw_scale_down_timer));
 		#else
 		timer_delete_sync(&(qseecom.bw_scale_down_timer));
 		#endif
@@ -9666,7 +9666,7 @@ static void qseecom_deinit_bus(void)
 	icc_put(qseecom.icc_path);
 	cancel_work_sync(&qseecom.bw_inactive_req_ws);
 	#if (KERNEL_VERSION(6, 15, 0) > LINUX_VERSION_CODE)
-	del_timer_sync(&qseecom.bw_scale_down_timer);
+	timer_delete_sync(&qseecom.bw_scale_down_timer);
 	#else
 	timer_delete_sync(&qseecom.bw_scale_down_timer);
 	#endif
@@ -10226,7 +10226,7 @@ static int qseecom_suspend(struct platform_device *pdev, pm_message_t state)
 				qseecom.current_mode = INACTIVE;
 		}
 		#if (KERNEL_VERSION(6, 15, 0) > LINUX_VERSION_CODE)
-		del_timer_sync(&(qseecom.bw_scale_down_timer));
+		timer_delete_sync(&(qseecom.bw_scale_down_timer));
 		#else
 		timer_delete_sync(&(qseecom.bw_scale_down_timer));
 		#endif

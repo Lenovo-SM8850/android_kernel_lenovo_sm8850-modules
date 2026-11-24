@@ -1105,7 +1105,7 @@ void cam_compat_delete_timer_sync(struct timer_list *sys_timer)
 #if KERNEL_VERSION(6, 15, 0) <= LINUX_VERSION_CODE
 	timer_delete_sync(sys_timer);
 #else
-	del_timer_sync(sys_timer);
+	timer_delete_sync(sys_timer);
 #endif
 }
 

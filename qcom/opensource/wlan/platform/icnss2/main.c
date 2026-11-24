@@ -7023,7 +7023,7 @@ static void icnss_remove(struct platform_device *pdev)
 
 void icnss_recovery_timeout_hdlr(struct timer_list *t)
 {
-	struct icnss_priv *priv = from_timer(priv, t, recovery_timer);
+	struct icnss_priv *priv = timer_container_of(priv, t, recovery_timer);
 
 	/* This is to handle if slate is not up and modem SSR is triggered */
 	if (priv->is_slate_rfa && !test_bit(ICNSS_SLATE_UP, &priv->state))
@@ -7035,7 +7035,7 @@ void icnss_recovery_timeout_hdlr(struct timer_list *t)
 
 void icnss_wpss_ssr_timeout_hdlr(struct timer_list *t)
 {
-	struct icnss_priv *priv = from_timer(priv, t, wpss_ssr_timer);
+	struct icnss_priv *priv = timer_container_of(priv, t, wpss_ssr_timer);
 
 	icnss_pr_err("Timeout waiting for WPSS SSR notification 0x%lx\n",
 		      priv->state);

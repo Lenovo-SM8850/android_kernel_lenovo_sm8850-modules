@@ -341,7 +341,7 @@ int cnss_bus_qmi_send_put(struct cnss_plat_data *plat_priv)
 void cnss_bus_fw_boot_timeout_hdlr(struct timer_list *t)
 {
 	struct cnss_plat_data *plat_priv =
-		from_timer(plat_priv, t, fw_boot_timer);
+		timer_container_of(plat_priv, t, fw_boot_timer);
 
 	if (!plat_priv)
 		return;

@@ -1027,7 +1027,7 @@ static void synx_timer_handler(struct work_struct *cb_dispatch)
 #if (KERNEL_VERSION(6, 15, 0) <= LINUX_VERSION_CODE)
 			timer_delete(&synx_cb->synx_timer);
 #else
-			del_timer(&synx_cb->synx_timer);
+			timer_delete(&synx_cb->synx_timer);
 #endif
 			list_del_init(&synx_cb->node);
 			queue_work(synx_dev->wq_cb, &synx_cb->cb_dispatch);
@@ -1279,7 +1279,7 @@ int synx_internal_cancel_async_wait(
 #if (KERNEL_VERSION(6, 15, 0) <= LINUX_VERSION_CODE)
 				timer_delete_sync(&synx_cb->synx_timer);
 #else
-				del_timer_sync(&synx_cb->synx_timer);
+				timer_delete_sync(&synx_cb->synx_timer);
 #endif
 		}
 		switch (ret) {

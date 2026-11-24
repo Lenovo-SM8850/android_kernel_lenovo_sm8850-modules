@@ -208,7 +208,7 @@ static void ll_switch_complete(struct rmnet_bearer_map *bearer, u8 status)
 	} else {
 		/* Success or permanent failure */
 		bearer->ch_switch.timer_quit = true;
-		del_timer(&bearer->ch_switch.guard_timer);
+		timer_delete(&bearer->ch_switch.guard_timer);
 		bearer->ch_switch.state = CH_SWITCH_NONE;
 		bearer->ch_switch.retry_left = 0;
 		ll_send_nl_ack(bearer);

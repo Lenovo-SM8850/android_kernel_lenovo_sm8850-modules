@@ -457,7 +457,7 @@ static void rmnet_aps_remove_flow(struct rmnet_aps_flow *flow)
 		rmnet_aps_flow_cnt--;
 
 	if (!rmnet_aps_flow_cnt)
-		del_timer(&rmnet_aps_timer);
+		timer_delete(&rmnet_aps_timer);
 
 	aps_log("aps: flow 0x%x removing (%u)\n", flow->info.label,
 		rmnet_aps_flow_cnt);
@@ -1680,11 +1680,11 @@ static void __exit rmnet_aps_exit(void)
 	rmnet_aps_flow_removed_ind(0, RMNET_APS_FLOW_REMOVED_RESET);
 
 	cancel_delayed_work_sync(&rmnet_aps_rate_work);
-	del_timer_sync(&rmnet_aps_timer);
+	timer_delete_sync(&rmnet_aps_timer);
 	cancel_work_sync(&rmnet_aps_flow_expire_work);
 
 	data_report_clear();
-	del_timer_sync(&data_report_timer);
+	timer_delete_sync(&data_report_timer);
 
 	unregister_netdevice_notifier(&rmnet_aps_notifier);
 	rmnet_aps_genl_deinit();

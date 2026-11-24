@@ -897,7 +897,7 @@ static irqreturn_t ep92_irq(int irq, void *data)
 
 void ep92_poll_status(struct timer_list *t)
 {
-	struct ep92_pdata *ep92 = from_timer(ep92, t, timer);
+	struct ep92_pdata *ep92 = timer_container_of(ep92, t, timer);
 	struct snd_soc_component *component = ep92->component;
 
 	if (ep92->force_inactive)
@@ -1939,7 +1939,7 @@ static int ep92_i2c_probe(struct i2c_client *client,
 err_sysfs:
 	snd_soc_unregister_component(&client->dev);
 err_reg:
-	del_timer(&ep92->timer);
+	timer_delete(&ep92->timer);
 
 	return ret;
 }
@@ -1950,7 +1950,7 @@ static int ep92_i2c_remove(struct i2c_client *client)
 
 	ep92 = i2c_get_clientdata(client);
 	if (ep92) {
-		del_timer(&ep92->timer);
+		timer_delete(&ep92->timer);
 
 #if IS_ENABLED(CONFIG_DEBUG_FS)
 		debugfs_remove_recursive(ep92->debugfs_dir);

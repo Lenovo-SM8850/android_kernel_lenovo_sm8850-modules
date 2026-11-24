@@ -1357,7 +1357,7 @@ static int spi_cnss_read_context_info(struct spi_cnss_priv *spi_drv, bool is_irq
 static void spi_cnss_sleep_timeout_handler(struct timer_list *t)
 {
 #if (KERNEL_VERSION(6, 16, 0) > LINUX_VERSION_CODE)
-        struct spi_cnss_priv *spi_drv = from_timer(spi_drv, t, client_sleep_timer);
+        struct spi_cnss_priv *spi_drv = timer_container_of(spi_drv, t, client_sleep_timer);
 #else
         struct spi_cnss_priv *spi_drv = timer_container_of(spi_drv, t, client_sleep_timer);
 #endif
@@ -2147,7 +2147,7 @@ static int spi_cnss_release(struct inode *inode, struct file *filp)
 		atomic_set(&usr->rx_avail, 0);
 #ifdef CONFIG_AGGRESSIVE_SLEEP
 #if (KERNEL_VERSION(6, 15, 0) > LINUX_VERSION_CODE)
-		del_timer_sync(&spi_drv->client_sleep_timer);
+		timer_delete_sync(&spi_drv->client_sleep_timer);
 #else
 		timer_delete_sync(&spi_drv->client_sleep_timer);
 #endif

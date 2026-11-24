@@ -666,7 +666,7 @@ static void qcrypto_ce_set_bus(struct crypto_engine *pengine,
 
 static void qcrypto_bw_reaper_timer_callback(struct timer_list *data)
 {
-	struct crypto_engine *pengine = from_timer(pengine, data,
+	struct crypto_engine *pengine = timer_container_of(pengine, data,
 		bw_reaper_timer);
 
 	schedule_work(&pengine->bw_reaper_ws);
@@ -1344,7 +1344,7 @@ static void _qcrypto_remove_engine(struct crypto_engine *pengine)
 	cancel_work_sync(&pengine->bw_allocate_ws);
 
 	#if (KERNEL_VERSION(6, 15, 0) > LINUX_VERSION_CODE)
-	del_timer_sync(&pengine->bw_reaper_timer);
+	timer_delete_sync(&pengine->bw_reaper_timer);
 	#else
 	timer_delete_sync(&pengine->bw_reaper_timer);
 	#endif
@@ -5325,7 +5325,7 @@ static int _qcrypto_engine_in_use(struct crypto_engine *pengine)
 static void _qcrypto_do_suspending(struct crypto_engine *pengine)
 {
 	#if (KERNEL_VERSION(6, 15, 0) > LINUX_VERSION_CODE)
-	del_timer_sync(&pengine->bw_reaper_timer);
+	timer_delete_sync(&pengine->bw_reaper_timer);
 	#else
 	timer_delete_sync(&pengine->bw_reaper_timer);
 	#endif

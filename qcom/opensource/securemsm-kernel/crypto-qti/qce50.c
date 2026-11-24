@@ -2938,7 +2938,7 @@ static void _qce_req_complete(struct qce_device *pce_dev, unsigned int req_info)
 
 static void qce_multireq_timeout(struct timer_list *data)
 {
-	struct qce_device *pce_dev = from_timer(pce_dev, data, timer);
+	struct qce_device *pce_dev = timer_container_of(pce_dev, data, timer);
 	int ret = 0;
 	int last_seq;
 	unsigned long flags;
@@ -2975,7 +2975,7 @@ static void qce_multireq_timeout(struct timer_list *data)
 	pce_dev->mode = IN_INTERRUPT_MODE;
 	local_irq_restore(flags);
 	#if (KERNEL_VERSION(6, 15, 0) > LINUX_VERSION_CODE)
-	del_timer(&(pce_dev->timer));
+	timer_delete(&(pce_dev->timer));
 	#else
 	timer_delete(&(pce_dev->timer));
 	#endif

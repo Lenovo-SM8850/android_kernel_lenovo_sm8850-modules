@@ -1996,7 +1996,7 @@ static int DWC_ETH_QOS_close(struct net_device *dev)
 	DBGPR("-->DWC_ETH_QOS_close\n");
 
 	if (pdata->eee_enabled) {
-		del_timer_sync(&pdata->eee_ctrl_timer);
+		timer_delete_sync(&pdata->eee_ctrl_timer);
 		pdata->eee_active = 0;
 	}
 
@@ -2049,7 +2049,7 @@ static int DWC_ETH_QOS_close(struct net_device *dev)
 		pdata->irq_number = 0;
 	}
 #ifdef DWC_ETH_QOS_CONFIG_PGTEST
-	del_timer(&pdata->pg_timer);
+	timer_delete(&pdata->pg_timer);
 #endif /* end of DWC_ETH_QOS_CONFIG_PGTEST */
 
 	DBGPR("<--DWC_ETH_QOS_close\n");
