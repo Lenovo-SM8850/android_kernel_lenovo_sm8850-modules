@@ -30,7 +30,7 @@
 #define GSI_TRE_RE_XFER 2
 #define TRE_SIZE 2048
 
-MODULE_IMPORT_NS(DMA_BUF);
+MODULE_IMPORT_NS("DMA_BUF");
 
 enum ipa3_cpu_2_hw_rtp_commands {
 	IPA_CPU_2_HW_CMD_RTP_TUPLE_INFO             =

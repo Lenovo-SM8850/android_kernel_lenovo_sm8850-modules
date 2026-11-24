@@ -10354,7 +10354,7 @@ MODULE_DESCRIPTION("QTI Secure Execution Environment Communicator");
 #if (KERNEL_VERSION(6, 13, 0) <= LINUX_VERSION_CODE)
 MODULE_IMPORT_NS("DMA_BUF");
 #else
-MODULE_IMPORT_NS(DMA_BUF);
+MODULE_IMPORT_NS("DMA_BUF");
 #endif
 
 module_init(qseecom_init);

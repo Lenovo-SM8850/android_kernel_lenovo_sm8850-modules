@@ -4385,5 +4385,5 @@ MODULE_SOFTDEP("pre: arm_smmu nvmem_qfprom socinfo governor_msm_adreno_tz govern
 #if (KERNEL_VERSION(6, 13, 0) <= LINUX_VERSION_CODE)
 MODULE_IMPORT_NS("DMA_BUF");
 #elif (KERNEL_VERSION(5, 18, 0) <= LINUX_VERSION_CODE)
-MODULE_IMPORT_NS(DMA_BUF);
+MODULE_IMPORT_NS("DMA_BUF");
 #endif
