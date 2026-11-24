@@ -17,7 +17,7 @@
  * sensible index.
  */
 
-int cvp_create_pkt_cmd_sys_init(struct cvp_hfi_cmd_sys_init_packet *pkt,
+static int cvp_create_pkt_cmd_sys_init(struct cvp_hfi_cmd_sys_init_packet *pkt,
 			   u32 arch_type)
 {
 	int rc = 0;
@@ -31,7 +31,7 @@ int cvp_create_pkt_cmd_sys_init(struct cvp_hfi_cmd_sys_init_packet *pkt,
 	return rc;
 }
 
-int cvp_create_pkt_cmd_sys_pc_prep(struct cvp_hfi_cmd_sys_pc_prep_packet *pkt)
+static int cvp_create_pkt_cmd_sys_pc_prep(struct cvp_hfi_cmd_sys_pc_prep_packet *pkt)
 {
 	int rc = 0;
 
@@ -43,7 +43,7 @@ int cvp_create_pkt_cmd_sys_pc_prep(struct cvp_hfi_cmd_sys_pc_prep_packet *pkt)
 	return rc;
 }
 
-int cvp_create_pkt_cmd_sys_debug_config(
+static int cvp_create_pkt_cmd_sys_debug_config(
 	struct cvp_hfi_cmd_sys_set_property_packet *pkt,
 	u32 mode)
 {
@@ -67,7 +67,7 @@ int cvp_create_pkt_cmd_sys_debug_config(
 	return 0;
 }
 
-int cvp_create_pkt_cmd_sys_coverage_config(
+static int cvp_create_pkt_cmd_sys_coverage_config(
 	struct cvp_hfi_cmd_sys_set_property_packet *pkt,
 	u32 mode)
 {
@@ -88,7 +88,7 @@ int cvp_create_pkt_cmd_sys_coverage_config(
 	return 0;
 }
 
-int cvp_create_pkt_cmd_sys_set_idle_indicator(
+static int cvp_create_pkt_cmd_sys_set_idle_indicator(
 	struct cvp_hfi_cmd_sys_set_property_packet *pkt,
 	u32 mode)
 {
@@ -109,7 +109,7 @@ int cvp_create_pkt_cmd_sys_set_idle_indicator(
 	return 0;
 }
 
-int cvp_create_pkt_cmd_sys_set_resource(
+static int cvp_create_pkt_cmd_sys_set_resource(
 		struct cvp_hfi_cmd_sys_set_resource_packet *pkt,
 		struct cvp_resource_hdr *res_hdr,
 		void *res_value)
@@ -168,7 +168,7 @@ int cvp_create_pkt_cmd_sys_set_resource(
 	return rc;
 }
 
-int cvp_create_pkt_cmd_sys_release_resource(
+static int cvp_create_pkt_cmd_sys_release_resource(
 		struct cvp_hfi_cmd_sys_release_resource_packet *pkt,
 		struct cvp_resource_hdr *res_hdr)
 {
@@ -272,7 +272,7 @@ static int create_pkt_cmd_sys_ubwc_config(
 	return rc;
 }
 
-int cvp_create_pkt_cmd_session_cmd(struct cvp_hal_session_cmd_pkt *pkt,
+static int cvp_create_pkt_cmd_session_cmd(struct cvp_hal_session_cmd_pkt *pkt,
 			int pkt_type, struct cvp_hal_session *session)
 {
 	int rc = 0;
@@ -292,7 +292,7 @@ int cvp_create_pkt_cmd_session_cmd(struct cvp_hal_session_cmd_pkt *pkt,
 	return rc;
 }
 
-int cvp_session_cmd_ktid(struct cvp_hfi_cmd_session_hdr *pkt,
+static int cvp_session_cmd_ktid(struct cvp_hfi_cmd_session_hdr *pkt,
 			int pkt_type, struct cvp_hal_session *session,
 			u64 ktid)
 {
@@ -314,7 +314,7 @@ int cvp_session_cmd_ktid(struct cvp_hfi_cmd_session_hdr *pkt,
 	return rc;
 }
 
-int cvp_create_pkt_cmd_sys_power_control(
+static int cvp_create_pkt_cmd_sys_power_control(
 	struct cvp_hfi_cmd_sys_set_property_packet *pkt, u32 enable)
 {
 	struct cvp_hfi_enable *hfi;
@@ -334,7 +334,7 @@ int cvp_create_pkt_cmd_sys_power_control(
 	return 0;
 }
 
-int cvp_create_pkt_cmd_session_set_buffers(
+static int cvp_create_pkt_cmd_session_set_buffers(
 		void *cmd,
 		struct cvp_hal_session *session,
 		u32 iova,
@@ -370,7 +370,7 @@ int cvp_create_pkt_cmd_session_set_buffers(
 	return rc;
 }
 
-int cvp_create_pkt_cmd_session_release_buffers(
+static int cvp_create_pkt_cmd_session_release_buffers(
 		void *cmd,
 		struct cvp_hal_session *session)
 {
@@ -396,7 +396,7 @@ int cvp_create_pkt_cmd_session_release_buffers(
 	return 0;
 }
 
-int cvp_create_pkt_cmd_session_send(
+static int cvp_create_pkt_cmd_session_send(
 		struct cvp_hal_session *session,
 		struct eva_kmd_hfi_packet *in_pkt)
 {
@@ -466,7 +466,7 @@ static int get_hfi_ssr_type(enum hal_ssr_trigger_type type)
 	return rc;
 }
 
-int cvp_create_pkt_ssr_cmd(enum hal_ssr_trigger_type type,
+static int cvp_create_pkt_ssr_cmd(enum hal_ssr_trigger_type type,
 		struct cvp_hfi_cmd_sys_test_ssr_packet *pkt)
 {
 	if (!pkt) {
@@ -479,7 +479,7 @@ int cvp_create_pkt_ssr_cmd(enum hal_ssr_trigger_type type,
 	return 0;
 }
 
-int cvp_create_pkt_cmd_sys_image_version(
+static int cvp_create_pkt_cmd_sys_image_version(
 		struct cvp_hfi_cmd_sys_get_property_packet *pkt)
 {
 	if (!pkt) {

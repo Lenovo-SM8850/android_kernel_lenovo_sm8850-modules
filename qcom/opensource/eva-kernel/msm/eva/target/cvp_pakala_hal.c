@@ -8,7 +8,7 @@
 
 extern struct cvp_hal_ops hal_ops;
 
-void __check_tensilica_in_reset_pakala(struct iris_hfi_device *device)
+static void __check_tensilica_in_reset_pakala(struct iris_hfi_device *device)
 {
 	u32 xtss_reset_ro = 1;
 
@@ -186,7 +186,7 @@ static void __enter_video_ctl_noc_lpi(struct iris_hfi_device *device)
 	}
 }
 
-void setup_dsp_uc_memmap_vpu5_pakala(struct iris_hfi_device *device)
+static void setup_dsp_uc_memmap_vpu5_pakala(struct iris_hfi_device *device)
 {
 	/* initialize DSP QTBL & UCREGION with CPU queues */
 #ifdef USE_PRESIL42
@@ -201,7 +201,7 @@ void setup_dsp_uc_memmap_vpu5_pakala(struct iris_hfi_device *device)
 			 device->dsp_iface_q_table.mem_data.size);
 }
 
-void interrupt_init_iris2_pakala(struct iris_hfi_device *device)
+static void interrupt_init_iris2_pakala(struct iris_hfi_device *device)
 {
 	u32 mask_val = 0;
 
@@ -222,7 +222,7 @@ void interrupt_init_iris2_pakala(struct iris_hfi_device *device)
 		CVP_SS_IRQ_MASK, mask_val);
 }
 
-int __check_ctl_power_on_pakala(struct iris_hfi_device *device)
+static int __check_ctl_power_on_pakala(struct iris_hfi_device *device)
 {
 	u32 reg;
 
@@ -237,7 +237,7 @@ int __check_ctl_power_on_pakala(struct iris_hfi_device *device)
 	return 0;
 }
 
-int __check_core_power_on_pakala(struct iris_hfi_device *device)
+static int __check_core_power_on_pakala(struct iris_hfi_device *device)
 {
 	u32 reg;
 
@@ -252,7 +252,7 @@ int __check_core_power_on_pakala(struct iris_hfi_device *device)
 	return 0;
 }
 
-int __power_on_controller_pakala(struct iris_hfi_device *device)
+static int __power_on_controller_pakala(struct iris_hfi_device *device)
 {
 	int rc = 0;
 
@@ -326,7 +326,7 @@ fail_reset_sleep:
 	return rc;
 }
 
-int __power_on_core_pakala(struct iris_hfi_device *device)
+static int __power_on_core_pakala(struct iris_hfi_device *device)
 {
 	int rc = 0;
 
@@ -371,7 +371,7 @@ fail_enable_clk_src:
 	return rc;
 }
 
-int __power_off_core_pakala(struct iris_hfi_device *device)
+static int __power_off_core_pakala(struct iris_hfi_device *device)
 {
 	u32 config, value = 0, count = 0;
 	u32 max_count = 10;
@@ -452,7 +452,7 @@ advance:
 	return 0;
 }
 
-int __power_off_controller_pakala(struct iris_hfi_device *device)
+static int __power_off_controller_pakala(struct iris_hfi_device *device)
 {
 	u32 lpi_status, count = 0, max_count = 1000;
 	u32 lpi_control;
@@ -557,7 +557,7 @@ int __power_off_controller_pakala(struct iris_hfi_device *device)
 	return 0;
 }
 
-void __print_sidebandmanager_regs_pakala(struct iris_hfi_device *device)
+static void __print_sidebandmanager_regs_pakala(struct iris_hfi_device *device)
 {
 	u32 sbm_ln0_low, axi_cbcr, val;
 	u32 main_sbm_ln0_low = 0xdeadbeef, main_sbm_ln0_high = 0xdeadbeef;
@@ -634,7 +634,7 @@ exit:
 		cpu_cs_x2rpmh);
 }
 
-int __enable_hw_power_collapse_pakala(struct iris_hfi_device *device)
+static int __enable_hw_power_collapse_pakala(struct iris_hfi_device *device)
 {
 	int rc = 0, loop = 10;
 	u32 reg_gdsc;
@@ -674,7 +674,7 @@ int __enable_hw_power_collapse_pakala(struct iris_hfi_device *device)
 	return rc;
 }
 
-int __set_registers_pakala(struct iris_hfi_device *device)
+static int __set_registers_pakala(struct iris_hfi_device *device)
 {
 	struct msm_cvp_core *core;
 	struct msm_cvp_platform_data *pdata;
@@ -752,7 +752,7 @@ int __set_registers_pakala(struct iris_hfi_device *device)
 	return 0;
 }
 
-void __print_reg_details_errlog3_low_pakala(u32 val)
+static void __print_reg_details_errlog3_low_pakala(u32 val)
 {
 	u32 mid, sid;
 
@@ -764,7 +764,7 @@ void __print_reg_details_errlog3_low_pakala(u32 val)
 		sid);
 }
 
-void __dump_noc_regs_pakala(struct iris_hfi_device *device)
+static void __dump_noc_regs_pakala(struct iris_hfi_device *device)
 {
 #ifndef USE_PRESIL42
 	u32 val = 0, config;
@@ -880,7 +880,7 @@ void __dump_noc_regs_pakala(struct iris_hfi_device *device)
 #endif
 }
 
-void __noc_error_info_iris2_pakala(struct iris_hfi_device *device)
+static void __noc_error_info_iris2_pakala(struct iris_hfi_device *device)
 {
 	struct msm_cvp_core *core;
 	struct cvp_noc_log *noc_log;

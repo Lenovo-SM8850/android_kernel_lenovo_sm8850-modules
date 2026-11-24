@@ -51,7 +51,7 @@ static int __mmrm_client_set_value_in_range(struct mmrm_client *client,
 #endif
 }
 
-int msm_cvp_mmrm_notifier_cb(
+static int msm_cvp_mmrm_notifier_cb(
 	struct mmrm_client_notifier_data *notifier_data)
 {
 	if (!notifier_data) {

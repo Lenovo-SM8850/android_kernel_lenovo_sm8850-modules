@@ -1578,7 +1578,7 @@ static void print_power(const struct eva_power_req *pwr_req)
 	}
 }
 
-void __dsp_cvp_sess_create(struct cvp_dsp_cmd_msg *cmd)
+static void __dsp_cvp_sess_create(struct cvp_dsp_cmd_msg *cmd)
 {
 	struct cvp_dsp_apps *me = &gfa_cv;
 	struct msm_cvp_inst *inst = NULL, *inst_temp = NULL;
@@ -1762,7 +1762,7 @@ fail_lookup:
 	cmd->ret = -1;
 }
 
-void __dsp_cvp_sess_delete(struct cvp_dsp_cmd_msg *cmd)
+static void __dsp_cvp_sess_delete(struct cvp_dsp_cmd_msg *cmd)
 {
 	struct cvp_dsp_apps *me = &gfa_cv;
 	struct msm_cvp_inst *inst, *inst_temp = NULL;
@@ -1834,7 +1834,7 @@ dsp_fail_delete:
 	return;
 }
 
-void __dsp_cvp_set_session_configs(struct cvp_dsp_cmd_msg *cmd)
+static void __dsp_cvp_set_session_configs(struct cvp_dsp_cmd_msg *cmd)
 {
 	struct cvp_dsp_apps *me = &gfa_cv;
 	struct msm_cvp_inst *inst;
@@ -1885,7 +1885,7 @@ dsp_fail_set_session_configs:
 	return;
 }
 
-void __dsp_cvp_power_req(struct cvp_dsp_cmd_msg *cmd)
+static void __dsp_cvp_power_req(struct cvp_dsp_cmd_msg *cmd)
 {
 	struct cvp_dsp_apps *me = &gfa_cv;
 	struct msm_cvp_inst *inst;
@@ -1951,7 +1951,7 @@ dsp_fail_power_req:
 	return;
 }
 
-void __dsp_cvp_buf_register(struct cvp_dsp_cmd_msg *cmd)
+static void __dsp_cvp_buf_register(struct cvp_dsp_cmd_msg *cmd)
 {
 	struct cvp_dsp_apps *me = &gfa_cv;
 	struct msm_cvp_inst *inst;
@@ -2027,7 +2027,7 @@ dsp_fail_buf_reg:
 	kfree(kmd);
 }
 
-void __dsp_cvp_buf_deregister(struct cvp_dsp_cmd_msg *cmd)
+static void __dsp_cvp_buf_deregister(struct cvp_dsp_cmd_msg *cmd)
 {
 	struct cvp_dsp_apps *me = &gfa_cv;
 	struct msm_cvp_inst *inst;
@@ -2097,7 +2097,7 @@ fail_dsp_buf_dereg:
 	kfree(kmd);
 }
 
-void __dsp_cvp_mem_alloc(struct cvp_dsp_cmd_msg *cmd)
+static void __dsp_cvp_mem_alloc(struct cvp_dsp_cmd_msg *cmd)
 {
 	struct cvp_dsp_apps *me = &gfa_cv;
 	int rc;
@@ -2175,7 +2175,7 @@ fail_fastrpc_node:
 
 }
 
-void __dsp_cvp_mem_free(struct cvp_dsp_cmd_msg *cmd)
+static void __dsp_cvp_mem_free(struct cvp_dsp_cmd_msg *cmd)
 {
 	struct cvp_dsp_apps *me = &gfa_cv;
 	int rc;
@@ -2257,7 +2257,7 @@ fail_fastrpc_dev_unmap_dma:
 		cvp_put_fastrpc_node(frpc_node);
 }
 
-void __dsp_cvp_sess_start(struct cvp_dsp_cmd_msg *cmd)
+static void __dsp_cvp_sess_start(struct cvp_dsp_cmd_msg *cmd)
 {
 	struct cvp_dsp_apps *me = &gfa_cv;
 	struct msm_cvp_inst *inst;
@@ -2302,7 +2302,7 @@ void __dsp_cvp_sess_start(struct cvp_dsp_cmd_msg *cmd)
 	dprintk(CVP_DSP, "%s session started\n", __func__);
 }
 
-void __dsp_cvp_sess_stop(struct cvp_dsp_cmd_msg *cmd)
+static void __dsp_cvp_sess_stop(struct cvp_dsp_cmd_msg *cmd)
 {
 	struct cvp_dsp_apps *me = &gfa_cv;
 	struct msm_cvp_inst *inst;
@@ -2347,7 +2347,7 @@ void __dsp_cvp_sess_stop(struct cvp_dsp_cmd_msg *cmd)
 	dprintk(CVP_DSP, "%s session stoppd\n", __func__);
 }
 
-void __dsp_cvp_set_session_name(struct cvp_dsp_cmd_msg *cmd)
+static void __dsp_cvp_set_session_name(struct cvp_dsp_cmd_msg *cmd)
 {
 	struct cvp_dsp_apps *me = &gfa_cv;
 	struct msm_cvp_inst *inst;
@@ -2377,7 +2377,7 @@ void __dsp_cvp_set_session_name(struct cvp_dsp_cmd_msg *cmd)
 
 }
 
-void __dsp_cvp_pd_init(struct cvp_dsp_cmd_msg *cmd)
+static void __dsp_cvp_pd_init(struct cvp_dsp_cmd_msg *cmd)
 {
 	struct cvp_dsp_apps *me = &gfa_cv;
 	struct cvp_dsp2cpu_cmd *dsp2cpu_cmd = &me->pending_dsp2cpu_cmd;

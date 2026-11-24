@@ -157,7 +157,7 @@ void eva_kmd_debug_log_dump(void)
 #endif
 }
 
-int eva_queue_dump(struct cvp_iface_q_info *iface_q,
+static int eva_queue_dump(struct cvp_iface_q_info *iface_q,
 		u8 *align_virtual_addr, uint32_t queue_idx)
 {
 #ifdef CVP_SW_DBG_BUF_ENABLED

@@ -26,7 +26,7 @@
 atomic_t cvp_error_count;
 bool trigger_smmu_fault;
 
-void msm_cvp_bug_on(bool flag, bool isdelay)
+static void msm_cvp_bug_on(bool flag, bool isdelay)
 {
 #ifdef USE_PRESIL
 	while (flag)
@@ -339,7 +339,7 @@ static void handle_sys_release_res_done(
 			SYS_MSG_INDEX(HAL_SYS_RELEASE_RESOURCE_DONE)]);
 }
 
-void change_cvp_inst_state(struct msm_cvp_inst *inst, enum instance_state state)
+static void change_cvp_inst_state(struct msm_cvp_inst *inst, enum instance_state state)
 {
 	if (!inst) {
 		dprintk(CVP_ERR, "Invalid parameter %s\n", __func__);
@@ -1326,7 +1326,7 @@ static char state_names[MSM_CVP_CORE_INVALID + 1][32] = {
 	"CORE_INVALID"
 };
 
-int msm_cvp_state_result_check(struct msm_cvp_inst *inst, int input, int state)
+static int msm_cvp_state_result_check(struct msm_cvp_inst *inst, int input, int state)
 {
 	if (input == -ETIMEDOUT) {
 		dprintk(CVP_ERR,
@@ -1901,7 +1901,7 @@ int cvp_print_inst(u32 tag, struct msm_cvp_inst *inst)
 	return 0;
 }
 
-int cvp_print_frpc_node(u32 tag, struct cvp_dsp_fastrpc_driver_entry *frpc_node)
+static __maybe_unused int cvp_print_frpc_node(u32 tag, struct cvp_dsp_fastrpc_driver_entry *frpc_node)
 {
 	if (!frpc_node) {
 		dprintk(CVP_ERR, "%s invalid frpc node %pK\n", __func__, frpc_node);

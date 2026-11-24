@@ -5398,7 +5398,7 @@ static int __initialize_packetization(struct iris_hfi_device *device)
 	return rc;
 }
 
-void __init_cvp_ops(struct iris_hfi_device *device)
+static void __init_cvp_ops(struct iris_hfi_device *device)
 {
 	device->hal_ops = &hal_ops;
 }

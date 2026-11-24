@@ -127,7 +127,7 @@ int print_smem_no_instance(u32 tag, const char *str,
 	return 0;
 }
 
-int print_smem_dsp(u32 tag, const char *str, struct cvp_dsp_trace_session *dsp_trace_sess,
+static int print_smem_dsp(u32 tag, const char *str, struct cvp_dsp_trace_session *dsp_trace_sess,
 		struct msm_cvp_smem *smem)
 {
 	int i;
@@ -195,7 +195,7 @@ void print_cvp_buffer(u32 tag, const char *str, struct msm_cvp_inst *inst,
 	print_smem(tag, str, inst, cbuf->smem);
 }
 
-void print_cvp_buffer_dsp(u32 tag, const char *str, struct cvp_dsp_trace_session *dsp_trace_sess,
+static void print_cvp_buffer_dsp(u32 tag, const char *str, struct cvp_dsp_trace_session *dsp_trace_sess,
 		struct cvp_internal_buf *cbuf)
 {
 	if (!dsp_trace_sess || !cbuf) {
@@ -273,7 +273,7 @@ void print_client_buffer(u32 tag, const char *str,
 		cbuf->reserved[0]);
 }
 
-void print_persist_buffer_info(u32 tag, const char *str, u32 buffer_size,
+static void print_persist_buffer_info(u32 tag, const char *str, u32 buffer_size,
 		struct msm_cvp_inst *inst, struct eva_kmd_hfi_packet *pkt)
 {
 	struct cvp_hfi_persist_buffer_packet *persist_pkt =
@@ -2248,7 +2248,7 @@ int msm_cvp_session_deinit_buffers(struct msm_cvp_inst *inst)
 	return rc;
 }
 
-void msm_cvp_print_dsp_buf_info(struct cvp_internal_buf *buf,
+static void msm_cvp_print_dsp_buf_info(struct cvp_internal_buf *buf,
 					struct cvp_dsp_fastrpc_driver_entry *frpc_node,
 					struct msm_cvp_core *core,
 					u32 tag,
