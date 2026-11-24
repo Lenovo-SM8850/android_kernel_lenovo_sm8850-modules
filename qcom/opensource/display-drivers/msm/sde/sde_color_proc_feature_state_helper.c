@@ -6,12 +6,12 @@
 #include "sde_kms.h"
 #include "sde_color_proc_feature_state_helper.h"
 
-void cp_get_gamut_mode(void *src_prop, u32 *mode)
+static void cp_get_gamut_mode(void *src_prop, u32 *mode)
 {
 	*mode = atomic_read(&((struct cp_vig_gamut_mode *)src_prop)->vig_gamut_mode);
 }
 
-void cp_get_pa_mode(void *src_prop, u32 *mode)
+static void cp_get_pa_mode(void *src_prop, u32 *mode)
 {
 	*mode = atomic_read(&((struct cp_pa_mode *)src_prop)->pa_mode);
 }
@@ -43,7 +43,7 @@ void cp_feature_get_curr_mode(enum cp_state_features feature, void *src_prop, u3
 	cp_feat_state_get_funcs[feature_group](src_prop, mode);
 }
 
-void cp_set_vig_gamut_mode(void *cp_mode, u64 prop_val, u32 feature_id)
+static void cp_set_vig_gamut_mode(void *cp_mode, u64 prop_val, u32 feature_id)
 {
 	u32 mode;
 	struct cp_vig_gamut_mode *cp_gamut_mode = (struct cp_vig_gamut_mode *) cp_mode;
@@ -63,7 +63,7 @@ void cp_set_vig_gamut_mode(void *cp_mode, u64 prop_val, u32 feature_id)
 
 }
 
-void cp_set_pa_mode(void *cp_mode, u64 prop_val, u32 feature_id)
+static void cp_set_pa_mode(void *cp_mode, u64 prop_val, u32 feature_id)
 {
 	struct cp_pa_mode *pa_mode;
 

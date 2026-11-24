@@ -320,7 +320,7 @@ ktime_t sde_encoder_calc_last_vsync_timestamp(struct drm_encoder *drm_enc)
 	return sde_encoder_event_timestamp_adjust(DRMID(drm_enc), fps, vsync_counter);
 }
 
-ktime_t sde_encoder_calc_last_empulse_timestamp(struct drm_encoder *drm_enc)
+static ktime_t sde_encoder_calc_last_empulse_timestamp(struct drm_encoder *drm_enc)
 {
 	struct sde_encoder_virt *sde_enc;
 	struct sde_encoder_phys *cur_master;
@@ -2374,7 +2374,7 @@ void sde_encoder_cancel_vrr_timers(struct drm_encoder *encoder)
 	}
 }
 
-void sde_encoder_vhm_wakelock(struct sde_encoder_virt *sde_enc, bool enable)
+static void sde_encoder_vhm_wakelock(struct sde_encoder_virt *sde_enc, bool enable)
 {
 	struct msm_drm_private *priv;
 	struct sde_kms *sde_kms;
@@ -4795,7 +4795,7 @@ static enum sde_wb sde_encoder_get_wb(struct sde_mdss_cfg *catalog,
 	return WB_MAX;
 }
 
-void sde_encoder_hw_fence_status(struct sde_kms *sde_kms,
+static void sde_encoder_hw_fence_status(struct sde_kms *sde_kms,
 	struct drm_crtc *crtc, struct sde_hw_ctl *hw_ctl)
 {
 	u64 start_timestamp, end_timestamp;
@@ -4824,7 +4824,7 @@ void sde_encoder_hw_fence_status(struct sde_kms *sde_kms,
 	}
 }
 
-void sde_encoder_perf_uidle_status(struct sde_kms *sde_kms,
+static void sde_encoder_perf_uidle_status(struct sde_kms *sde_kms,
 	struct drm_crtc *crtc)
 {
 	struct sde_hw_uidle *uidle;
@@ -5278,7 +5278,7 @@ static void sde_encoder_wait_for_esync_vsync(struct sde_encoder_phys *phys)
 		phys->ops.control_esync_vsync_irq(phys, false, true);
 }
 
-void sde_encoder_check_prog_fetch_region(struct drm_encoder *drm_enc)
+static void sde_encoder_check_prog_fetch_region(struct drm_encoder *drm_enc)
 {
 	struct sde_encoder_virt *sde_enc = to_sde_encoder_virt(drm_enc);
 	struct msm_mode_info *mode_info = &sde_enc->mode_info;
@@ -6679,7 +6679,7 @@ bypass_srtimer:
 	}
 }
 
-void sde_encoder_phys_arp_sw_timer_frequency_stepping(struct sde_encoder_phys *phys_enc,
+static void sde_encoder_phys_arp_sw_timer_frequency_stepping(struct sde_encoder_phys *phys_enc,
 	u32 new_commit)
 {
 	struct sde_encoder_virt *sde_enc = to_sde_encoder_virt(phys_enc->parent);
@@ -6804,7 +6804,7 @@ static void sde_encoder_handle_collision_prior_EPT(struct sde_encoder_phys *phys
 
 }
 
-void sde_encoder_handle_self_refresh_video_psr(struct sde_encoder_phys *phys_enc, u32 new_commit)
+static void sde_encoder_handle_self_refresh_video_psr(struct sde_encoder_phys *phys_enc, u32 new_commit)
 {
 	struct sde_encoder_virt *sde_enc = to_sde_encoder_virt(phys_enc->parent);
 	struct sde_encoder_vrr_cfg *vrr_cfg = &phys_enc->sde_vrr_cfg;
@@ -7203,7 +7203,7 @@ static int _sde_encoder_prepare_for_kickoff_processing(struct drm_encoder *drm_e
 	return ret;
 }
 
-void _sde_encoder_delay_kickoff_processing(struct sde_encoder_virt *sde_enc)
+static void _sde_encoder_delay_kickoff_processing(struct sde_encoder_virt *sde_enc)
 {
 	ktime_t current_ts, ept_ts;
 	u32 avr_step_fps, min_fps = 0, qsync_mode, fps;

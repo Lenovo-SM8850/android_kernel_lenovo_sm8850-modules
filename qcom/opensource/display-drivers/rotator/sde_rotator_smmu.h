@@ -47,4 +47,7 @@ void sde_smmu_unmap_dma_buf(struct sg_table *table, int domain,
 
 int sde_smmu_secure_ctrl(int enable);
 
+void sde_rotator_smmu_driver_register(void);
+void sde_rotator_smmu_driver_unregister(void);
+
 #endif /* SDE_ROTATOR_SMMU_H */

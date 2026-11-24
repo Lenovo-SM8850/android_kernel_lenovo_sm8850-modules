@@ -28,7 +28,7 @@ static int __sgl_cmp(const void *a, const void *b)
 	return  (l->ipa_base - r->ipa_base);
 }
 
-int _sde_vm_validate_sgl(struct gh_sgl_desc *expected,
+static int _sde_vm_validate_sgl(struct gh_sgl_desc *expected,
 			 struct gh_sgl_desc *assigned)
 {
 	u32 idx;
@@ -97,7 +97,7 @@ static void sde_vm_mem_lend_notification_handler(enum gh_mem_notifier_tag tag,
 			tag, payload->label, payload->mem_handle);
 }
 
-void sde_vm_irq_lend_notification_handler(void *req,
+static void sde_vm_irq_lend_notification_handler(void *req,
 		unsigned long notif_type, enum gh_irq_label label)
 {
 	SDE_INFO("IRQ LEND notification for label: %d\n", label);
@@ -192,7 +192,7 @@ end:
 	return rc;
 }
 
-int _sde_vm_resource_init(struct sde_kms *sde_kms,
+static int _sde_vm_resource_init(struct sde_kms *sde_kms,
 		struct drm_atomic_state *state)
 {
 	int rc = 0;
@@ -204,7 +204,7 @@ int _sde_vm_resource_init(struct sde_kms *sde_kms,
 	return rc;
 }
 
-int _sde_vm_populate_res(struct sde_kms *sde_kms, struct sde_vm_trusted *vm)
+static int _sde_vm_populate_res(struct sde_kms *sde_kms, struct sde_vm_trusted *vm)
 {
 	struct msm_io_res io_res;
 	int rc = 0;

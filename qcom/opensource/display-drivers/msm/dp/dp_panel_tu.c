@@ -462,7 +462,7 @@ static void _dp_calc_extra_bytes(struct tu_algo_data *tu)
 	tu->extra_pclk_cycles_in_link_clk = fixp2int_ceil(temp1_fp);
 }
 
-void dp_tu_update_timings(struct dp_tu_calc_input *in, struct tu_algo_data *tu)
+static void dp_tu_update_timings(struct dp_tu_calc_input *in, struct tu_algo_data *tu)
 {
 	int nlanes = in->nlanes;
 	int dsc_num_slices = in->num_of_dsc_slices;

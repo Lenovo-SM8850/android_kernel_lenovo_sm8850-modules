@@ -99,7 +99,7 @@ static void hfi_dbg_property_handler(u32 display_id, u32 cmd_id,
 		SDE_ERROR("invalid payload or hfi command 0x%x\n", cmd_id);
 }
 
-int hfi_dbg_device_setup(struct hfi_kms *hfi_kms)
+static int hfi_dbg_device_setup(struct hfi_kms *hfi_kms)
 {
 	struct hfi_cmdbuf_t *cmd_buf;
 	int ret;
@@ -174,7 +174,7 @@ int hfi_dbg_device_setup(struct hfi_kms *hfi_kms)
 	return ret;
 }
 
-ssize_t hfi_devcoredump_read(char *buffer, loff_t offset, size_t count)
+static ssize_t hfi_devcoredump_read(char *buffer, loff_t offset, size_t count)
 {
 	ssize_t read_sz, evtlog_sz, total_sz;
 	ssize_t copied = 0;
@@ -211,7 +211,7 @@ ssize_t hfi_devcoredump_read(char *buffer, loff_t offset, size_t count)
 }
 
 #if IS_ENABLED(CONFIG_QCOM_VA_MINIDUMP)
-void hfi_dbg_add_va_region(void)
+static void hfi_dbg_add_va_region(void)
 {
 	if (hfi_dbg->buff_map.reg_addr.size)
 		sde_mini_dump_add_va_region("reg_dump",
@@ -229,13 +229,13 @@ void hfi_dbg_add_va_region(void)
 			hfi_dbg->buff_map.dbg_bus_addr.local_addr);
 }
 #else
-void hfi_dbg_add_va_region(void)
+static void hfi_dbg_add_va_region(void)
 {
 
 }
 #endif
 
-void _hfi_dump_buff(void __iomem *local_addr, u32 size, char *evt_type)
+static void _hfi_dump_buff(void __iomem *local_addr, u32 size, char *evt_type)
 {
 	u32 in_log;
 	int sz_read = 0;
@@ -316,7 +316,7 @@ static void _hfi_dump_all(bool do_panic, const char *name, bool dump_secure)
 		panic(name);
 }
 
-void hfi_dbg_dump(bool do_panic, const char *name, bool dump_secure, u64 dump_blk_mask)
+static void hfi_dbg_dump(bool do_panic, const char *name, bool dump_secure, u64 dump_blk_mask)
 {
 	_hfi_dump_all(do_panic, name, dump_secure);
 }

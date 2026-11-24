@@ -28,6 +28,7 @@
 #include "sde_core_irq.h"
 #include "sde_dsc_helper.h"
 #include "sde_vdc_helper.h"
+#include "sde_encoder_dce.h"
 
 #define SDE_DEBUG_DCE(e, fmt, ...) SDE_DEBUG("enc%d " fmt,\
 		(e) ? (e)->base.base.id : -1, ##__VA_ARGS__)
@@ -855,7 +856,7 @@ static void _dce_vdc_disable(struct sde_encoder_virt *sde_enc)
 	 */
 }
 
-bool _dce_dsc_is_dirty(struct sde_encoder_virt *sde_enc)
+static __maybe_unused bool _dce_dsc_is_dirty(struct sde_encoder_virt *sde_enc)
 {
 	int i;
 
@@ -871,7 +872,7 @@ bool _dce_dsc_is_dirty(struct sde_encoder_virt *sde_enc)
 	return false;
 }
 
-bool _dce_vdc_is_dirty(struct sde_encoder_virt *sde_enc)
+static __maybe_unused bool _dce_vdc_is_dirty(struct sde_encoder_virt *sde_enc)
 {
 	int i;
 

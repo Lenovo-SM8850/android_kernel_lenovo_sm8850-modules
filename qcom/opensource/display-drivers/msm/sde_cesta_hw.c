@@ -28,7 +28,7 @@
 #define DEBUG_FLUSH_MISSED_CLEAR	0x24
 #define DISP_CC_MISC_CMD		0x0
 
-void _sde_cesta_hw_init(struct sde_cesta *cesta)
+static void _sde_cesta_hw_init(struct sde_cesta *cesta)
 {
 	int i, scc_client_start = 0;
 
@@ -69,7 +69,7 @@ static void _sde_cesta_update_clk_gate_en(struct sde_cesta *cesta, bool en_mdp_c
 	}
 }
 
-void _sde_cesta_hw_force_db_update(struct sde_cesta *cesta, u32 idx,
+static void _sde_cesta_hw_force_db_update(struct sde_cesta *cesta, u32 idx,
 		bool en_auto_active, enum sde_cesta_ctrl_pwr_req_mode req_mode, bool en_hw_sleep,
 		bool en_mdp_clk_gate, bool cmd_mode)
 {
@@ -105,13 +105,13 @@ void _sde_cesta_hw_force_db_update(struct sde_cesta *cesta, u32 idx,
 	wmb(); /* for reset to be applied immediately */
 }
 
-void _sde_cesta_hw_reset(struct sde_cesta *cesta, u32 idx, bool en)
+static void _sde_cesta_hw_reset(struct sde_cesta *cesta, u32 idx, bool en)
 {
 	dss_reg_w(&cesta->scc_io[idx], SCC_OVERRIDE_CTRL, en ? BIT(31) : 0, cesta->debug_mode);
 	wmb(); /* for reset to be applied immediately */
 }
 
-void _sde_cesta_hw_override_ctrl_setup(struct sde_cesta *cesta, u32 idx, u32 force_flags)
+static void _sde_cesta_hw_override_ctrl_setup(struct sde_cesta *cesta, u32 idx, u32 force_flags)
 {
 	u32 val = 0;
 
@@ -128,7 +128,7 @@ void _sde_cesta_hw_override_ctrl_setup(struct sde_cesta *cesta, u32 idx, u32 for
 	wmb(); /* for force votes to be applied immediately */
 }
 
-void _sde_cesta_hw_ctrl_setup(struct sde_cesta *cesta, u32 idx, struct sde_cesta_ctrl_cfg *cfg)
+static void _sde_cesta_hw_ctrl_setup(struct sde_cesta *cesta, u32 idx, struct sde_cesta_ctrl_cfg *cfg)
 {
 	u32 val = 0;
 	u32 misc_cmd_r, misc_cmd_w;
@@ -178,7 +178,7 @@ void _sde_cesta_hw_ctrl_setup(struct sde_cesta *cesta, u32 idx, struct sde_cesta
 	dss_reg_w(&cesta->scc_io[idx], SCC_CTRL, val, cesta->debug_mode);
 }
 
-int _sde_cesta_hw_poll_handshake(struct sde_cesta *cesta, u32 idx)
+static int _sde_cesta_hw_poll_handshake(struct sde_cesta *cesta, u32 idx)
 {
 	void __iomem *addr = cesta->scc_io[idx].base + SCC_HW_STATE_READBACK;
 	u32 handshake_mask = BIT(4) | BIT(5);
@@ -190,7 +190,7 @@ int _sde_cesta_hw_poll_handshake(struct sde_cesta *cesta, u32 idx)
 			100, 1000);
 }
 
-void _sde_cesta_hw_get_status(struct sde_cesta *cesta, u32 idx, struct sde_cesta_scc_status *status)
+static void _sde_cesta_hw_get_status(struct sde_cesta *cesta, u32 idx, struct sde_cesta_scc_status *status)
 {
 	u32 val;
 
@@ -207,12 +207,12 @@ void _sde_cesta_hw_get_status(struct sde_cesta *cesta, u32 idx, struct sde_cesta
 	dss_reg_w(&cesta->scc_io[idx], DEBUG_FLUSH_MISSED_CLEAR, 0x1, cesta->debug_mode);
 }
 
-u32 _sde_cesta_hw_get_pwr_event(struct sde_cesta *cesta)
+static u32 _sde_cesta_hw_get_pwr_event(struct sde_cesta *cesta)
 {
 	return dss_reg_r(&cesta->wrapper_io, RSCC_PWR_CTRL, cesta->debug_mode);
 }
 
-u32 _sde_get_rscc_pwr_ctrl_status(struct sde_cesta *cesta)
+static u32 _sde_get_rscc_pwr_ctrl_status(struct sde_cesta *cesta)
 {
 	return dss_reg_r(&cesta->rscc_io, RSCC_SEQ_PWR_CTRL_STATUS, cesta->debug_mode);
 }

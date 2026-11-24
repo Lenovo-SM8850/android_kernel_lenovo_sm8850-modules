@@ -1134,7 +1134,7 @@ static int _sde_connector_update_bl_scale(struct sde_connector *c_conn)
 	return rc;
 }
 
-void sde_connector_set_colorspace(struct sde_connector *c_conn)
+static void sde_connector_set_colorspace(struct sde_connector *c_conn)
 {
 	int rc = 0;
 
@@ -1447,7 +1447,7 @@ static bool sde_connector_power_on_off_frame(struct drm_connector *connector)
 	return false;
 }
 
-int sde_connector_check_update_vhm_cmd(struct drm_connector *connector)
+static int sde_connector_check_update_vhm_cmd(struct drm_connector *connector)
 {
 	struct sde_connector *c_conn;
 	struct sde_connector_state *c_state;

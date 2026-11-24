@@ -67,7 +67,7 @@ static struct hfi_kms *sde_crtc_get_kms(struct sde_crtc *crtc)
 	return NULL;
 }
 
-int _hfi_crtc_add_base_prop_helper(u32 hfi_prop, struct sde_crtc *crtc,
+static int _hfi_crtc_add_base_prop_helper(u32 hfi_prop, struct sde_crtc *crtc,
 		struct sde_crtc_state *cstate,
 		struct hfi_util_u32_prop_helper *prop_collector, u32 drm_prop)
 {
@@ -172,7 +172,7 @@ end:
 	return ret;
 }
 
-int hfi_crtc_populate_custom_kv_setter_props(struct sde_crtc *crtc, u32 disp_id,
+static int hfi_crtc_populate_custom_kv_setter_props(struct sde_crtc *crtc, u32 disp_id,
 		struct sde_crtc_state *cstate, struct hfi_cmdbuf_t *cmd_buf)
 {
 	int i, ret = 0;
@@ -222,7 +222,7 @@ end:
 	return ret;
 }
 
-int _hfi_crtc_populate_props(struct hfi_cmdbuf_t *cmd_buf, u32 disp_id,
+static int _hfi_crtc_populate_props(struct hfi_cmdbuf_t *cmd_buf, u32 disp_id,
 		struct sde_crtc *crtc, struct sde_crtc_state *old_state)
 {
 	int ret = 0;
@@ -250,7 +250,7 @@ int _hfi_crtc_populate_props(struct hfi_cmdbuf_t *cmd_buf, u32 disp_id,
 	return ret;
 }
 
-void _hfi_crtc_disable(struct hfi_cmdbuf_t *cmd_buf, u32 disp_id, struct sde_crtc *crtc,
+static __maybe_unused void _hfi_crtc_disable(struct hfi_cmdbuf_t *cmd_buf, u32 disp_id, struct sde_crtc *crtc,
 		struct sde_crtc_state *cstate)
 {
 	int ret;
@@ -386,7 +386,7 @@ int hfi_crtc_alloc_shared_map_buffers(struct sde_crtc *crtc)
 	return 0;
 }
 
-void hfi_crtc_destroy(struct sde_crtc *crtc)
+static void hfi_crtc_destroy(struct sde_crtc *crtc)
 {
 	int ret = 0;
 	struct hfi_crtc *crtc_hfi;
@@ -431,7 +431,7 @@ static int hfi_crtc_add_hfi_cmds(struct hfi_cmdbuf_t *cmd_buf, u32 disp_id,
 	return ret;
 }
 
-int hfi_crtc_atomic_check(struct sde_crtc *crtc, struct sde_crtc_state *state)
+static __maybe_unused int hfi_crtc_atomic_check(struct sde_crtc *crtc, struct sde_crtc_state *state)
 {
 	int ret = 0;
 	struct hfi_cmdbuf_t *cmd_buf = NULL;
@@ -474,7 +474,7 @@ int hfi_crtc_atomic_check(struct sde_crtc *crtc, struct sde_crtc_state *state)
 	return ret;
 }
 
-int hfi_crtc_atomic_begin(struct sde_crtc *sde_crtc, struct sde_crtc_state *cstate)
+static int hfi_crtc_atomic_begin(struct sde_crtc *sde_crtc, struct sde_crtc_state *cstate)
 {
 	int ret = 0;
 	struct hfi_cmdbuf_t *cmd_buf = NULL;
@@ -519,7 +519,7 @@ int hfi_crtc_atomic_begin(struct sde_crtc *sde_crtc, struct sde_crtc_state *csta
 	return ret;
 }
 
-int hfi_crtc_set_idle_pc_timer(struct sde_crtc *sde_crtc, u32 val)
+static int hfi_crtc_set_idle_pc_timer(struct sde_crtc *sde_crtc, u32 val)
 {
 	struct hfi_cmdbuf_t *cmd_buf;
 	struct hfi_kms *hfi_kms;
@@ -575,7 +575,7 @@ int hfi_crtc_set_idle_pc_timer(struct sde_crtc *sde_crtc, u32 val)
 }
 
 #if IS_ENABLED(CONFIG_DEBUG_FS)
-int hfi_crtc_debugfs_misr_setup(struct sde_crtc *sde_crtc)
+static int hfi_crtc_debugfs_misr_setup(struct sde_crtc *sde_crtc)
 {
 	int rc = 0;
 	struct hfi_cmdbuf_t *cmd_buf = NULL;
@@ -632,7 +632,7 @@ int hfi_crtc_debugfs_misr_setup(struct sde_crtc *sde_crtc)
 	return rc;
 }
 
-void hfi_crtc_misr_read_hfi_prop_handler(u32 obj_uid, u32 CMD_ID, void *payload, u32 size,
+static void hfi_crtc_misr_read_hfi_prop_handler(u32 obj_uid, u32 CMD_ID, void *payload, u32 size,
 			struct hfi_prop_listener *hfi_listener)
 {
 	struct hfi_crtc *hfi_crtc;
@@ -672,7 +672,7 @@ void hfi_crtc_misr_read_hfi_prop_handler(u32 obj_uid, u32 CMD_ID, void *payload,
 	misr_read_values->count = max_count;
 }
 
-int hfi_crtc_debugfs_misr_read(struct sde_crtc *sde_crtc)
+static int hfi_crtc_debugfs_misr_read(struct sde_crtc *sde_crtc)
 {
 	int rc = 0;
 	struct hfi_cmdbuf_t *cmd_buf = NULL;
@@ -727,18 +727,18 @@ int hfi_crtc_debugfs_misr_read(struct sde_crtc *sde_crtc)
 
 }
 #else
-int hfi_crtc_debugfs_misr_setup(struct sde_crtc *sde_crtc)
+static int hfi_crtc_debugfs_misr_setup(struct sde_crtc *sde_crtc)
 {
 	return 0;
 }
 
-int hfi_crtc_debugfs_misr_read(struct sde_crtc *sde_crtc)
+static int hfi_crtc_debugfs_misr_read(struct sde_crtc *sde_crtc)
 {
 	return 0;
 }
 #endif /* CONFIG_DEBUG_FS */
 
-int _sde_crtc_hal_funcs_install(struct sde_crtc *crtc)
+static int _sde_crtc_hal_funcs_install(struct sde_crtc *crtc)
 {
 	if (!crtc) {
 		SDE_ERROR("invalid args\n");

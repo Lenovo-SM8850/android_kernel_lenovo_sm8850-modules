@@ -52,6 +52,7 @@
 #include "dp_drm.h"
 #include "dp_debug.h"
 #include "dp_parser.h"
+#include "dp_mst_drm.h"
 
 #define DP_MST_DEBUG(fmt, ...) DP_DEBUG(fmt, ##__VA_ARGS__)
 #define DP_MST_INFO(fmt, ...) DP_INFO(fmt, ##__VA_ARGS__)
@@ -1340,7 +1341,7 @@ end:
 	return rc;
 }
 
-enum drm_mode_status dp_mst_connector_mode_valid(
+static enum drm_mode_status dp_mst_connector_mode_valid(
 		struct drm_connector *connector,
 		struct drm_display_mode *mode,
 		void *display, const struct msm_resource_caps_info *avail_res)
@@ -1418,7 +1419,7 @@ validate_mode:
 	return dp_display->validate_mode(dp_display, dp_panel, mode, avail_res);
 }
 
-int dp_mst_connector_get_mode_info(struct drm_connector *connector,
+static int dp_mst_connector_get_mode_info(struct drm_connector *connector,
 		const struct drm_display_mode *drm_mode,
 		struct msm_sub_mode *sub_mode,
 		struct msm_mode_info *mode_info,

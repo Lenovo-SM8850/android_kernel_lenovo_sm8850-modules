@@ -9,6 +9,7 @@
 #include <linux/kthread.h>
 #include "sde_kms.h"
 #include "sde_vm.h"
+#include "sde_vm_msgq.h"
 
 static void _sde_vm_msgq_process_msg(struct kthread_work *work)
 {

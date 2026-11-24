@@ -2101,7 +2101,7 @@ static int dsi_ctrl_buffer_deinit(struct dsi_ctrl *dsi_ctrl)
 	return 0;
 }
 
-int dsi_ctrl_buffer_init(struct dsi_ctrl *dsi_ctrl)
+static __maybe_unused int dsi_ctrl_buffer_init(struct dsi_ctrl *dsi_ctrl)
 {
 	int rc = 0;
 	u64 iova = 0;

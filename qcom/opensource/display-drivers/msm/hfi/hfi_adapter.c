@@ -302,7 +302,7 @@ static void _process_cb_ssr_work(struct kthread_work *work)
 	}
 }
 
-int32_t callback_function_hfi(struct hfi_core_session *hfi_session,
+static int32_t callback_function_hfi(struct hfi_core_session *hfi_session,
 		const void *cb_data, enum hfi_core_event_type event_type, bool blocking)
 {
 	struct hfi_adapter_t *adapter = (struct hfi_adapter_t *)cb_data;
@@ -380,7 +380,7 @@ int32_t callback_function_hfi(struct hfi_core_session *hfi_session,
 	return 0;
 }
 
-void _hfi_clear_buffer(struct hfi_cmdbuf_t *buffer)
+static void _hfi_clear_buffer(struct hfi_cmdbuf_t *buffer)
 {
 	if (!buffer) {
 		HFI_AD_ERROR("invalid params\n");

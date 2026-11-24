@@ -1953,9 +1953,9 @@ static int sde_rsc_rpmh_probe(struct platform_device *pdev)
 }
 
 #if (KERNEL_VERSION(6, 10, 0) <= LINUX_VERSION_CODE)
-void  sde_rsc_rpmh_remove(struct platform_device *pdev)
+static void  sde_rsc_rpmh_remove(struct platform_device *pdev)
 #else
-int  sde_rsc_rpmh_remove(struct platform_device *pdev)
+static int  sde_rsc_rpmh_remove(struct platform_device *pdev)
 #endif
 {
 	int i;

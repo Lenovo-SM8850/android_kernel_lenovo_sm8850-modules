@@ -782,7 +782,7 @@ static void sde_hw_sspp_setup_sourceaddress_v1(struct sde_hw_pipe *ctx,
 				cfg->layout.plane_addr[i]);
 }
 
-u32 sde_hw_sspp_get_source_addr_v1(struct sde_hw_pipe *ctx, bool is_virtual)
+static u32 sde_hw_sspp_get_source_addr_v1(struct sde_hw_pipe *ctx, bool is_virtual)
 {
 	u32 idx;
 	u32 offset = 0;

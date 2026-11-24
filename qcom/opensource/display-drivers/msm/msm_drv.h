@@ -1512,6 +1512,8 @@ int msm_gem_address_space_unregister_cb(
 void msm_gem_submit_free(struct msm_gem_submit *submit);
 int msm_ioctl_gem_submit(struct drm_device *dev, void *data,
 		struct drm_file *file);
+int msm_ioctl_rmfb2(struct drm_device *dev, void *data,
+		struct drm_file *file_priv);
 
 void msm_gem_shrinker_init(struct drm_device *dev);
 void msm_gem_shrinker_cleanup(struct drm_device *dev);

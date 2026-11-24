@@ -109,7 +109,7 @@ void sde_connector_add_autorefresh(u32 hfi_prop, struct sde_connector *conn,
 		HFI_ERROR_CONN(hfi_conn, "failed adding HFI KV prop:0x%x\n", hfi_prop);
 }
 
-int _hfi_connector_add_base_prop_helper(u32 hfi_prop, struct sde_connector *conn,
+static int _hfi_connector_add_base_prop_helper(u32 hfi_prop, struct sde_connector *conn,
 		struct sde_connector_state *old_cstate,
 		struct hfi_util_u32_prop_helper *prop_collector)
 {
@@ -217,7 +217,7 @@ end:
  * hfi_connector_populate_custom_kv_setter_props:  this is for large payloads.
  * Collects all listed props to provide as key-value pairs and adapter does memcopy
  */
-int hfi_connector_populate_custom_kv_setter_props(struct sde_connector *conn, u32 disp_id,
+static int hfi_connector_populate_custom_kv_setter_props(struct sde_connector *conn, u32 disp_id,
 		struct sde_connector_state *old_cstate, struct hfi_cmdbuf_t *cmd_buf)
 {
 	struct hfi_prop_map *setter;
@@ -286,7 +286,7 @@ end:
 	return ret;
 }
 
-int _hfi_connector_populate_props(struct hfi_cmdbuf_t *cmd_buf, u32 disp_id,
+static int _hfi_connector_populate_props(struct hfi_cmdbuf_t *cmd_buf, u32 disp_id,
 		struct sde_connector *conn, struct sde_connector_state *old_cstate)
 {
 	int ret = 0;
@@ -312,7 +312,7 @@ int _hfi_connector_populate_props(struct hfi_cmdbuf_t *cmd_buf, u32 disp_id,
 	return ret;
 }
 
-void hfi_connector_destroy(struct sde_connector *conn)
+static void hfi_connector_destroy(struct sde_connector *conn)
 {
 	struct hfi_connector *conn_hfi = (struct hfi_connector *)to_hfi_connector(conn);
 
@@ -546,7 +546,7 @@ end:
 	return ret;
 }
 
-int hfi_connector_prepare_commit(struct drm_connector *conn, struct sde_connector_state *cstate)
+static int hfi_connector_prepare_commit(struct drm_connector *conn, struct sde_connector_state *cstate)
 {
 	int ret = 0;
 	struct sde_kms *sde_kms;

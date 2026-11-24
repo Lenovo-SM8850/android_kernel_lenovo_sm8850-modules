@@ -1482,7 +1482,7 @@ static int _sde_cp_crtc_cache_property_helper(struct drm_crtc *crtc,
 	return ret;
 }
 
-u32 _sde_cp_get_num_dspp_mixers(struct sde_crtc *sde_crtc)
+static u32 _sde_cp_get_num_dspp_mixers(struct sde_crtc *sde_crtc)
 {
 	int i;
 	u32 num_mixers = 0;
@@ -2401,7 +2401,7 @@ exit:
 		sde_cp_disable_features(crtc);
 }
 
-void sde_cp_reset_unsupported_feature_wrappers(struct sde_mdss_cfg *catalog)
+static void sde_cp_reset_unsupported_feature_wrappers(struct sde_mdss_cfg *catalog)
 {
 	if (!catalog) {
 		DRM_ERROR("invalid catalog\n");

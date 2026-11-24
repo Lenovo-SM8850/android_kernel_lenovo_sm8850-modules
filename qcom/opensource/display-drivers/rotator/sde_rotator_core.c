@@ -2251,7 +2251,7 @@ static void sde_rotator_complete_hwactive_job(struct sde_rot_mgr *mgr,
 	}
 }
 
-void sde_rotator_remove_request(struct sde_rot_mgr *mgr,
+static void sde_rotator_remove_request(struct sde_rot_mgr *mgr,
 	struct sde_rot_file_private *private,
 	struct sde_rot_entry_container *req)
 {

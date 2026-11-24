@@ -633,7 +633,7 @@ exit:
 	return ret;
 }
 
-int sde_power_mmrm_callback(
+static int sde_power_mmrm_callback(
 	struct mmrm_client_notifier_data *notifier_data)
 {
 	struct dss_clk_mmrm_cb *mmrm_cb_data =

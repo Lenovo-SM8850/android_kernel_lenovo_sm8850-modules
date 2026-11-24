@@ -962,7 +962,7 @@ static int hfi_enc_debugfs_misr_setup(struct sde_encoder_virt *enc)
 	return rc;
 }
 
-void hfi_enc_misr_read_hfi_prop_handler(u32 obj_uid, u32 CMD_ID, void *payload, u32 size,
+static void hfi_enc_misr_read_hfi_prop_handler(u32 obj_uid, u32 CMD_ID, void *payload, u32 size,
 			struct hfi_prop_listener *hfi_listener)
 {
 	struct hfi_encoder *hfi_enc = container_of(hfi_listener,
@@ -1078,7 +1078,7 @@ static int hfi_enc_debugfs_misr_read(struct sde_encoder_virt *enc)
 	return rc;
 }
 
-u32 hfi_enc_get_vblank_count(struct sde_encoder_virt *enc)
+static u32 hfi_enc_get_vblank_count(struct sde_encoder_virt *enc)
 {
 	int cnt = 0;
 	struct hfi_encoder *hfi_enc;
@@ -1092,7 +1092,7 @@ u32 hfi_enc_get_vblank_count(struct sde_encoder_virt *enc)
 	return cnt;
 }
 
-ktime_t hfi_enc_get_vblank_timestamp(struct sde_encoder_virt *enc)
+static ktime_t hfi_enc_get_vblank_timestamp(struct sde_encoder_virt *enc)
 {
 	ktime_t ts = 0;
 	struct hfi_encoder *hfi_enc;
@@ -1122,12 +1122,12 @@ static int hfi_enc_debugfs_misr_read(struct sde_encoder_virt *enc)
 	return 0;
 }
 
-u32 hfi_enc_get_vblank_count(struct sde_encoder_virt *enc)
+static u32 hfi_enc_get_vblank_count(struct sde_encoder_virt *enc)
 {
 	return 0;
 }
 
-ktime_t hfi_enc_get_vblank_timestamp(struct sde_encoder_virt *enc)
+static ktime_t hfi_enc_get_vblank_timestamp(struct sde_encoder_virt *enc)
 {
 	return 0;
 }

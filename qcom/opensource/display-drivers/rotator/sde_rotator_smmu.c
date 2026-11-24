@@ -66,7 +66,7 @@ static inline bool sde_smmu_is_valid_domain_condition(
 	}
 }
 
-struct sde_smmu_client *sde_smmu_get_cb(u32 domain)
+static struct sde_smmu_client *sde_smmu_get_cb(u32 domain)
 {
 	struct sde_rot_data_type *mdata = sde_rot_get_mdata();
 
@@ -195,7 +195,7 @@ end:
  * And iommu attach is done only once during the initial attach and it is never
  * detached as smmu v2 uses a feature called 'retention'.
  */
-int sde_smmu_attach(struct sde_rot_data_type *mdata)
+static int sde_smmu_attach(struct sde_rot_data_type *mdata)
 {
 	struct sde_smmu_client *sde_smmu;
 	int i, rc = 0;
@@ -257,7 +257,7 @@ err:
  * Only disables the clks as it is not required to detach the iommu mapped
  * VA range from the device in smmu as explained in the sde_smmu_attach
  */
-int sde_smmu_detach(struct sde_rot_data_type *mdata)
+static int sde_smmu_detach(struct sde_rot_data_type *mdata)
 {
 	struct sde_smmu_client *sde_smmu;
 	int i, rc;
@@ -286,7 +286,7 @@ int sde_smmu_detach(struct sde_rot_data_type *mdata)
 	return 0;
 }
 
-int sde_smmu_get_domain_id(u32 type)
+static __maybe_unused int sde_smmu_get_domain_id(u32 type)
 {
 	return type;
 }
@@ -433,7 +433,7 @@ int sde_smmu_secure_ctrl(int enable)
  * sde rot here. This would facilitate probes to happen for these devices in
  * which the smmu mapping and initialization is handled.
  */
-void sde_smmu_device_create(struct device *dev)
+static void sde_smmu_device_create(struct device *dev)
 {
 	struct device_node *parent, *child;
 	struct sde_rot_data_type *mdata = sde_rot_get_mdata();
@@ -508,7 +508,7 @@ static const struct of_device_id sde_smmu_dt_match[] = {
  * Registeres the clks as each context bank has its own clks, for which voting
  * has to be done everytime before using that context bank.
  */
-int sde_smmu_probe(struct platform_device *pdev)
+static int sde_smmu_probe(struct platform_device *pdev)
 {
 	struct device *dev;
 	struct sde_rot_data_type *mdata = sde_rot_get_mdata();
@@ -642,9 +642,9 @@ release_vreg:
 }
 
 #if (KERNEL_VERSION(6, 10, 0) <= LINUX_VERSION_CODE)
-void sde_smmu_remove(struct platform_device *pdev)
+static void sde_smmu_remove(struct platform_device *pdev)
 #else
-int sde_smmu_remove(struct platform_device *pdev)
+static int sde_smmu_remove(struct platform_device *pdev)
 #endif
 {
 	int i;

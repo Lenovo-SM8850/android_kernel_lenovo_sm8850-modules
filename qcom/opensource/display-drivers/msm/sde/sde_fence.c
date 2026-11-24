@@ -135,7 +135,7 @@ struct sde_hw_fence_data hw_fence_data_dpu_client_with_soccp[SDE_HW_FENCE_CLIENT
 		{5, 11}, 0, 46, 25, 0, 0}
 };
 
-void msm_hw_fence_error_cb(u32 handle, int error, void *cb_data)
+static void msm_hw_fence_error_cb(u32 handle, int error, void *cb_data)
 {
 	struct msm_hw_fence_cb_data *msm_hw_fence_cb_data;
 	struct sde_hw_fence_error_cb_data *sde_hw_fence_error_data;

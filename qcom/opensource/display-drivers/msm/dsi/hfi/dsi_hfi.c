@@ -106,7 +106,7 @@ static int _dsi_display_hfi_process_ssr_end(struct hfi_client_t *hfi_client)
 	return rc;
 }
 
-int dsi_hfi_process_event(struct hfi_client_t *hfi_client, enum hfi_adapter_event_type event,
+static int dsi_hfi_process_event(struct hfi_client_t *hfi_client, enum hfi_adapter_event_type event,
 			bool blocking)
 {
 	if (!hfi_client) {
@@ -205,7 +205,7 @@ int dsi_hfi_misr_setup(struct dsi_display *display)
 	return rc;
 }
 
-void dsi_hfi_process_misr_read(struct dsi_display *display, void *payload, u32 size)
+static void dsi_hfi_process_misr_read(struct dsi_display *display, void *payload, u32 size)
 {
 	struct misr_read_data_ret *misr_data;
 	struct dsi_misr_values *misr_read_values;
@@ -290,7 +290,7 @@ int dsi_hfi_misr_setup(struct dsi_display *display)
 	return 0;
 }
 
-void dsi_hfi_process_misr_read(struct dsi_display *display, void *payload, u32 size)
+static void dsi_hfi_process_misr_read(struct dsi_display *display, void *payload, u32 size)
 {
 
 }
@@ -732,7 +732,7 @@ static enum hfi_panel_backlight_ctrl dsi_get_panel_backlight_type(struct dsi_pan
 		return HFI_PANEL_BACKLIGHT_CTRL_UNKNOWN;
 }
 
-int hfi_panel_fill_dcs_cmds_sub(struct dsi_display *display,
+static int hfi_panel_fill_dcs_cmds_sub(struct dsi_display *display,
 				struct dsi_panel_timing_caps *panel_timing_caps,
 				struct dsi_hfi_panel_per_cmd_type *per_type,
 				struct dsi_panel_cmd_set *cmd_set,
@@ -772,7 +772,7 @@ error:
 	return rc;
 }
 
-int hfi_panel_fill_dcs_cmds(struct dsi_display *display,
+static int hfi_panel_fill_dcs_cmds(struct dsi_display *display,
 			    struct dsi_display_mode_priv_info *priv_info,
 			    struct dsi_panel_timing_caps *panel_timing_caps,
 			    void *sde_vaddr, void *hfi_vaddr)
