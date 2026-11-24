@@ -686,7 +686,7 @@ int msm_vidc_scale_power(struct msm_vidc_inst *inst, bool scale_buses)
 	return 0;
 }
 
-void msm_vidc_dcvs_data_reset(struct msm_vidc_inst *inst)
+static void msm_vidc_dcvs_data_reset(struct msm_vidc_inst *inst)
 {
 	struct msm_vidc_power *dcvs;
 	u32 min_count, actual_count, max_count;

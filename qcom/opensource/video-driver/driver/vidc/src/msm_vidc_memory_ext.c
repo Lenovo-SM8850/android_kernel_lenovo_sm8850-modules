@@ -17,6 +17,7 @@
 #include "msm_vidc_platform.h"
 #include "msm_vidc_memory.h"
 #include "resources.h"
+#include "msm_vidc_memory_ext.h"
 
 static bool is_non_secure_buffer(struct dma_buf *dmabuf)
 {

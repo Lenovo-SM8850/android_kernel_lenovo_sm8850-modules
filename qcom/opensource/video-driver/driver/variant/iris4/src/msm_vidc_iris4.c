@@ -1543,7 +1543,7 @@ static int __sw_ctrl_gdsc_iris4(struct msm_vidc_core *core)
 	return call_res_op(core, gdsc_sw_ctrl, core);
 }
 
-int msm_vidc_decide_work_mode_iris4(struct msm_vidc_inst *inst)
+static int msm_vidc_decide_work_mode_iris4(struct msm_vidc_inst *inst)
 {
 	u32 work_mode;
 	struct v4l2_format *inp_f;
@@ -1609,7 +1609,7 @@ exit:
 	return 0;
 }
 
-int msm_vidc_decide_work_route_iris4(struct msm_vidc_inst *inst)
+static int msm_vidc_decide_work_route_iris4(struct msm_vidc_inst *inst)
 {
 	u32 work_route;
 	struct msm_vidc_core *core;
@@ -1651,7 +1651,7 @@ exit:
 	return 0;
 }
 
-int msm_vidc_decide_quality_mode_iris4(struct msm_vidc_inst *inst)
+static int msm_vidc_decide_quality_mode_iris4(struct msm_vidc_inst *inst)
 {
 	struct msm_vidc_core *core;
 	u32 mbpf, mbps, max_hq_mbpf, max_hq_mbps;

@@ -17,6 +17,7 @@
 #include "msm_vidc_power.h"
 #include "msm_vidc_driver.h"
 #include "msm_vidc_platform.h"
+#include "resources_ext.h"
 
 static void __fatal_error(bool fatal)
 {

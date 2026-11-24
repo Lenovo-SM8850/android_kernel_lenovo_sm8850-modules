@@ -641,7 +641,7 @@ err_venus_power_on:
 	return rc;
 }
 
-int __load_fw(struct msm_vidc_core *core)
+static int __load_fw(struct msm_vidc_core *core)
 {
 	int rc = 0;
 
@@ -672,7 +672,7 @@ fail_power:
 	return rc;
 }
 
-void __unload_fw(struct msm_vidc_core *core)
+static void __unload_fw(struct msm_vidc_core *core)
 {
 	if (!core->resource->fw_cookie)
 		return;

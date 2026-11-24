@@ -355,7 +355,7 @@ static int initialize_encoder_complexity_table(void)
 	return 0;
 }
 
-u32 get_bitrate_entry(u32 pixle_count)
+static u32 get_bitrate_entry(u32 pixle_count)
 {
 	u32 bitrate_entry = 0;
 
@@ -383,7 +383,7 @@ u32 get_bitrate_entry(u32 pixle_count)
 	return bitrate_entry;
 }
 
-u32 get_vpp_cycles(struct api_calculation_input codec_input)
+static u32 get_vpp_cycles(struct api_calculation_input codec_input)
 {
 	u8 i = 0, j = 0;
 	u32 ret = 0;

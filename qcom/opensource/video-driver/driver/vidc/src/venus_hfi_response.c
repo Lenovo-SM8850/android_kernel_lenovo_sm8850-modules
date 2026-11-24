@@ -44,7 +44,7 @@ struct msm_vidc_hfi_packet_handle {
 	int (*handle)(struct msm_vidc_inst *inst, struct hfi_packet *pkt);
 };
 
-void print_psc_properties(const char *str, struct msm_vidc_inst *inst,
+static void print_psc_properties(const char *str, struct msm_vidc_inst *inst,
 	struct msm_vidc_subscription_params subsc_params)
 {
 	i_vpr_h(inst,
@@ -84,7 +84,7 @@ static void print_sfr_message(struct msm_vidc_core *core)
 	}
 }
 
-u32 vidc_port_from_hfi(struct msm_vidc_inst *inst,
+static u32 vidc_port_from_hfi(struct msm_vidc_inst *inst,
 	enum hfi_packet_port_type hfi_port)
 {
 	enum msm_vidc_port_type port = MAX_PORT;
@@ -129,7 +129,7 @@ u32 vidc_port_from_hfi(struct msm_vidc_inst *inst,
 	return port;
 }
 
-bool is_valid_hfi_port(struct msm_vidc_inst *inst, u32 port,
+static bool is_valid_hfi_port(struct msm_vidc_inst *inst, u32 port,
 	u32 buffer_type, const char *func)
 {
 	if (port == HFI_PORT_NONE &&

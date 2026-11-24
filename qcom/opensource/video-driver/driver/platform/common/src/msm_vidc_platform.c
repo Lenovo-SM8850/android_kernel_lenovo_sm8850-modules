@@ -4658,7 +4658,7 @@ int msm_vidc_set_u32_enum(void *instance,
 	return rc;
 }
 
-int msm_vidc_set_s32(void *instance,
+static int __maybe_unused msm_vidc_set_s32(void *instance,
 		     enum msm_vidc_inst_capability_type cap_id)
 {
 	int rc = 0;

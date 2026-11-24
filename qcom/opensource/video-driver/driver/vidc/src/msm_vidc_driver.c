@@ -796,7 +796,7 @@ enum msm_vidc_buffer_type v4l2_type_to_driver(u32 type, const char *func)
 	return buffer_type;
 }
 
-u32 v4l2_type_from_driver(enum msm_vidc_buffer_type buffer_type,
+static u32 v4l2_type_from_driver(enum msm_vidc_buffer_type buffer_type,
 	const char *func)
 {
 	u32 type = 0;
@@ -2187,7 +2187,7 @@ int vb2_buffer_to_driver(struct vb2_buffer *vb2,
 	return rc;
 }
 
-int msm_vidc_process_readonly_buffers(struct msm_vidc_inst *inst,
+static int msm_vidc_process_readonly_buffers(struct msm_vidc_inst *inst,
 	struct msm_vidc_buffer *buf)
 {
 	int rc = 0;
@@ -2365,7 +2365,7 @@ int msm_vidc_update_input_rate(struct msm_vidc_inst *inst, struct vb2_buffer *vb
 	return 0;
 }
 
-int msm_vidc_flush_input_timer(struct msm_vidc_inst *inst)
+static int msm_vidc_flush_input_timer(struct msm_vidc_inst *inst)
 {
 	struct msm_vidc_input_timer *input_timer, *dummy_timer;
 	struct msm_vidc_core *core;
