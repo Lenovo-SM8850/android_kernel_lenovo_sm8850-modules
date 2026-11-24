@@ -19,8 +19,6 @@ struct mmrm_vm_driver_data *drv_vm_be = (void *) -EPROBE_DEFER;
 
 int msm_mmrm_debug = MMRM_ERR | MMRM_WARN | MMRM_PRINTK;
 
-int mmrm_client_get_clk_count(void);
-
 static int mmrm_vm_be_driver_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
