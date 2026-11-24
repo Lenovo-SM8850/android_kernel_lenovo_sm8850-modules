@@ -203,10 +203,13 @@ static void rmnet_unregister_bridge(struct net_device *dev,
 	}
 }
 
-static int rmnet_newlink(struct net *src_net, struct net_device *dev,
-			 struct nlattr *tb[], struct nlattr *data[],
+static int rmnet_newlink(struct net_device *dev,
+			 struct rtnl_newlink_params *params,
 			 struct netlink_ext_ack *extack)
 {
+	struct net *src_net = rtnl_newlink_link_net(params);
+	struct nlattr **tb = params->tb;
+	struct nlattr **data = params->data;
 	struct net_device *real_dev;
 	int mode = RMNET_EPMODE_VND;
 	struct rmnet_endpoint *ep;
