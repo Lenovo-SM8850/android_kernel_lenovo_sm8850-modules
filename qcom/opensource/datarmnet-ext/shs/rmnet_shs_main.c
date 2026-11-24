@@ -1581,7 +1581,10 @@ static int rmnet_shs_drop_backlog(struct sk_buff_head *list, int cpu)
 			rmnet_shs_crit_err[RMNET_SHS_OUT_OF_MEM_ERR]++;
 			/* Increment sd and netdev drop stats*/
 			dev_core_stats_rx_dropped_inc(skb->dev);
-#if (KERNEL_VERSION(6, 9, 0) <= LINUX_VERSION_CODE)
+#if (KERNEL_VERSION(6, 18, 0) <= LINUX_VERSION_CODE)
+			rps_input_queue_head_incr(sd);
+			numa_drop_add(&sd->drop_counters, 1);
+#elif (KERNEL_VERSION(6, 9, 0) <= LINUX_VERSION_CODE)
 			rps_input_queue_head_incr(sd);
 			atomic_inc(&sd->dropped);
 #else
