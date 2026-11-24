@@ -20,7 +20,7 @@ struct v4l2_decoder_cmd;
 struct v4l2_encoder_cmd;
 struct v4l2_frmsizeenum;
 struct v4l2_frmivalenum;
-struct v4l2_queryctrl;
+struct v4l2_query_ext_ctrl;
 struct v4l2_querymenu;
 struct v4l2_fh;
 struct poll_table_struct;
@@ -80,8 +80,8 @@ int msm_v4l2_enum_framesizes(struct file *file, void *fh,
 			     struct v4l2_frmsizeenum *fsize);
 int msm_v4l2_enum_frameintervals(struct file *file, void *fh,
 				 struct v4l2_frmivalenum *fival);
-int msm_v4l2_queryctrl(struct file *file, void *fh,
-		       struct v4l2_queryctrl *ctrl);
+int msm_v4l2_query_ext_ctrl(struct file *file, void *fh,
+			    struct v4l2_query_ext_ctrl *ctrl);
 int msm_v4l2_querymenu(struct file *file, void *fh,
 		       struct v4l2_querymenu *qmenu);
 unsigned int msm_v4l2_poll(struct file *filp,

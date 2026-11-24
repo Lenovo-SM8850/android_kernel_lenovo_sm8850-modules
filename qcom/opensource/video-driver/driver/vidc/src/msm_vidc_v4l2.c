@@ -978,8 +978,8 @@ unlock:
 	return rc;
 }
 
-int msm_v4l2_queryctrl(struct file *filp, void *fh,
-	struct v4l2_queryctrl *ctrl)
+int msm_v4l2_query_ext_ctrl(struct file *filp, void *fh,
+	struct v4l2_query_ext_ctrl *ctrl)
 {
 	struct msm_vidc_inst *inst = get_vidc_inst(filp, fh);
 	int rc = 0;
@@ -1001,7 +1001,7 @@ int msm_v4l2_queryctrl(struct file *filp, void *fh,
 		rc = -EBUSY;
 		goto unlock;
 	}
-	rc = msm_vidc_query_ctrl((void *)inst, ctrl);
+	rc = msm_vidc_query_ext_ctrl((void *)inst, ctrl);
 	if (rc)
 		goto unlock;
 

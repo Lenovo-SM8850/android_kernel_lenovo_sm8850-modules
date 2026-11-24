@@ -34,7 +34,7 @@ int msm_vidc_qbuf(struct msm_vidc_inst *inst, struct media_device *mdev,
 		  struct v4l2_buffer *b);
 int msm_vidc_dqbuf(struct msm_vidc_inst *inst, struct v4l2_buffer *b);
 int msm_vidc_streamon(struct msm_vidc_inst *inst, enum v4l2_buf_type i);
-int msm_vidc_query_ctrl(struct msm_vidc_inst *inst, struct v4l2_queryctrl *ctrl);
+int msm_vidc_query_ext_ctrl(struct msm_vidc_inst *inst, struct v4l2_query_ext_ctrl *ctrl);
 int msm_vidc_query_menu(struct msm_vidc_inst *inst, struct v4l2_querymenu *qmenu);
 int msm_vidc_streamoff(struct msm_vidc_inst *inst, enum v4l2_buf_type i);
 int msm_vidc_try_cmd(struct msm_vidc_inst *inst, union msm_v4l2_cmd *cmd);

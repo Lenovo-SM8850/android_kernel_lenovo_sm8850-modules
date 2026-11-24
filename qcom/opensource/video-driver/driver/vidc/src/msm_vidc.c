@@ -124,7 +124,7 @@ int msm_vidc_enum_fmt(struct msm_vidc_inst *inst, struct v4l2_fmtdesc *f)
 	return -EINVAL;
 }
 
-int msm_vidc_query_ctrl(struct msm_vidc_inst *inst, struct v4l2_queryctrl *q_ctrl)
+int msm_vidc_query_ext_ctrl(struct msm_vidc_inst *inst, struct v4l2_query_ext_ctrl *q_ctrl)
 {
 	int rc = 0;
 	struct v4l2_ctrl *ctrl;
@@ -141,7 +141,7 @@ int msm_vidc_query_ctrl(struct msm_vidc_inst *inst, struct v4l2_queryctrl *q_ctr
 	q_ctrl->flags = 0;
 	q_ctrl->step = ctrl->step;
 	i_vpr_h(inst,
-		"query ctrl: %s: min %d, max %d, default %d step %d flags %#x\n",
+		"query ctrl: %s: min %lld, max %lld, default %lld step %llu flags %#x\n",
 		ctrl->name, q_ctrl->minimum, q_ctrl->maximum,
 		q_ctrl->default_value, q_ctrl->step, q_ctrl->flags);
 	return rc;
