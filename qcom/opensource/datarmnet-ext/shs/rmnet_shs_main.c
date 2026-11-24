@@ -1539,26 +1539,15 @@ void rmnet_shs_rx_wq_init(void)
 		INIT_WORK(&rmnet_shs_cfg.core_flush[i].work,
 			  rmnet_shs_flush_core_work);
 
-		hrtimer_init(&rmnet_shs_cfg.core_flush[i].core_timer,
-			     CLOCK_MONOTONIC, HRTIMER_MODE_REL);
-		rmnet_shs_cfg.core_flush[i].core_timer.function =
-							rmnet_shs_queue_core;
+		hrtimer_setup(&rmnet_shs_cfg.core_flush[i].core_timer, rmnet_shs_queue_core, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
 	}
 	/* Initialize a fallback/failsafe work for when dl ind fails */
-	hrtimer_init(&rmnet_shs_cfg.hrtimer_shs,
-		     CLOCK_MONOTONIC, HRTIMER_MODE_REL);
-	rmnet_shs_cfg.hrtimer_shs.function = rmnet_shs_map_flush_queue;
-	hrtimer_init(&rmnet_shs_cfg.hrtimer_lpm,
-		     CLOCK_MONOTONIC, HRTIMER_MODE_REL);
-	rmnet_shs_cfg.hrtimer_lpm.function = rmnet_shs_lpm_ring;
+	hrtimer_setup(&rmnet_shs_cfg.hrtimer_shs, rmnet_shs_map_flush_queue, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
+	hrtimer_setup(&rmnet_shs_cfg.hrtimer_lpm, rmnet_shs_lpm_ring, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
 
-	hrtimer_init(&rmnet_shs_cfg.hrtimer_wake,
-		     CLOCK_MONOTONIC, HRTIMER_MODE_REL);
-	rmnet_shs_cfg.hrtimer_wake.function = rmnet_shs_wake_ring;
+	hrtimer_setup(&rmnet_shs_cfg.hrtimer_wake, rmnet_shs_wake_ring, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
 
-	hrtimer_init(&rmnet_shs_cfg.hrtimer_disable_pb_boost,
-		     CLOCK_MONOTONIC, HRTIMER_MODE_REL);
-	rmnet_shs_cfg.hrtimer_disable_pb_boost.function = rmnet_shs_pb_unboost_cpus;
+	hrtimer_setup(&rmnet_shs_cfg.hrtimer_disable_pb_boost, rmnet_shs_pb_unboost_cpus, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
 
 	INIT_WORK(&shs_rx_work.work, rmnet_flush_buffered);
 }

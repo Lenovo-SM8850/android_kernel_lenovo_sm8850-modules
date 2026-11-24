@@ -666,8 +666,7 @@ static int __init rmnet_mem_module_init(void)
 		mem_wq = NULL;
 		return -ENOMEM;
 	}
-	hrtimer_init(&pb_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
-	pb_timer.function = rmnet_mem_pb_timer_cb;
+	hrtimer_setup(&pb_timer, rmnet_mem_pb_timer_cb, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
 
 	return 0;
 }

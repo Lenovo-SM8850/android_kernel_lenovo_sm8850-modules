@@ -1729,9 +1729,7 @@ void rmnet_map_tx_aggregate_init(struct rmnet_port *port)
 
 		spin_lock_init(&state->agg_lock);
 		INIT_LIST_HEAD(&state->agg_list);
-		hrtimer_init(&state->hrtimer, CLOCK_MONOTONIC,
-			     HRTIMER_MODE_REL);
-		state->hrtimer.function = rmnet_map_flush_tx_packet_queue;
+		hrtimer_setup(&state->hrtimer, rmnet_map_flush_tx_packet_queue, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
 		INIT_WORK(&state->agg_wq, rmnet_map_flush_tx_packet_work);
 		state->stats = &port->stats.agg;
 

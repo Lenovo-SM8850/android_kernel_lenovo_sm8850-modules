@@ -1567,9 +1567,7 @@ int ipa_setup_sys_pipe(struct ipa_sys_connect_params *sys_in, u32 *clnt_hdl)
 		INIT_LIST_HEAD(&ep->sys->avail_tx_wrapper_list);
 		ep->sys->avail_tx_wrapper = 0;
 		spin_lock_init(&ep->sys->spinlock);
-		hrtimer_init(&ep->sys->db_timer, CLOCK_MONOTONIC,
-			HRTIMER_MODE_REL);
-		ep->sys->db_timer.function = ipa3_ring_doorbell_timer_fn;
+		hrtimer_setup(&ep->sys->db_timer, ipa3_ring_doorbell_timer_fn, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
 
 		/* create IPA PM resources for handling polling mode */
 		if (sys_in->client == IPA_CLIENT_APPS_WAN_CONS &&

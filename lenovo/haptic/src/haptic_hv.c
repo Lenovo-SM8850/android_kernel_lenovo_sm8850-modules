@@ -4489,8 +4489,8 @@ static int vibrator_init(struct aw_haptic *aw_haptic)
 		return ret;
 	}
 #endif
-	hrtimer_init(&aw_haptic->timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
-	aw_haptic->timer.function = vibrator_timer_func;
+	hrtimer_setup(&aw_haptic->timer, vibrator_timer_func, CLOCK_MONOTONIC,
+		     HRTIMER_MODE_REL);
 	INIT_WORK(&aw_haptic->vibrator_work, vibrator_work_routine);
 	INIT_WORK(&aw_haptic->rtp_work, rtp_work_routine);
 	mutex_init(&aw_haptic->lock);
@@ -4508,8 +4508,8 @@ static void haptic_init(struct aw_haptic *aw_haptic)
 	aw_haptic->haptic_audio.timer_val = 21318;
 	aw_haptic->rtp_num = sizeof(aw_rtp_name) / sizeof(*aw_rtp_name);
 	INIT_LIST_HEAD(&(aw_haptic->haptic_audio.ctr_list));
-	hrtimer_init(&aw_haptic->haptic_audio.timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
-	aw_haptic->haptic_audio.timer.function = audio_timer_func;
+	hrtimer_setup(&aw_haptic->haptic_audio.timer, audio_timer_func, CLOCK_MONOTONIC,
+		     HRTIMER_MODE_REL);
 	INIT_WORK(&aw_haptic->haptic_audio.work, audio_work_routine);
 	mutex_init(&aw_haptic->haptic_audio.lock);
 	INIT_LIST_HEAD(&(aw_haptic->haptic_audio.list));

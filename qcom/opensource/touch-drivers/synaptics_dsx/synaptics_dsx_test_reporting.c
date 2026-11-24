@@ -5121,8 +5121,7 @@ static int synaptics_rmi4_test_init(struct synaptics_rmi4_data *rmi4_data)
 			create_singlethread_workqueue("test_report_workqueue");
 	INIT_WORK(&f54->test_report_work, test_report_work);
 
-	hrtimer_init(&f54->watchdog, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
-	f54->watchdog.function = test_get_report_timeout;
+	hrtimer_setup(&f54->watchdog, test_get_report_timeout, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
 	INIT_WORK(&f54->timeout_work, test_timeout_work);
 
 	mutex_init(&f54->status_mutex);
