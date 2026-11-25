@@ -154,8 +154,6 @@ int dp_connector_set_info_blob(struct drm_connector *connector,
 int dp_drm_bridge_init(void *display, struct drm_encoder *encoder,
 	u32 max_mixer_count, u32 max_dsc_count);
 
-void dp_drm_bridge_deinit(void *display);
-
 /**
  * convert_to_drm_mode - convert dp mode to drm mode
  * @dp_mode: Point to dp mode
@@ -272,10 +270,6 @@ static inline int dp_drm_bridge_init(void *display, struct drm_encoder *encoder,
 		u32 max_mixer_count, u32 max_dsc_count)
 {
 	return 0;
-}
-
-static inline void dp_drm_bridge_deinit(void *display)
-{
 }
 
 static inline void convert_to_drm_mode(const struct dp_display_mode *dp_mode,

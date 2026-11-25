@@ -6772,7 +6772,6 @@ int dsi_display_drm_bridge_deinit(struct dsi_display *display)
 
 	mutex_lock(&display->display_lock);
 
-	dsi_drm_bridge_cleanup(display->bridge);
 	display->bridge = NULL;
 
 	mutex_unlock(&display->display_lock);

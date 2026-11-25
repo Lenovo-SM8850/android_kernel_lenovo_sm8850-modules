@@ -1158,6 +1158,8 @@ int dp_mst_drm_bridge_init(void *data, struct drm_encoder *encoder)
 	dev = display->drm_dev;
 	bridge->display = display;
 	bridge->base.funcs = &dp_mst_bridge_ops;
+	/* Embedded in dp_mst_private, so the driver keeps the only reference. */
+	kref_init(&bridge->base.refcount);
 	bridge->base.encoder = encoder;
 
 	priv = dev->dev_private;

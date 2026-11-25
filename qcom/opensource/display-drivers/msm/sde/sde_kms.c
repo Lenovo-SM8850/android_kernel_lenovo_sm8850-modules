@@ -2572,7 +2572,6 @@ static int _sde_kms_setup_displays(struct drm_device *dev,
 			priv->connectors[priv->num_connectors++] = connector;
 		} else {
 			SDE_ERROR("dp %d connector init failed\n", i);
-			dp_drm_bridge_deinit(display);
 			sde_encoder_destroy(encoder);
 			continue;
 		}

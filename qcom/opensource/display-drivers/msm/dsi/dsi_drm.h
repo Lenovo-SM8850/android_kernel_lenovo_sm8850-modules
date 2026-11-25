@@ -107,8 +107,6 @@ struct dsi_bridge *dsi_drm_bridge_init(struct dsi_display *display,
 		struct drm_device *dev,
 		struct drm_encoder *encoder);
 
-void dsi_drm_bridge_cleanup(struct dsi_bridge *bridge);
-
 /**
  * dsi_display_pre_kickoff - program kickoff-time features
  * @connector: Pointer to drm connector structure
