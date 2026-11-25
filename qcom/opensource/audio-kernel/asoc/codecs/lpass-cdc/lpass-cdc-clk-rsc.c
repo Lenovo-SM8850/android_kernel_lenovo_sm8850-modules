@@ -671,7 +671,7 @@ static int lpass_cdc_clk_rsc_probe(struct platform_device *pdev)
 	/* Get npl clk details from device tree */
 	clk_cnt = of_property_count_strings(pdev->dev.of_node, "npl-clock-names");
 	if (clk_cnt <= 0 || clk_cnt > MAX_CLK) {
-		dev_info(&pdev->dev, "%s: Invalid number of NPL clocks %d\n",
+		dev_dbg(&pdev->dev, "%s: Invalid number of NPL clocks %d\n",
 				__func__, clk_cnt);
 		ret = -EINVAL;
 		goto skip_npl_clk;

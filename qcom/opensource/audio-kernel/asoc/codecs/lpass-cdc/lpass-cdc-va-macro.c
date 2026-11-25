@@ -2355,7 +2355,7 @@ static int lpass_cdc_va_macro_probe(struct platform_device *pdev)
 	}
 	if ((msm_cdc_pinctrl_get_state(va_priv->va_swr_gpio_p) < 0) &&
 		is_used_va_swr_gpio) {
-		dev_err(&pdev->dev, "%s: failed to get swr pin state\n",
+		dev_dbg(&pdev->dev, "%s: failed to get swr pin state\n",
 			__func__);
 		return -EPROBE_DEFER;
 	}

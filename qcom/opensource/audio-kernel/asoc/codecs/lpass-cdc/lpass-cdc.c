@@ -1565,7 +1565,7 @@ static int lpass_cdc_probe(struct platform_device *pdev)
 	ret = of_property_read_variable_u32_array(pdev->dev.of_node, "va_top_csr_core_regs",
 			priv->va_top_csr_core_reg, 0, ARRAY_SIZE(priv->va_top_csr_core_reg));
 	if (ret <= 0) {
-		dev_err(&pdev->dev, "failure in reading va_top_csr registers defualting to 2P8\n");
+		dev_dbg(&pdev->dev, "failure in reading va_top_csr registers defualting to 2P8\n");
 		priv->version = LPASS_CDC_VERSION_2_8;
 	} else {
 		if (lpass_cdc_set_version(priv) < 0) {

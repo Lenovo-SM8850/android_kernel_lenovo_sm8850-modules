@@ -418,7 +418,7 @@ static int lpass_bt_swr_probe(struct platform_device *pdev)
 		return -EINVAL;
 	}
 	if (msm_cdc_pinctrl_get_state(priv->bt_swr_gpio_p) < 0) {
-		dev_info(&pdev->dev, "%s: failed to get swr pin state\n",
+		dev_dbg(&pdev->dev, "%s: failed to get swr pin state\n",
 			__func__);
 		return -EPROBE_DEFER;
 	}
