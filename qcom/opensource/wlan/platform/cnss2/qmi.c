@@ -34,14 +34,14 @@
 /*
  * Download QDSS config file based on build type. Add build type string to
  * file name. Download "qdss_trace_config_debug_v<n>.cfg" for debug build
- * and "qdss_trace_config_perf_v<n>.cfg" for perf build.
+ * and "qdss_trace_config_v<n>.cfg" for perf build.
  */
 #ifdef CONFIG_CNSS_ETM_TRACE
 #define QDSS_FILE_BUILD_STR		"etm_"
 #elif defined(CONFIG_CNSS2_DEBUG)
 #define QDSS_FILE_BUILD_STR		"debug_"
 #else
-#define QDSS_FILE_BUILD_STR		"perf_"
+#define QDSS_FILE_BUILD_STR		""
 #endif
 #define HW_V1_NUMBER			"v1"
 #define HW_V2_NUMBER			"v2"
