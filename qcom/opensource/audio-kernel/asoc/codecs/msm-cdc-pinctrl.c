@@ -50,7 +50,7 @@ static struct msm_cdc_pinctrl_info *msm_cdc_pinctrl_get_gpiodata(
 
 	pdev = of_find_device_by_node(np);
 	if (!pdev) {
-		pr_err_ratelimited("%s: platform device not found!\n", __func__);
+		pr_debug("%s: platform device not found\n", __func__);
 		return NULL;
 	}
 
