@@ -7769,7 +7769,7 @@ int cnss_thermal_cdev_register(struct device *dev, unsigned long max_state,
 
 	dev_node = of_find_node_by_name(NULL, cdev_node_name);
 	if (!dev_node) {
-		cnss_pr_err("Failed to get cooling device node\n");
+		cnss_pr_dbg("No cooling device node %s\n", cdev_node_name);
 		kfree(cnss_tcdev);
 		return -EINVAL;
 	}
