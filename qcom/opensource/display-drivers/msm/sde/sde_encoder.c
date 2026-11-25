@@ -7293,7 +7293,8 @@ static void _sde_encoder_delay_kickoff_processing(struct sde_encoder_virt *sde_e
 
 	snprintf(atrace_buf, sizeof(atrace_buf), "schedule_timeout_%llu", ept);
 	SDE_ATRACE_BEGIN(atrace_buf);
-	usleep_range((timeout_us - USEC_PER_MSEC), timeout_us);
+	usleep_range(timeout_us > USEC_PER_MSEC ? timeout_us - USEC_PER_MSEC : 0,
+		     timeout_us);
 	SDE_ATRACE_END(atrace_buf);
 
 	SDE_EVT32(DRMID(&sde_enc->base), qsync_mode, avr_step_fps, min_fps, fps,
