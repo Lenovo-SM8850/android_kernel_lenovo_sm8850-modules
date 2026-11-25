@@ -182,7 +182,6 @@ static int lpi_gpio_read(struct lpi_gpio_pad *pad, unsigned int addr)
 		return 0;
 	}
 	pm_runtime_get_sync(lpi_dev);
-	pr_err("%s(): Vishnu state->core_hw_vote_status:%d\n",__func__,state->core_hw_vote_status);
 	mutex_lock(&state->core_hw_vote_lock);
 	if (!state->core_hw_vote_status) {
 		if (__ratelimit(&rtl))
