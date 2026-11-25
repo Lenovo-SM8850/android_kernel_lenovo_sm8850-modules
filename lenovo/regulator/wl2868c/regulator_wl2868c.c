@@ -197,7 +197,7 @@ static int  wl2868c_regulator_enable(struct regulator_dev *rdev)
 		mutex_unlock(&i2c_control_mutex);
 		return ret;
 	}
-	REG_PRINT("Enable %s", wl2868c_reg->regulator_name);
+	pr_debug("enable %s\n", wl2868c_reg->regulator_name);
 	mutex_unlock(&i2c_control_mutex);
 	return ret;
 }
@@ -224,7 +224,7 @@ static int  wl2868c_regulator_disable(struct regulator_dev *rdev)
 	}
 	disable_bit = ~(1 << wl2868c_reg->channel_num);
 	current_bit &= disable_bit;
-	REG_PRINT("disable %s", wl2868c_reg->regulator_name);
+	pr_debug("disable %s\n", wl2868c_reg->regulator_name);
 	ret = regmap_write(wl2868c_regmap, chip->ldo_en_addr, current_bit);
 	if (ret < 0) {
 		REG_PRINT("write ldo enable address failed");
@@ -314,7 +314,7 @@ static int  wl2868c_regulator_get_voltage(struct regulator_dev *rdev)
 			return -EINVAL;
 		}
 	}
-	REG_PRINT("%s get voltage: %d uV", wl2868c_reg->regulator_name, uV);
+	pr_debug("%s get voltage: %d uV\n", wl2868c_reg->regulator_name, uV);
 	return uV;
 }
 
@@ -382,7 +382,7 @@ static int  wl2868c_regulator_set_voltage(struct regulator_dev *rdev,
 		REG_PRINT("%s set voltage failed", wl2868c_reg->regulator_name);
 		return -EIO;
 	}
-	REG_PRINT("%s set voltage: %d uV", wl2868c_reg->regulator_name, round_uV);
+	pr_debug("%s set voltage: %d uV\n", wl2868c_reg->regulator_name, round_uV);
 	return ret;
 }
 
